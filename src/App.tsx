@@ -1091,7 +1091,7 @@ export default function App() {
                       key={tab.id}
                       onClick={() => setConfigTab(tab.id as any)}
                       className={cn(
-                        "flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl transition-all duration-300 font-medium text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none justify-center",
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-300 font-medium text-xs whitespace-nowrap flex-1 sm:flex-none justify-center",
                         configTab === tab.id 
                           ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30" 
                           : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-white/5"
@@ -1106,9 +1106,9 @@ export default function App() {
                 <div className="group relative shrink-0">
                   <button
                     onClick={autoDetectConfig}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-blue-400 rounded-xl font-black text-sm transition-all border border-white/10 backdrop-blur-xl shadow-xl group/btn active:scale-95"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-blue-400 rounded-lg font-bold text-xs transition-all border border-white/10 active:scale-95"
                   >
-                    <Sparkles size={18} className="group-hover/btn:rotate-12 transition-transform text-blue-500" /> 
+                    <Sparkles size={14} className="group-hover/btn:rotate-12 transition-transform text-blue-500" /> 
                     Auto-Detectar
                   </button>
                   <div className="absolute bottom-full right-0 mb-3 w-72 p-4 bg-zinc-900/95 backdrop-blur-xl text-white text-xs rounded-2xl opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 pointer-events-none z-50 shadow-2xl border border-white/10 font-medium">
@@ -1118,7 +1118,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="min-h-[450px]">
+              <div>
                 <AnimatePresence mode="wait">
                   {configTab === 'keys' && (
                     <motion.div
@@ -1126,37 +1126,37 @@ export default function App() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="grid grid-cols-1 md:grid-cols-2 gap-6"
+                      className="grid grid-cols-1 md:grid-cols-2 gap-3"
                     >
-                      <div className="fluent-card p-5 sm:p-7 group">
-                        <div className="flex items-center gap-3 mb-3 sm:mb-4">
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform duration-500">
-                            <Target className="w-6 h-6" />
+                      <div className="fluent-card p-4 group">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0">
+                            <Target className="w-4 h-4" />
                           </div>
                           <div>
-                            <h3 className="text-xl font-bold text-zinc-900 dark:text-white">Tabela A → B</h3>
-                            <p className="text-sm text-zinc-500">Defina como as tabelas se conectam</p>
+                            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Tabela A → B</h3>
+                            <p className="text-[11px] text-zinc-500">Defina como as tabelas se conectam</p>
                           </div>
                         </div>
                         
-                        <div className="space-y-6">
-                          <div className="space-y-2">
-                            <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Chave na Tabela A</label>
+                        <div className="space-y-3">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-1">Chave na Tabela A</label>
                             <select 
                               value={activeTask.keyA}
                               onChange={(e) => updateActiveTask({ keyA: e.target.value })}
-                              className="fluent-select w-full"
+                              className="fluent-select w-full py-2 text-sm"
                             >
                               <option value="">Selecione a coluna...</option>
                               {headersA.map(h => <option key={h} value={h}>{h}</option>)}
                             </select>
                           </div>
-                          <div className="space-y-2">
-                            <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Chave na Tabela B</label>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-1">Chave na Tabela B</label>
                             <select 
                               value={activeTask.keyB}
                               onChange={(e) => updateActiveTask({ keyB: e.target.value })}
-                              className="fluent-select w-full"
+                              className="fluent-select w-full py-2 text-sm"
                             >
                               <option value="">Selecione a coluna...</option>
                               {headersB.map(h => <option key={h} value={h}>{h}</option>)}
@@ -1166,35 +1166,35 @@ export default function App() {
                       </div>
 
                       {activeTask.fileC && (
-                        <div className="fluent-card p-5 sm:p-7 group">
-                          <div className="flex items-center gap-3 mb-3 sm:mb-4">
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-500 group-hover:scale-110 transition-transform duration-500">
-                              <Target className="w-6 h-6" />
+                        <div className="fluent-card p-4 group">
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-500 shrink-0">
+                              <Target className="w-4 h-4" />
                             </div>
                             <div>
-                              <h3 className="text-xl font-bold text-zinc-900 dark:text-white">Tabela A → C</h3>
-                              <p className="text-sm text-zinc-500">Conexão com a tabela secundária</p>
+                              <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Tabela A → C</h3>
+                              <p className="text-[11px] text-zinc-500">Conexão com a tabela secundária</p>
                             </div>
                           </div>
                           
-                          <div className="space-y-6">
-                            <div className="space-y-2">
-                              <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Chave na Tabela A</label>
+                          <div className="space-y-3">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-1">Chave na Tabela A</label>
                               <select 
                                 value={activeTask.keyA_C}
                                 onChange={(e) => updateActiveTask({ keyA_C: e.target.value })}
-                                className="fluent-select w-full"
+                                className="fluent-select w-full py-2 text-sm"
                               >
                                 <option value="">Selecione a coluna...</option>
                                 {headersA.map(h => <option key={h} value={h}>{h}</option>)}
                               </select>
                             </div>
-                            <div className="space-y-2">
-                              <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Chave na Tabela C</label>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-1">Chave na Tabela C</label>
                               <select 
                                 value={activeTask.keyC}
                                 onChange={(e) => updateActiveTask({ keyC: e.target.value })}
-                                className="fluent-select w-full"
+                                className="fluent-select w-full py-2 text-sm"
                               >
                                 <option value="">Selecione a coluna...</option>
                                 {headersC.map(h => <option key={h} value={h}>{h}</option>)}
@@ -1212,58 +1212,57 @@ export default function App() {
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 10 }}
-                      className="space-y-8"
+                      className="space-y-3"
                     >
                       {/* Configuração Tabela B */}
-                      <div className="fluent-card p-4 sm:p-6 space-y-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="fluent-card p-3 sm:p-4 space-y-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                           <div>
-                            <h2 className="text-2xl font-black mb-2 flex items-center gap-2">
-                              <Columns className="text-blue-600" /> Selecionar Retorno (Tabela B)
+                            <h2 className="text-sm font-black flex items-center gap-1.5">
+                              <Columns size={14} className="text-blue-600" /> Retorno da Tabela B
                               <div className="group relative">
-                                <Info size={16} className="text-zinc-500 cursor-help" />
+                                <Info size={13} className="text-zinc-500 cursor-help" />
                                 <div className="absolute bottom-full left-0 mb-2 w-64 p-3 bg-zinc-900 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl font-normal">
                                   <p className="font-bold mb-1">O que trazer de volta?</p>
                                   <p className="opacity-80">Selecione as colunas da Tabela B que você deseja anexar à sua Tabela A quando houver uma correspondência.</p>
                                 </div>
                               </div>
                             </h2>
-                            <p className="text-zinc-400 text-sm">Quais colunas da Tabela B você quer trazer?</p>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="bg-blue-600/20 text-blue-400 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider">
+                            <span className="bg-blue-600/20 text-blue-400 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">
                               {activeTask.selectedColsB.length} selecionadas
                             </span>
                           </div>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="flex flex-col sm:flex-row gap-2">
                           <div className="relative flex-1">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 w-4 h-4" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 w-3.5 h-3.5" />
                             <input 
                               type="text"
                               placeholder="Filtrar colunas da Tabela B..."
-                              className="w-full pl-12 pr-4 py-3 rounded-2xl border border-white/10 bg-black/20 focus:border-blue-500 outline-none text-sm text-zinc-300 font-medium"
+                              className="w-full pl-9 pr-3 py-2 rounded-xl border border-white/10 bg-black/20 focus:border-blue-500 outline-none text-xs text-zinc-300 font-medium"
                               onChange={(e) => setSearchTermB(e.target.value.toLowerCase())}
                             />
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex gap-1">
                             <button 
                               onClick={() => updateActiveTask({ selectedColsB: headersB })}
-                              className="px-4 py-2 rounded-xl text-xs font-bold text-blue-400 hover:bg-white/5 transition-all border border-white/5"
+                              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-blue-400 hover:bg-white/5 transition-all border border-white/5"
                             >
                               Selecionar Tudo
                             </button>
                             <button 
                               onClick={() => updateActiveTask({ selectedColsB: [] })}
-                              className="px-4 py-2 rounded-xl text-xs font-bold text-zinc-500 hover:bg-white/5 transition-all border border-white/5"
+                              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-zinc-500 hover:bg-white/5 transition-all border border-white/5"
                             >
                               Limpar
                             </button>
                           </div>
                         </div>
                         
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar p-1">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
                           {headersB
                             .filter(h => h.toLowerCase().includes(searchTermB))
                             .map(h => (
@@ -1277,7 +1276,7 @@ export default function App() {
                                 });
                               }}
                               className={cn(
-                                "p-4 rounded-2xl border-2 text-sm font-bold transition-all text-left flex items-center justify-between group relative overflow-hidden",
+                                "p-2.5 rounded-xl border-2 text-xs font-bold transition-all text-left flex items-center justify-between group relative overflow-hidden",
                                 activeTask.selectedColsB.includes(h)
                                   ? activeTask.lookupType === 'vlookup' && headersB.indexOf(h) < headersB.indexOf(activeTask.keyB)
                                     ? "border-red-500/50 bg-red-500/10 text-red-400 shadow-sm"
@@ -1307,55 +1306,54 @@ export default function App() {
 
                       {/* Configuração Tabela C (Opcional) */}
                       {activeTask.fileC && (
-                        <div className="fluent-card p-4 sm:p-6 space-y-4">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="fluent-card p-3 sm:p-4 space-y-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                             <div>
-                              <h2 className="text-2xl font-black mb-2 flex items-center gap-2">
-                                <Columns className="text-purple-400" /> Selecionar Retorno (Tabela C)
+                              <h2 className="text-sm font-black flex items-center gap-1.5">
+                                <Columns size={14} className="text-purple-400" /> Retorno da Tabela C
                                 <div className="group relative">
-                                  <Info size={16} className="text-zinc-500 cursor-help" />
+                                  <Info size={13} className="text-zinc-500 cursor-help" />
                                   <div className="absolute bottom-full left-0 mb-2 w-64 p-3 bg-zinc-900 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl font-normal">
                                     <p className="font-bold mb-1">O que trazer da Tabela C?</p>
                                     <p className="opacity-80">Selecione as colunas da Tabela C que você deseja anexar à sua Tabela A.</p>
                                   </div>
                                 </div>
                               </h2>
-                              <p className="text-zinc-400 text-sm">Quais colunas da Tabela C você quer trazer?</p>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="bg-purple-600/20 text-purple-400 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider">
+                              <span className="bg-purple-600/20 text-purple-400 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">
                                 {activeTask.selectedColsC.length} selecionadas
                               </span>
                             </div>
                           </div>
 
-                          <div className="flex flex-col sm:flex-row gap-4">
+                          <div className="flex flex-col sm:flex-row gap-2">
                             <div className="relative flex-1">
-                              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 w-4 h-4" />
+                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 w-3.5 h-3.5" />
                               <input 
                                 type="text"
                                 placeholder="Filtrar colunas da Tabela C..."
-                                className="w-full pl-12 pr-4 py-3 rounded-2xl border border-white/10 bg-black/20 focus:border-blue-500 outline-none text-sm text-zinc-300 font-medium"
+                                className="w-full pl-9 pr-3 py-2 rounded-xl border border-white/10 bg-black/20 focus:border-blue-500 outline-none text-xs text-zinc-300 font-medium"
                                 onChange={(e) => setSearchTermC(e.target.value.toLowerCase())}
                               />
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex gap-1">
                               <button 
                                 onClick={() => updateActiveTask({ selectedColsC: headersC })}
-                                className="px-4 py-2 rounded-xl text-xs font-bold text-purple-400 hover:bg-white/5 transition-all border border-white/5"
+                                className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-purple-400 hover:bg-white/5 transition-all border border-white/5"
                               >
                                 Selecionar Tudo
                               </button>
                               <button 
                                 onClick={() => updateActiveTask({ selectedColsC: [] })}
-                                className="px-4 py-2 rounded-xl text-xs font-bold text-zinc-500 hover:bg-white/5 transition-all border border-white/5"
+                                className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-zinc-500 hover:bg-white/5 transition-all border border-white/5"
                               >
                                 Limpar
                               </button>
                             </div>
                           </div>
                           
-                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar p-1">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
                             {headersC
                               .filter(h => h.toLowerCase().includes(searchTermC))
                               .map(h => (
@@ -1369,7 +1367,7 @@ export default function App() {
                                   });
                                 }}
                                 className={cn(
-                                  "p-4 rounded-2xl border-2 text-sm font-bold transition-all text-left flex items-center justify-between group relative overflow-hidden",
+                                  "p-2.5 rounded-xl border-2 text-xs font-bold transition-all text-left flex items-center justify-between group relative overflow-hidden",
                                   activeTask.selectedColsC.includes(h)
                                     ? activeTask.lookupType === 'vlookup' && headersC.indexOf(h) < headersC.indexOf(activeTask.keyC)
                                       ? "border-red-500/50 bg-red-500/10 text-red-400 shadow-sm"
@@ -1406,37 +1404,36 @@ export default function App() {
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 10 }}
-                      className="fluent-card p-4 sm:p-6 space-y-5"
+                      className="fluent-card p-3 sm:p-4 space-y-3"
                     >
                       <div>
-                        <h2 className="text-lg sm:text-2xl font-black mb-1 flex items-center gap-2">
-                          <Settings2 className="text-blue-600" /> Opções Avançadas
+                        <h2 className="text-sm font-black flex items-center gap-2">
+                          <Settings2 size={14} className="text-blue-600" /> Opções Avançadas
                         </h2>
-                        <p className="text-zinc-400 text-sm">Refine o tratamento dos dados durante o cruzamento.</p>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
-                        <div className="space-y-4 p-6 bg-white/5 rounded-3xl border border-white/5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                        <div className="space-y-2 p-3 bg-white/5 rounded-2xl border border-white/5">
                           <div className="flex items-center justify-between">
-                            <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500 flex items-center gap-2">
-                              <Zap size={14} className="text-blue-400" /> Limpeza de Dados
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-1.5">
+                              <Zap size={12} className="text-blue-400" /> Limpeza de Dados
                             </h3>
                             <div className="group relative">
-                              <Info size={12} className="text-zinc-500 cursor-help" />
+                              <Info size={11} className="text-zinc-500 cursor-help" />
                               <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-zinc-900 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
                                 <p className="font-bold mb-1">Tratamento de Dados</p>
                                 <p className="opacity-80">Essas opções ajudam a normalizar os valores antes da comparação, evitando erros por espaços extras ou diferenças entre maiúsculas e minúsculas.</p>
                               </div>
                             </div>
                           </div>
-                          <div className="space-y-4">
+                          <div className="space-y-2">
                             {[
                               { id: 'trimSpaces', label: 'Remover espaços extras', field: 'trimSpaces', help: 'Remove espaços no início e fim do texto.' },
                               { id: 'ignoreCase', label: 'Ignorar Maiúsculas/Minúsculas', field: 'ignoreCase', help: 'Trata "TEXTO" e "texto" como iguais.' },
                               { id: 'removeSpecialChars', label: 'Remover Caracteres Especiais', field: 'removeSpecialChars', help: 'Remove acentos e símbolos (ex: "ç" vira "c").' }
                             ].map((opt) => (
                               <div key={opt.id} className="flex items-center justify-between group/item">
-                                <label className="flex items-center gap-3 cursor-pointer group">
+                                <label className="flex items-center gap-2 cursor-pointer group">
                                   <div className="relative flex items-center">
                                     <input 
                                       type="checkbox" 
@@ -1444,10 +1441,10 @@ export default function App() {
                                       onChange={e => updateActiveTask({ [opt.field]: e.target.checked })} 
                                       className="peer sr-only" 
                                     />
-                                    <div className="w-10 h-6 bg-slate-200 dark:bg-slate-700 rounded-full peer peer-checked:bg-blue-600 transition-colors" />
-                                    <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4" />
+                                    <div className="w-8 h-5 bg-slate-200 dark:bg-slate-700 rounded-full peer peer-checked:bg-blue-600 transition-colors" />
+                                    <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-3" />
                                   </div>
-                                  <span className="text-sm font-bold text-slate-700 dark:text-slate-300 group-hover:text-blue-600 transition-colors">{opt.label}</span>
+                                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 group-hover:text-blue-600 transition-colors">{opt.label}</span>
                                 </label>
                                 <div className="group relative">
                                   <Info size={10} className="text-slate-300 dark:text-slate-600 cursor-help" />
@@ -1460,24 +1457,24 @@ export default function App() {
                           </div>
                         </div>
 
-                        <div className="space-y-4 p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800">
+                        <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
                           <div className="flex items-center justify-between">
-                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                              <Layers size={14} className="text-blue-500" /> Estratégia de Duplicatas
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+                              <Layers size={12} className="text-blue-500" /> Estratégia de Duplicatas
                             </h3>
                             <div className="group relative">
-                              <Info size={12} className="text-slate-400 cursor-help" />
+                              <Info size={11} className="text-slate-400 cursor-help" />
                               <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-slate-900 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
                                 <p className="font-bold mb-1">Lidando com Repetições</p>
                                 <p className="opacity-80">Define o que fazer quando a chave de busca aparece mais de uma vez na Tabela B. Você pode escolher o primeiro, o último ou combinar todos os resultados encontrados.</p>
                               </div>
                             </div>
                           </div>
-                          <div className="space-y-3">
+                          <div className="space-y-1.5">
                             <select 
                               value={activeTask.duplicateStrategy}
                               onChange={(e: any) => updateActiveTask({ duplicateStrategy: e.target.value })}
-                              className="w-full p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-bold outline-none focus:border-blue-500"
+                              className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold outline-none focus:border-blue-500"
                             >
                               <option value="first">Pegar Primeiro Encontro</option>
                               <option value="last">Pegar Último Encontro</option>
@@ -1492,24 +1489,24 @@ export default function App() {
                         </div>
 
                         {/* Modo de Correspondência (XLOOKUP style) */}
-                        <div className="space-y-4 p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800">
+                        <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
                           <div className="flex items-center justify-between">
-                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                              <Target size={14} className="text-blue-500" /> Modo de Correspondência
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+                              <Target size={12} className="text-blue-500" /> Modo de Correspondência
                             </h3>
                             <div className="group relative">
-                              <Info size={12} className="text-slate-400 cursor-help" />
+                              <Info size={11} className="text-slate-400 cursor-help" />
                               <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-slate-900 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
                                 <p className="font-bold mb-1">Tipo de Busca (PROCX)</p>
                                 <p className="opacity-80">Define como o sistema deve se comportar se não encontrar o valor exato. Pode buscar o próximo menor, maior ou usar curingas.</p>
                               </div>
                             </div>
                           </div>
-                          <div className="space-y-3">
+                          <div className="space-y-1.5">
                             <select 
                               value={activeTask.matchMode}
                               onChange={(e: any) => updateActiveTask({ matchMode: parseInt(e.target.value) })}
-                              className="w-full p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-bold outline-none focus:border-blue-500"
+                              className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold outline-none focus:border-blue-500"
                               disabled={!activeTask.exactMatch}
                             >
                               <option value="0">0 - Correspondência Exata</option>
@@ -1528,20 +1525,20 @@ export default function App() {
                           </div>
                         </div>
 
-                        <div className="space-y-4 p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800">
+                        <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
                           <div className="flex items-center justify-between">
-                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                              <Activity size={14} className="text-blue-500" /> Precisão Fuzzy ({Math.round(activeTask.fuzzyThreshold * 100)}%)
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+                              <Activity size={12} className="text-blue-500" /> Precisão Fuzzy ({Math.round(activeTask.fuzzyThreshold * 100)}%)
                             </h3>
                             <div className="group relative">
-                              <Info size={12} className="text-slate-400 cursor-help" />
+                              <Info size={11} className="text-slate-400 cursor-help" />
                               <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-slate-900 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
                                 <p className="font-bold mb-1">Sensibilidade da Busca</p>
                                 <p className="opacity-80">Define o quão parecidos os textos devem ser. 100% exige igualdade total. 80% permite pequenas variações ou erros de digitação.</p>
                               </div>
                             </div>
                           </div>
-                          <div className="space-y-4">
+                          <div className="space-y-2">
                             <input 
                               type="range" 
                               min="0.1" 
@@ -1549,85 +1546,84 @@ export default function App() {
                               step="0.05" 
                               value={activeTask.fuzzyThreshold}
                               onChange={e => updateActiveTask({ fuzzyThreshold: parseFloat(e.target.value) })}
-                              className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                              className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
                             />
                             <div className="flex justify-between text-[10px] text-slate-400 font-black">
                               <span>MAIS FLEXÍVEL</span>
                               <span>MAIS RÍGIDO</span>
                             </div>
-                            <p className="text-[10px] text-slate-400 italic leading-relaxed">Ajuste fino para a correspondência aproximada.</p>
                           </div>
                         </div>
 
                         {/* Colunas de Status */}
-                        <div className="space-y-4 p-4 sm:p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl sm:rounded-3xl border border-slate-100 dark:border-slate-800 sm:col-span-2 md:col-span-3">
+                        <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 sm:col-span-2 md:col-span-3">
                           <div className="flex items-center justify-between">
-                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                              <CheckCircle2 size={14} className="text-blue-500" /> Colunas de Status de Existência
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+                              <CheckCircle2 size={12} className="text-blue-500" /> Colunas de Status de Existência
                             </h3>
                             <div className="group relative">
-                              <Info size={12} className="text-slate-400 cursor-help" />
+                              <Info size={11} className="text-slate-400 cursor-help" />
                               <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-slate-900 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
                                 <p className="font-bold mb-1">Indicadores de Match</p>
                                 <p className="opacity-80">Adiciona colunas extras indicando "VERDADEIRO" ou "FALSO" para a existência do registro em cada tabela.</p>
                               </div>
                             </div>
                           </div>
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
                             <button
                               onClick={() => updateActiveTask({ includeStatusCols: !activeTask.includeStatusCols })}
                               className={cn(
-                                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none",
+                                "relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none shrink-0",
                                 activeTask.includeStatusCols ? "bg-blue-600" : "bg-slate-200 dark:bg-slate-700"
                               )}
                             >
                               <span
                                 className={cn(
-                                  "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
-                                  activeTask.includeStatusCols ? "translate-x-6" : "translate-x-1"
+                                  "inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform",
+                                  activeTask.includeStatusCols ? "translate-x-[18px]" : "translate-x-0.5"
                                 )}
                               />
                             </button>
-                            <span className="text-sm font-bold text-slate-600 dark:text-slate-300">
+                            <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
                               Incluir colunas de status (Status_B, Status_C, Status_Ambas)
                             </span>
                           </div>
                         </div>
 
                         {/* Valor se não encontrado */}
-                        <div className="space-y-4 p-4 sm:p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl sm:rounded-3xl border border-slate-100 dark:border-slate-800 sm:col-span-2 md:col-span-3">
+                        <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 sm:col-span-2 md:col-span-3">
                           <div className="flex items-center justify-between">
-                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                              <HelpCircle size={14} className="text-blue-500" /> Valor se não encontrado (if_not_found)
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+                              <HelpCircle size={12} className="text-blue-500" /> Valor se não encontrado (if_not_found)
                             </h3>
                             <div className="group relative">
-                              <Info size={12} className="text-slate-400 cursor-help" />
+                              <Info size={11} className="text-slate-400 cursor-help" />
                               <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-slate-900 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
                                 <p className="font-bold mb-1">Tratamento de Erros</p>
                                 <p className="opacity-80">Define o que será exibido nas colunas de retorno quando a busca não encontrar um correspondente. Similar ao parâmetro [if_not_found] do PROCX.</p>
                               </div>
                             </div>
                           </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                              <label className="text-xs font-bold text-slate-500 dark:text-slate-400">Para Tabela B</label>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Para Tabela B</label>
                               <input 
                                 type="text"
                                 value={activeTask.ifNotFound}
                                 onChange={(e) => updateActiveTask({ ifNotFound: e.target.value })}
                                 placeholder="#N/D"
-                                className="w-full p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-bold outline-none focus:border-blue-500"
+                                className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold outline-none focus:border-blue-500"
                               />
                             </div>
                             {activeTask.fileC && (
-                              <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-500 dark:text-slate-400">Para Tabela C</label>
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Para Tabela C</label>
                                 <input 
                                   type="text"
                                   value={activeTask.ifNotFoundC}
                                   onChange={(e) => updateActiveTask({ ifNotFoundC: e.target.value })}
                                   placeholder="#N/D"
-                                  className="w-full p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-bold outline-none focus:border-blue-500"
+                                  className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold outline-none focus:border-blue-500"
                                 />
                               </div>
                             )}
@@ -1635,31 +1631,28 @@ export default function App() {
                         </div>
 
                         {/* Direção da Busca (XLOOKUP style) */}
-                        <div className="space-y-4 p-4 sm:p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl sm:rounded-3xl border border-slate-100 dark:border-slate-800 sm:col-span-2 md:col-span-3">
+                        <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 sm:col-span-2 md:col-span-3">
                           <div className="flex items-center justify-between">
-                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                              <ArrowUpDown size={14} className="text-blue-500" /> Direção da Busca
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+                              <ArrowUpDown size={12} className="text-blue-500" /> Direção da Busca
                             </h3>
                             <div className="group relative">
-                              <Info size={12} className="text-slate-400 cursor-help" />
+                              <Info size={11} className="text-slate-400 cursor-help" />
                               <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-slate-900 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
                                 <p className="font-bold mb-1">Ordem de Pesquisa (PROCX)</p>
                                 <p className="opacity-80">Define se o sistema deve começar a procurar do início para o fim ou do fim para o início da tabela.</p>
                               </div>
                             </div>
                           </div>
-                          <div className="space-y-3">
+                          <div className="space-y-1.5">
                             <select 
                               value={activeTask.searchDirection}
                               onChange={(e: any) => updateActiveTask({ searchDirection: parseInt(e.target.value) })}
-                              className="w-full p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-bold outline-none focus:border-blue-500"
+                              className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold outline-none focus:border-blue-500"
                             >
                               <option value="1">1 - Do Primeiro ao Último</option>
                               <option value="-1">-1 - Do Último ao Primeiro</option>
                             </select>
-                            <p className="text-[10px] text-slate-400 italic leading-relaxed">
-                              {activeTask.searchDirection === 1 ? "Busca padrão, de cima para baixo." : "Inverte a busca, útil para pegar o registro mais recente."}
-                            </p>
                           </div>
                         </div>
                       </div>
@@ -1673,13 +1666,13 @@ export default function App() {
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-3xl p-6 flex items-start gap-4"
+                  className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-2xl p-3 flex items-start gap-3"
                 >
-                  <div className="p-2 bg-amber-100 dark:bg-amber-900/40 rounded-xl">
-                    <AlertCircle className="text-amber-600 dark:text-amber-400 shrink-0" />
+                  <div className="p-1.5 bg-amber-100 dark:bg-amber-900/40 rounded-lg shrink-0">
+                    <AlertCircle size={14} className="text-amber-600 dark:text-amber-400" />
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-sm font-black text-amber-900 dark:text-amber-200 uppercase tracking-wider">Atenção necessária:</p>
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-black text-amber-900 dark:text-amber-200 uppercase tracking-wider">Atenção necessária:</p>
                     <ul className="text-xs text-amber-800 dark:text-amber-300/80 list-disc list-inside space-y-1 font-medium">
                       {validation.errors.map((err, i) => <li key={i}>{err}</li>)}
                     </ul>
@@ -1687,18 +1680,18 @@ export default function App() {
                 </motion.div>
               )}
 
-              <div className="flex justify-between items-center pt-4">
+              <div className="flex justify-between items-center pt-2">
                 <button 
                   onClick={() => setStep('upload')}
-                  className="px-5 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all active:scale-95 text-sm"
+                  className="px-4 py-2 rounded-lg font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all active:scale-95 text-xs"
                 >
                   Voltar
                 </button>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
                   {configTab !== 'advanced' && (
                     <button
                       onClick={() => setConfigTab(configTab === 'keys' ? 'columns' : 'advanced')}
-                      className="px-5 py-3 rounded-xl font-bold text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all border border-blue-100 dark:border-blue-900/40"
+                      className="px-4 py-2 rounded-lg font-bold text-xs text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all border border-blue-100 dark:border-blue-900/40"
                     >
                       Próximo
                     </button>
@@ -1707,7 +1700,7 @@ export default function App() {
                     disabled={!validation.isValid || loading}
                     onClick={performLookup}
                     className={cn(
-                      "px-8 sm:px-10 py-3 rounded-xl font-black text-sm sm:text-base flex items-center gap-2 transition-all shadow-xl active:scale-95",
+                      "px-5 py-2 rounded-lg font-black text-sm flex items-center gap-2 transition-all shadow-lg active:scale-95",
                       !validation.isValid
                         ? "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
                         : "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20"
@@ -1715,12 +1708,12 @@ export default function App() {
                   >
                     {loading ? (
                       <>
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                         Processando...
                       </>
                     ) : (
                       <>
-                        Executar Cruzamento <Zap size={20} />
+                        Executar Cruzamento <Zap size={16} />
                       </>
                     )}
                   </button>
