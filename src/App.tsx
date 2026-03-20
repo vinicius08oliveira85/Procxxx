@@ -211,11 +211,32 @@ export default function App() {
     const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
     const isText = ext === 'csv' || ext === 'tsv';
 
+    // Formata células que o xlsx retorna como tipos especiais.
+    // Datas viram string "DD/MM/AAAA HH:MM" e números grandes (CPF, códigos)
+    // viram string sem notação científica.
+    const normalizeRow = (row: Record<string, unknown>): Record<string, unknown> => {
+      const result: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(row)) {
+        if (v instanceof Date) {
+          const pad = (n: number) => String(n).padStart(2, '0');
+          const dateStr = `${pad(v.getDate())}/${pad(v.getMonth() + 1)}/${v.getFullYear()}`;
+          const hasTime = v.getHours() !== 0 || v.getMinutes() !== 0;
+          result[k] = hasTime ? `${dateStr} ${pad(v.getHours())}:${pad(v.getMinutes())}` : dateStr;
+        } else if (typeof v === 'number' && !isNaN(v) && Math.abs(v) >= 1e9) {
+          // Números inteiros grandes (CPF 11 dígitos, códigos 15 dígitos, etc.)
+          result[k] = Number.isInteger(v) ? String(v) : v.toFixed(0);
+        } else {
+          result[k] = v;
+        }
+      }
+      return result;
+    };
+
     const parseAndUpdate = (result: string | ArrayBuffer | null) => {
       try {
         const wb = isText
           ? XLSX.read(result as string, { type: 'string' })
-          : XLSX.read(result as ArrayBuffer, { type: 'array' });
+          : XLSX.read(result as ArrayBuffer, { type: 'array', cellDates: true });
 
         if (!wb.SheetNames.length) {
           setError("O arquivo não contém planilhas ou está vazio.");
@@ -224,7 +245,8 @@ export default function App() {
 
         const sheets: { [key: string]: any[] } = {};
         wb.SheetNames.forEach(name => {
-          sheets[name] = XLSX.utils.sheet_to_json(wb.Sheets[name]);
+          const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[name], { defval: '' });
+          sheets[name] = raw.map(normalizeRow);
         });
 
         const data: ExcelData = {
