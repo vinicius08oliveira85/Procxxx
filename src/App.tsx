@@ -412,7 +412,7 @@ export default function App() {
     }
 
     return data;
-  }, [activeTask.resultData, activeTask.resultFilter, activeTask.fileC, columnFilters]);
+  }, [activeTask.resultData, activeTask.resultFilter, activeTask.fileC, activeTask.divergentPairs, columnFilters]);
 
   /**
    * Calcula estatísticas básicas sobre o resultado do cruzamento.
