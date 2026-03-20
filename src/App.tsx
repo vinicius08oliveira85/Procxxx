@@ -123,7 +123,8 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
   const [showColumnSettings, setShowColumnSettings] = useState(false);
   const [configTab, setConfigTab] = useState<'keys' | 'columns' | 'advanced'>('keys');
-  const [columnFilters, setColumnFilters] = useState<{ [col: string]: string }>({});
+  const [columnFilters, setColumnFilters] = useState<{ [col: string]: Set<string> }>({});
+  const [openFilterCol, setOpenFilterCol] = useState<string | null>(null);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -339,11 +340,11 @@ export default function App() {
       data = data.filter(r => !r._match_found_B && (activeTask.fileC ? !r._match_found_C : true));
     }
 
-    const activeColFilters = Object.entries(columnFilters).filter(([, v]) => (v as string).trim() !== '');
+    const activeColFilters = Object.entries(columnFilters).filter(([, set]) => set.size > 0);
     if (activeColFilters.length > 0) {
       data = data.filter(row =>
-        activeColFilters.every(([col, term]) =>
-          String(row[col] ?? '').toLowerCase().includes((term as string).toLowerCase())
+        activeColFilters.every(([col, allowedSet]) =>
+          allowedSet.has(String(row[col] ?? ''))
         )
       );
     }
@@ -1795,7 +1796,7 @@ export default function App() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {Object.values(columnFilters).some(v => (v as string).trim() !== '') && (
+                    {Object.values(columnFilters).some(s => s.size > 0) && (
                       <button
                         onClick={() => setColumnFilters({})}
                         className="flex items-center gap-1.5 px-4 py-3 rounded-xl text-xs font-bold text-amber-400 hover:bg-amber-500/10 border border-amber-500/20 transition-all active:scale-95"
@@ -1831,23 +1832,48 @@ export default function App() {
                       <tr className="bg-zinc-900/80 border-b border-white/10">
                         {displayColumns.map(col => (
                           <th key={col.id} className={cn(
-                            "px-2 sm:px-3 py-2",
+                            "px-2 sm:px-3 py-2 relative",
                             col.id.startsWith('Lookup_') ? "bg-blue-400/5" :
                             col.id.startsWith('LookupC_') ? "bg-purple-400/5" :
                             col.id.startsWith('Status_') ? "bg-emerald-400/5" : ""
                           )}>
-                            <input
-                              type="text"
-                              value={columnFilters[col.id] ?? ''}
-                              onChange={e => setColumnFilters(prev => ({ ...prev, [col.id]: e.target.value }))}
-                              placeholder="filtrar..."
+                            <button
+                              onClick={() => setOpenFilterCol(openFilterCol === col.id ? null : col.id)}
                               className={cn(
-                                "w-full bg-white/5 border rounded-lg px-2 py-1 text-[11px] text-zinc-300 placeholder:text-zinc-600 outline-none transition-colors font-normal",
-                                columnFilters[col.id]?.trim()
-                                  ? "border-blue-500/60 bg-blue-500/10"
-                                  : "border-white/10 focus:border-blue-500/50"
+                                "w-full flex items-center justify-between gap-1 px-2 py-1.5 rounded-lg text-[10px] font-bold transition-all",
+                                columnFilters[col.id]?.size > 0
+                                  ? "bg-blue-500/15 border border-blue-500/40 text-blue-400"
+                                  : "bg-white/5 border border-white/10 text-zinc-500 hover:border-white/20 hover:text-zinc-300"
                               )}
-                            />
+                            >
+                              <span className="truncate">
+                                {columnFilters[col.id]?.size > 0
+                                  ? `${columnFilters[col.id].size} selecionado${columnFilters[col.id].size > 1 ? 's' : ''}`
+                                  : 'Filtrar...'}
+                              </span>
+                              <Filter size={10} className="shrink-0" />
+                            </button>
+
+                            {openFilterCol === col.id && (
+                              <ColumnFilterDropdown
+                                colId={col.id}
+                                allData={activeTask.resultData ?? []}
+                                selectedSet={columnFilters[col.id] ?? null}
+                                onApply={(set) => {
+                                  setColumnFilters(prev => {
+                                    const next = { ...prev };
+                                    if (set === null || set.size === 0) {
+                                      delete next[col.id];
+                                    } else {
+                                      next[col.id] = set;
+                                    }
+                                    return next;
+                                  });
+                                  setOpenFilterCol(null);
+                                }}
+                                onClose={() => setOpenFilterCol(null)}
+                              />
+                            )}
                           </th>
                         ))}
                       </tr>
@@ -1888,7 +1914,7 @@ export default function App() {
                   {filteredResultData.length > 50 && (
                     <div className="p-6 text-center text-slate-400 text-xs font-bold bg-slate-50 dark:bg-slate-800/50 uppercase tracking-widest">
                       Exibindo as primeiras 50 de {filteredResultData.length} linhas
-                      {Object.values(columnFilters).some(v => (v as string).trim()) ? ' (filtros ativos)' : ''}. Baixe o arquivo para ver tudo.
+                      {Object.values(columnFilters).some(s => s.size > 0) ? ' (filtros ativos)' : ''}. Baixe o arquivo para ver tudo.
                     </div>
                   )}
                 </div>
@@ -2009,6 +2035,129 @@ function UploadCard({ title, description, file, onUpload, onRemove, onSheetChang
           </p>
         </label>
       )}
+    </div>
+  );
+}
+
+function ColumnFilterDropdown({
+  colId,
+  allData,
+  selectedSet,
+  onApply,
+  onClose,
+}: {
+  colId: string;
+  allData: any[];
+  selectedSet: Set<string> | null;
+  onApply: (set: Set<string> | null) => void;
+  onClose: () => void;
+}) {
+  const [search, setSearch] = React.useState('');
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  const uniqueValues = React.useMemo(() => {
+    const vals = new Set(allData.map(row => String(row[colId] ?? '')));
+    return [...vals].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
+  }, [allData, colId]);
+
+  const displayed = uniqueValues.filter(v =>
+    v.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const isAllSelected = selectedSet === null;
+
+  const isChecked = (val: string) => isAllSelected || selectedSet!.has(val);
+
+  const toggle = (val: string) => {
+    const base = isAllSelected ? new Set(uniqueValues) : new Set(selectedSet!);
+    if (base.has(val)) base.delete(val);
+    else base.add(val);
+    onApply(base.size === uniqueValues.length ? null : base);
+  };
+
+  React.useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  return (
+    <div
+      ref={ref}
+      className="absolute z-50 top-full left-0 mt-1 w-56 bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+      onClick={e => e.stopPropagation()}
+    >
+      <div className="p-2 border-b border-white/5">
+        <input
+          autoFocus
+          type="text"
+          placeholder="Buscar valor..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs outline-none text-zinc-300 placeholder:text-zinc-600 focus:border-blue-500/50"
+        />
+      </div>
+
+      <div className="flex gap-3 px-3 py-2 border-b border-white/5">
+        <button
+          onClick={() => onApply(null)}
+          className="text-[10px] font-bold text-blue-400 hover:text-blue-300 transition-colors"
+        >
+          Selecionar Tudo
+        </button>
+        <button
+          onClick={() => onApply(new Set())}
+          className="text-[10px] font-bold text-zinc-500 hover:text-zinc-300 transition-colors"
+        >
+          Limpar
+        </button>
+      </div>
+
+      <div className="max-h-52 overflow-y-auto custom-scrollbar py-1">
+        {displayed.length === 0 ? (
+          <p className="text-center text-zinc-600 text-xs py-4">Nenhum valor encontrado</p>
+        ) : (
+          displayed.map(val => (
+            <label
+              key={val}
+              className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-white/5 cursor-pointer group"
+            >
+              <div
+                className={cn(
+                  "w-4 h-4 rounded flex items-center justify-center border transition-all shrink-0",
+                  isChecked(val)
+                    ? "bg-blue-600 border-blue-500"
+                    : "border-white/20 bg-white/5 group-hover:border-blue-500/40"
+                )}
+                onClick={() => toggle(val)}
+              >
+                {isChecked(val) && (
+                  <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 10 8">
+                    <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </div>
+              <span
+                className="text-xs text-zinc-300 truncate flex-1"
+                onClick={() => toggle(val)}
+              >
+                {val === '' ? <span className="italic text-zinc-600">(vazio)</span> : val}
+              </span>
+            </label>
+          ))
+        )}
+      </div>
+
+      <div className="p-2 border-t border-white/5">
+        <button
+          onClick={onClose}
+          className="w-full py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black rounded-xl transition-colors"
+        >
+          OK
+        </button>
+      </div>
     </div>
   );
 }
