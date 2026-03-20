@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="112" fill="#2563eb"/>
+  <!-- Layers icon adapted -->
+  <g transform="translate(256,256)" fill="none" stroke="white" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Top layer -->
+    <polygon points="-144,-56 0,-120 144,-56 0,8" fill="rgba(255,255,255,0.35)" stroke="white" stroke-width="16"/>
+    <!-- Middle layer -->
+    <polyline points="-144,-8 0,56 144,-8" stroke="white" stroke-width="16"/>
+    <!-- Bottom layer -->
+    <polyline points="-144,56 0,120 144,56" stroke="white" stroke-width="16"/>
+  </g>
+</svg>

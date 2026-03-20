@@ -1044,32 +1044,46 @@ export default function App() {
           className="windows-window flex flex-col max-w-7xl mx-auto w-full"
         >
           {/* App Header (Inside Window) */}
-          <header className="py-3 sm:py-4 flex items-center justify-between px-4 sm:px-6 md:px-8 bg-white/5 dark:bg-zinc-900/5 border-b border-white/10 dark:border-white/5">
-            <div className="flex items-center gap-4">
-              <div>
-                <h1 className="text-lg sm:text-xl md:text-2xl font-black tracking-tighter bg-gradient-to-r from-zinc-900 to-zinc-500 dark:from-white dark:to-zinc-400 bg-clip-text text-transparent">
-                  Lookup Master
-                </h1>
+          <header className="bg-white/5 dark:bg-zinc-900/5 border-b border-white/10 dark:border-white/5">
+            {/* Linha principal: logo + stepindicator (md+) + botões */}
+            <div className="py-3 sm:py-4 flex items-center justify-between px-4 sm:px-6 md:px-8">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0">
+                  <Layers size={16} className="text-white" />
+                </div>
+                <div>
+                  <h1 className="text-base sm:text-xl md:text-2xl font-black tracking-tighter bg-gradient-to-r from-zinc-900 to-zinc-500 dark:from-white dark:to-zinc-400 bg-clip-text text-transparent whitespace-nowrap">
+                    Lookup Master
+                  </h1>
+                </div>
+              </div>
+
+              {/* StepIndicator visível apenas em sm+ no header */}
+              <div className="hidden sm:block">
+                <StepIndicator currentStep={step} />
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-2xl border border-black/5 dark:border-white/5">
+                  <button 
+                    onClick={() => setIsDarkMode(!isDarkMode)}
+                    className="p-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-all text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 active:scale-90"
+                  >
+                    {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+                  </button>
+                  <button 
+                    onClick={reset}
+                    className="p-2.5 rounded-xl hover:bg-red-500/10 transition-all text-zinc-500 dark:text-zinc-400 hover:text-red-500 active:scale-90"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
               </div>
             </div>
 
-            <StepIndicator currentStep={step} />
-
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-2xl border border-black/5 dark:border-white/5">
-                <button 
-                  onClick={() => setIsDarkMode(!isDarkMode)}
-                  className="p-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-all text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 active:scale-90"
-                >
-                  {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-                </button>
-                <button 
-                  onClick={reset}
-                  className="p-2.5 rounded-xl hover:bg-red-500/10 transition-all text-zinc-500 dark:text-zinc-400 hover:text-red-500 active:scale-90"
-                >
-                  <X size={18} />
-                </button>
-              </div>
+            {/* StepIndicator em linha separada apenas em mobile */}
+            <div className="sm:hidden px-4 pb-3">
+              <StepIndicator currentStep={step} />
             </div>
           </header>
 
@@ -1085,7 +1099,7 @@ export default function App() {
                   transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                   className="max-w-5xl mx-auto"
                 >
-              <div className="grid md:grid-cols-2 gap-3 md:gap-4">
+              <div className="grid md:grid-cols-2 gap-4 md:gap-6">
                 <UploadCard 
                   title="Tabela Principal (A)" 
                   description="O arquivo base que receberá os novos dados."
@@ -1104,16 +1118,38 @@ export default function App() {
                 />
               </div>
 
-              <div className="mt-4 flex flex-col items-center gap-3">
+              {/* Indicador de progresso de upload */}
+              <div className="flex items-center justify-center gap-3 mt-2">
+                {[activeTask.fileA, activeTask.fileB].map((f, i) => (
+                  <div key={i} className="flex items-center gap-1.5">
+                    <div className={cn(
+                      "w-2.5 h-2.5 rounded-full transition-all duration-500",
+                      f ? "bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]" : "dark:bg-white/10 bg-black/10"
+                    )} />
+                    <span className={cn(
+                      "text-[10px] font-bold transition-colors duration-300",
+                      f ? "text-blue-400" : "text-zinc-500"
+                    )}>
+                      {i === 0 ? "Tabela A" : "Tabela B"}
+                    </span>
+                  </div>
+                ))}
+                <span className="text-[10px] text-zinc-500 font-medium">
+                  — {[activeTask.fileA, activeTask.fileB].filter(Boolean).length} de 2 arquivos prontos
+                </span>
+              </div>
+
+              <div className="mt-2 flex flex-col items-center gap-3">
                   <button 
                     onClick={() => updateActiveTask({ fileC: activeTask.fileC ? null : { name: '', sheets: {}, selectedSheet: '' } })}
                     className={cn(
-                      "px-6 py-2 rounded-xl text-sm font-black transition-all active:scale-95",
+                      "flex items-center gap-1.5 px-6 py-2 rounded-xl text-sm font-black transition-all active:scale-95",
                       activeTask.fileC 
                         ? "bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20" 
                         : "dark:bg-white/5 bg-black/5 text-zinc-500 dark:hover:text-zinc-100 hover:text-zinc-900 border dark:border-white/5 border-black/10 dark:hover:border-white/10 hover:border-black/20"
                     )}
                   >
+                    {activeTask.fileC ? <X size={14} /> : <Plus size={14} />}
                     {activeTask.fileC ? "Remover Tabela C" : "Adicionar Tabela C (Opcional)"}
                   </button>
 
@@ -1155,7 +1191,7 @@ export default function App() {
               className="max-w-5xl mx-auto space-y-4"
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex gap-1 sm:gap-2 p-1 sm:p-1.5 mica rounded-xl sm:rounded-2xl border border-white/20 dark:border-white/10 w-full sm:w-fit overflow-x-auto">
+                <div className="flex gap-1 sm:gap-2 p-1 sm:p-1.5 mica rounded-xl sm:rounded-2xl border border-white/20 dark:border-white/10 w-full sm:w-fit overflow-x-auto scrollbar-none" style={{ scrollbarWidth: 'none' }}>
                   {[
                     { id: 'keys', label: 'Chaves', icon: Target },
                     { id: 'columns', label: 'Colunas', icon: Columns },
@@ -1185,7 +1221,7 @@ export default function App() {
                     <Sparkles size={14} className="group-hover/btn:rotate-12 transition-transform text-blue-500" /> 
                     Auto-Detectar
                   </button>
-                  <div className="absolute bottom-full right-0 mb-3 w-72 p-4 dark:bg-zinc-900/95 bg-white/95 backdrop-blur-xl dark:text-white text-zinc-800 text-xs rounded-2xl opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 pointer-events-none z-50 shadow-2xl border dark:border-white/10 border-black/10 font-medium">
+                  <div className="absolute bottom-full right-0 mb-3 w-72 p-4 dark:bg-zinc-900/95 bg-white/95 backdrop-blur-xl dark:text-white text-zinc-800 text-xs rounded-2xl opacity-0 group-hover:opacity-100 transition-all delay-300 translate-y-2 group-hover:translate-y-0 pointer-events-none z-50 shadow-2xl border dark:border-white/10 border-black/10 font-medium">
                     <p className="font-black mb-2 text-blue-400 uppercase tracking-widest text-[10px]">Sugestão Inteligente</p>
                     <p className="opacity-80 leading-relaxed">O sistema analisará os cabeçalhos das tabelas para sugerir automaticamente as melhores chaves de busca e colunas de retorno.</p>
                   </div>
@@ -1374,7 +1410,7 @@ export default function App() {
                               <Columns size={14} className="text-blue-600" /> Retorno da Tabela B
                               <div className="group relative">
                                 <Info size={13} className="text-zinc-500 cursor-help" />
-                                <div className="absolute bottom-full left-0 mb-2 w-64 p-3 dark:bg-zinc-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10 font-normal">
+                                <div className="absolute bottom-full left-0 mb-2 w-64 p-3 dark:bg-zinc-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10 font-normal">
                                   <p className="font-bold mb-1">O que trazer de volta?</p>
                                   <p className="opacity-80">Selecione as colunas da Tabela B que você deseja anexar à sua Tabela A quando houver uma correspondência.</p>
                                 </div>
@@ -1465,7 +1501,7 @@ export default function App() {
                                 <Columns size={14} className="text-purple-400" /> Retorno da Tabela C
                                 <div className="group relative">
                                   <Info size={13} className="text-zinc-500 cursor-help" />
-                                  <div className="absolute bottom-full left-0 mb-2 w-64 p-3 dark:bg-zinc-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10 font-normal">
+                                  <div className="absolute bottom-full left-0 mb-2 w-64 p-3 dark:bg-zinc-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10 font-normal">
                                     <p className="font-bold mb-1">O que trazer da Tabela C?</p>
                                     <p className="opacity-80">Selecione as colunas da Tabela C que você deseja anexar à sua Tabela A.</p>
                                   </div>
@@ -1572,7 +1608,7 @@ export default function App() {
                             </h3>
                             <div className="group relative">
                               <Info size={11} className="text-zinc-500 cursor-help" />
-                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-zinc-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
+                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-zinc-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
                                 <p className="font-bold mb-1">Tratamento de Dados</p>
                                 <p className="opacity-80">Essas opções ajudam a normalizar os valores antes da comparação, evitando erros por espaços extras ou diferenças entre maiúsculas e minúsculas.</p>
                               </div>
@@ -1600,7 +1636,7 @@ export default function App() {
                                 </label>
                                 <div className="group relative">
                                   <Info size={10} className="text-slate-300 dark:text-slate-600 cursor-help" />
-                                  <div className="absolute bottom-full right-0 mb-2 w-48 p-2 dark:bg-slate-800 bg-white dark:text-white text-zinc-800 text-[9px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg border dark:border-white/10 border-black/10">
+                                  <div className="absolute bottom-full right-0 mb-2 w-48 p-2 dark:bg-slate-800 bg-white dark:text-white text-zinc-800 text-[9px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-lg border dark:border-white/10 border-black/10">
                                     {opt.help}
                                   </div>
                                 </div>
@@ -1616,7 +1652,7 @@ export default function App() {
                             </h3>
                             <div className="group relative">
                               <Info size={11} className="text-slate-400 cursor-help" />
-                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
+                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
                                 <p className="font-bold mb-1">Lidando com Repetições</p>
                                 <p className="opacity-80">Define o que fazer quando a chave de busca aparece mais de uma vez na Tabela B. Você pode escolher o primeiro, o último ou combinar todos os resultados encontrados.</p>
                               </div>
@@ -1648,7 +1684,7 @@ export default function App() {
                             </h3>
                             <div className="group relative">
                               <Info size={11} className="text-slate-400 cursor-help" />
-                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
+                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
                                 <p className="font-bold mb-1">Tipo de Busca (PROCX)</p>
                                 <p className="opacity-80">Define como o sistema deve se comportar se não encontrar o valor exato. Pode buscar o próximo menor, maior ou usar curingas.</p>
                               </div>
@@ -1684,7 +1720,7 @@ export default function App() {
                             </h3>
                             <div className="group relative">
                               <Info size={11} className="text-slate-400 cursor-help" />
-                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
+                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
                                 <p className="font-bold mb-1">Sensibilidade da Busca</p>
                                 <p className="opacity-80">Define o quão parecidos os textos devem ser. 100% exige igualdade total. 80% permite pequenas variações ou erros de digitação.</p>
                               </div>
@@ -1715,7 +1751,7 @@ export default function App() {
                             </h3>
                             <div className="group relative">
                               <Info size={11} className="text-slate-400 cursor-help" />
-                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
+                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
                                 <p className="font-bold mb-1">Indicadores de Match</p>
                                 <p className="opacity-80">Adiciona colunas extras indicando "VERDADEIRO" ou "FALSO" para a existência do registro em cada tabela.</p>
                               </div>
@@ -1750,7 +1786,7 @@ export default function App() {
                             </h3>
                             <div className="group relative">
                               <Info size={11} className="text-slate-400 cursor-help" />
-                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
+                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
                                 <p className="font-bold mb-1">Tratamento de Erros</p>
                                 <p className="opacity-80">Define o que será exibido nas colunas de retorno quando a busca não encontrar um correspondente. Similar ao parâmetro [if_not_found] do PROCX.</p>
                               </div>
@@ -1790,7 +1826,7 @@ export default function App() {
                             </h3>
                             <div className="group relative">
                               <Info size={11} className="text-slate-400 cursor-help" />
-                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
+                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
                                 <p className="font-bold mb-1">Ordem de Pesquisa (PROCX)</p>
                                 <p className="opacity-80">Define se o sistema deve começar a procurar do início para o fim ou do fim para o início da tabela.</p>
                               </div>
@@ -1893,9 +1929,17 @@ export default function App() {
                     <div className={cn("p-2 rounded-xl shrink-0", stat.bg)}>
                       <stat.icon className={stat.color} size={18} />
                     </div>
-                    <div className="flex flex-col sm:items-center">
+                    <div className="flex flex-col sm:items-center w-full">
                       <span className="text-lg sm:text-xl font-black leading-tight">{stat.value}</span>
                       <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider leading-tight">{stat.label}</span>
+                      {i === 3 && (
+                        <div className="w-full h-1 rounded-full bg-violet-500/20 mt-2">
+                          <div
+                            className="h-1 rounded-full bg-violet-500 transition-all duration-700"
+                            style={{ width: `${Math.min(stats.rate, 100)}%` }}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1904,52 +1948,79 @@ export default function App() {
               <div className="fluent-card overflow-hidden">
                 <div className="p-3 sm:p-4 border-b dark:border-white/5 border-black/10 space-y-2">
                   {/* Linha principal: filtros + ações */}
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    {/* Esquerda: título + tabs de filtro + botão pares */}
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-lg sm:text-xl font-black tracking-tight">Resultados</h2>
-                      <div className="flex p-1 dark:bg-white/5 bg-black/5 rounded-xl gap-1 border dark:border-white/5 border-black/10">
-                        {[
-                          { id: 'all', label: 'Todos', icon: Layers },
-                          { id: 'matched', label: 'Encontrados', icon: CheckCircle2 },
-                          { id: 'orphans', label: 'Órfãos', icon: AlertCircle },
-                          { id: 'divergent', label: 'Divergentes', icon: ArrowUpDown },
-                        ].map(f => (
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    {/* Título + tabs de filtro com scroll horizontal em mobile */}
+                    <div className="flex flex-col gap-2 min-w-0">
+                      <div className="flex items-center justify-between sm:justify-start gap-2">
+                        <h2 className="text-lg sm:text-xl font-black tracking-tight shrink-0">Resultados</h2>
+                        {/* Botões de ação — visíveis somente em mobile aqui */}
+                        <div className="flex items-center gap-1.5 sm:hidden shrink-0">
+                          {Object.values(columnFilters).some(s => s.size > 0) && (
+                            <button
+                              onClick={() => setColumnFilters({})}
+                              className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-bold text-amber-400 hover:bg-amber-500/10 border border-amber-500/20 transition-all active:scale-95"
+                            >
+                              <X size={12} />
+                            </button>
+                          )}
                           <button
-                            key={f.id}
-                            onClick={() => updateActiveTask({ resultFilter: f.id as any })}
-                            className={cn(
-                              "flex items-center gap-2 py-2 px-4 rounded-lg text-xs font-bold transition-all",
-                              activeTask.resultFilter === f.id && f.id === 'divergent'
-                                ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20"
-                                : activeTask.resultFilter === f.id
-                                ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
-                                : "text-zinc-500 dark:hover:text-zinc-200 hover:text-zinc-800"
-                            )}
+                            onClick={() => setStep('configure')}
+                            className="p-1.5 rounded-lg text-zinc-500 dark:hover:bg-white/5 hover:bg-black/5 border dark:border-white/10 border-black/10 transition-all active:scale-95"
                           >
-                            <f.icon size={14} /> {f.label}
+                            <Settings2 size={15} />
                           </button>
-                        ))}
+                          <button
+                            onClick={downloadResult}
+                            className="fluent-button-primary px-3 py-1.5 text-[11px]"
+                          >
+                            <Download size={13} />
+                          </button>
+                        </div>
                       </div>
-                      <button
-                        onClick={() => setShowDivergentConfig(v => !v)}
-                        className={cn(
-                          "flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all border",
-                          showDivergentConfig
-                            ? "bg-orange-500/15 text-orange-400 border-orange-500/30"
-                            : activeTask.divergentPairs.length > 0
-                            ? "text-orange-400 border-orange-500/30 hover:bg-orange-500/10"
-                            : "text-zinc-500 dark:border-white/10 border-black/10 dark:hover:bg-white/5 hover:bg-black/5 dark:hover:text-zinc-200 hover:text-zinc-800"
-                        )}
-                        title="Configurar pares de divergência"
-                      >
-                        <Settings2 size={13} />
-                        {activeTask.divergentPairs.length > 0 ? `${activeTask.divergentPairs.length} par(es)` : 'Pares'}
-                      </button>
+                      <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-0.5" style={{ scrollbarWidth: 'none' }}>
+                        <div className="flex p-1 dark:bg-white/5 bg-black/5 rounded-xl gap-1 border dark:border-white/5 border-black/10 shrink-0">
+                          {[
+                            { id: 'all', label: 'Todos', icon: Layers },
+                            { id: 'matched', label: 'Encontrados', icon: CheckCircle2 },
+                            { id: 'orphans', label: 'Órfãos', icon: AlertCircle },
+                            { id: 'divergent', label: 'Divergentes', icon: ArrowUpDown },
+                          ].map(f => (
+                            <button
+                              key={f.id}
+                              onClick={() => updateActiveTask({ resultFilter: f.id as any })}
+                              className={cn(
+                                "flex items-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all whitespace-nowrap",
+                                activeTask.resultFilter === f.id && f.id === 'divergent'
+                                  ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20"
+                                  : activeTask.resultFilter === f.id
+                                  ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
+                                  : "text-zinc-500 dark:hover:text-zinc-200 hover:text-zinc-800"
+                              )}
+                            >
+                              <f.icon size={13} /> <span className="hidden xs:inline">{f.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => setShowDivergentConfig(v => !v)}
+                          className={cn(
+                            "flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all border whitespace-nowrap shrink-0",
+                            showDivergentConfig
+                              ? "bg-orange-500/15 text-orange-400 border-orange-500/30"
+                              : activeTask.divergentPairs.length > 0
+                              ? "text-orange-400 border-orange-500/30 hover:bg-orange-500/10"
+                              : "text-zinc-500 dark:border-white/10 border-black/10 dark:hover:bg-white/5 hover:bg-black/5 dark:hover:text-zinc-200 hover:text-zinc-800"
+                          )}
+                          title="Configurar pares de divergência"
+                        >
+                          <Settings2 size={13} />
+                          {activeTask.divergentPairs.length > 0 ? `${activeTask.divergentPairs.length} par(es)` : 'Pares'}
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Direita: botões de ação — sempre visíveis */}
-                    <div className="flex items-center gap-2 shrink-0">
+                    {/* Direita: botões de ação — ocultos em mobile (exibidos acima) */}
+                    <div className="hidden sm:flex items-center gap-2 shrink-0">
                       {Object.values(columnFilters).some(s => s.size > 0) && (
                         <button
                           onClick={() => setColumnFilters({})}
@@ -2032,6 +2103,13 @@ export default function App() {
                   )}
                 </div>
 
+                {/* Dica de scroll horizontal — visível apenas em mobile */}
+                <div className="sm:hidden flex items-center justify-center gap-1.5 py-1.5 text-[10px] text-zinc-500 font-medium">
+                  <ChevronRight size={11} className="rotate-180 opacity-60" />
+                  <span>deslize para ver mais colunas</span>
+                  <ChevronRight size={11} className="opacity-60" />
+                </div>
+
                 <div className="flex-1 overflow-auto rounded-[32px] border dark:border-white/10 border-black/10 dark:bg-black/40 bg-white/60 shadow-inner backdrop-blur-xl custom-scrollbar">
                   <table className="w-full min-w-[600px] text-left border-collapse">
                     <thead className="sticky top-0 z-20">
@@ -2099,7 +2177,10 @@ export default function App() {
                     </thead>
                     <tbody className="divide-y dark:divide-white/5 divide-black/5">
                       {filteredResultData.slice(0, 50).map((row, i) => (
-                        <tr key={i} className="dark:hover:bg-white/5 hover:bg-black/5 transition-all group">
+                        <tr key={i} className={cn(
+                          "transition-all group dark:hover:bg-white/5 hover:bg-black/5",
+                          i % 2 === 0 ? "dark:bg-white/[0.02] bg-black/[0.02]" : ""
+                        )}>
                           {displayColumns.map(col => {
                             const val = row[col.id];
                             return (
@@ -2127,7 +2208,10 @@ export default function App() {
                       <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-full">
                         <Filter className="text-slate-400" size={40} />
                       </div>
-                      <p className="text-slate-500 font-bold">Nenhum resultado encontrado para este filtro.</p>
+                      <div className="space-y-1">
+                        <p className="text-slate-700 dark:text-slate-300 font-bold">Nenhum resultado encontrado para este filtro.</p>
+                        <p className="text-slate-400 dark:text-slate-500 text-xs font-medium">Tente remover ou ajustar os filtros ativos para ver mais dados.</p>
+                      </div>
                     </div>
                   )}
                   {filteredResultData.length > 50 && (
@@ -2197,7 +2281,7 @@ function UploadCard({ title, description, file, onUpload, onRemove, onSheetChang
         {file ? (
           <>
             <div className="flex-1 min-w-0">
-              <span className="font-bold text-sm truncate block text-zinc-900 dark:text-white">{file.name}</span>
+              <span className="font-bold text-xs sm:text-sm truncate block text-zinc-900 dark:text-white">{file.name}</span>
               <span className="text-[10px] text-zinc-500 font-medium">
                 {file.sheets[file.selectedSheet].length} registros
               </span>
@@ -2206,7 +2290,7 @@ function UploadCard({ title, description, file, onUpload, onRemove, onSheetChang
               <select
                 value={file.selectedSheet}
                 onChange={(e) => onSheetChange(e.target.value)}
-                className="fluent-select py-1.5 px-2 text-xs font-bold max-w-[130px]"
+                className="fluent-select py-1.5 px-2 text-xs font-bold max-w-[100px] sm:max-w-[130px]"
               >
                 {Object.keys(file.sheets).map(name => (
                   <option key={name} value={name} className="bg-white dark:bg-zinc-900">{name}</option>
@@ -2220,13 +2304,15 @@ function UploadCard({ title, description, file, onUpload, onRemove, onSheetChang
         ) : (
           <>
             <div className="flex-1 min-w-0">
-              <span className="font-bold text-sm text-zinc-900 dark:text-white">{title}</span>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium leading-tight truncate">{description}</p>
+              <span className="font-bold text-xs sm:text-sm text-zinc-900 dark:text-white leading-tight block">{title}</span>
+              <p className="text-[10px] sm:text-[11px] text-zinc-500 dark:text-zinc-400 font-medium leading-tight truncate hidden xs:block">{description}</p>
             </div>
             <label className="shrink-0">
               <input type="file" accept=".xlsx,.xls,.xlsb,.xlsm,.ods,.csv,.tsv" onChange={onUpload} className="hidden" />
-              <div className="fluent-button-primary py-1.5 px-3 cursor-pointer text-xs font-black uppercase tracking-wider whitespace-nowrap">
-                Importar
+              <div className="fluent-button-primary py-1.5 px-2 sm:px-3 cursor-pointer text-[11px] sm:text-xs font-black uppercase tracking-wider whitespace-nowrap">
+                <FileSpreadsheet size={13} className="sm:hidden" />
+                <span className="hidden sm:inline">Importar</span>
+                <span className="sm:hidden">xlsx</span>
               </div>
             </label>
           </>
