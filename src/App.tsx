@@ -24,14 +24,7 @@ import {
   Activity,
   Filter,
   Layers,
-  Trash2,
   Zap,
-  ChevronUp,
-  ChevronDown,
-  Pin,
-  PinOff,
-  Eye,
-  EyeOff,
   Settings,
   HelpCircle,
   Target,
@@ -39,11 +32,6 @@ import {
   FileSpreadsheet,
   Upload,
   ChevronRight,
-  Wifi,
-  Volume2,
-  Battery,
-  Power,
-  LayoutGrid
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -97,13 +85,17 @@ interface LookupTask {
 export default function App() {
   const [tasks, setTasks] = useState<LookupTask[]>([
     {
-      id: Math.random().toString(36).substr(2, 9),
+      id: Math.random().toString(36).substring(2, 11),
       name: 'Operação 1',
       fileA: null,
       fileB: null,
       keyA: '',
       keyB: '',
       selectedColsB: [],
+      fileC: null,
+      keyA_C: '',
+      keyC: '',
+      selectedColsC: [],
       lookupType: 'xlookup',
       exactMatch: true,
       trimSpaces: true,
@@ -126,7 +118,8 @@ export default function App() {
   const [step, setStep] = useState<Step>('upload');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [searchTermB, setSearchTermB] = useState<string>('');
+  const [searchTermC, setSearchTermC] = useState<string>('');
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
   const [showColumnSettings, setShowColumnSettings] = useState(false);
   const [configTab, setConfigTab] = useState<'keys' | 'columns' | 'advanced'>('keys');
@@ -154,7 +147,7 @@ export default function App() {
    */
   const addTask = () => {
     const newTask: LookupTask = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: Math.random().toString(36).substring(2, 11),
       name: `Operação ${tasks.length + 1}`,
       fileA: null,
       fileB: null,
@@ -212,12 +205,13 @@ export default function App() {
     setLoading(true);
     setError(null);
 
-    try {
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        const bstr = evt.target?.result;
-        const wb = XLSX.read(bstr, { type: 'binary' });
-        
+    const reader = new FileReader();
+
+    reader.onload = (evt) => {
+      try {
+        const arrayBuffer = evt.target?.result;
+        const wb = XLSX.read(arrayBuffer, { type: 'array' });
+
         const sheets: { [key: string]: any[] } = {};
         wb.SheetNames.forEach(name => {
           sheets[name] = XLSX.utils.sheet_to_json(wb.Sheets[name]);
@@ -232,13 +226,19 @@ export default function App() {
         if (type === 'A') updateActiveTask({ fileA: data });
         else if (type === 'B') updateActiveTask({ fileB: data });
         else updateActiveTask({ fileC: data });
+      } catch (err) {
+        setError("Erro ao processar o arquivo. Certifique-se de que é um Excel válido (.xlsx / .xls).");
+      } finally {
         setLoading(false);
-      };
-      reader.readAsBinaryString(file);
-    } catch (err) {
-      setError("Erro ao ler o arquivo. Certifique-se de que é um arquivo Excel válido.");
+      }
+    };
+
+    reader.onerror = () => {
+      setError("Erro ao ler o arquivo. Verifique se o arquivo não está corrompido.");
       setLoading(false);
-    }
+    };
+
+    reader.readAsArrayBuffer(file);
   };
 
   /**
@@ -527,8 +527,9 @@ export default function App() {
             }
             return bestMatch;
           } else if (matchMode === 2) {
-            // Wildcard match
-            const regexStr = "^" + cleanA.replace(/\\?/g, ".").replace(/\\*/g, ".*") + "$";
+            // Wildcard match: escape regex special chars, then restore ? and * as wildcards
+            const escaped = cleanA.replace(new RegExp("[.+^" + "$" + "{}()|\\[\\]\\\\\\\\]", "g"), "\\\\$&");
+            const regexStr = "^" + escaped.replace(/[?]/g, ".").replace(/[*]/g, ".*") + "$";
             try {
               const regex = new RegExp(regexStr, ignoreCase ? "i" : "");
               return searchData.find(row => regex.test(String(row[key])));
@@ -701,7 +702,9 @@ export default function App() {
     `;
 
     const blob = new Blob([workerCode], { type: 'application/javascript' });
-    const worker = new Worker(URL.createObjectURL(blob));
+    const workerUrl = URL.createObjectURL(blob);
+    const worker = new Worker(workerUrl);
+    URL.revokeObjectURL(workerUrl);
 
     /**
      * Callback acionado quando o Worker termina o processamento com sucesso.
@@ -818,9 +821,22 @@ export default function App() {
    */
   const downloadResult = () => {
     if (!filteredResultData || filteredResultData.length === 0) return;
-    const ws = XLSX.utils.json_to_sheet(filteredResultData);
+
+    const visibleCols = activeTask.columnSettings
+      .filter(c => c.visible && !c.id.startsWith('_'))
+      .map(c => c.id);
+
+    const exportData = filteredResultData.map(row => {
+      const clean: Record<string, unknown> = {};
+      visibleCols.forEach(col => { clean[col] = row[col]; });
+      return clean;
+    });
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
-    const fileName = activeTask.resultFilter === 'all' ? `resultado_${activeTask.name}.xlsx` : `resultado_${activeTask.name}_${activeTask.resultFilter}.xlsx`;
+    const fileName = activeTask.resultFilter === 'all'
+      ? `resultado_${activeTask.name}.xlsx`
+      : `resultado_${activeTask.name}_${activeTask.resultFilter}.xlsx`;
     XLSX.utils.book_append_sheet(wb, ws, "Resultado");
     XLSX.writeFile(wb, fileName);
   };
@@ -864,12 +880,11 @@ export default function App() {
    * Reinicia todo o estado da aplicação para o padrão inicial.
    */
   const reset = () => {
-    setTasks([
-      {
-        id: Math.random().toString(36).substr(2, 9),
-        name: 'Operação 1',
-        fileA: null,
-        fileB: null,
+    const freshTask: LookupTask = {
+      id: Math.random().toString(36).substring(2, 11),
+      name: 'Operação 1',
+      fileA: null,
+      fileB: null,
       keyA: '',
       keyB: '',
       selectedColsB: [],
@@ -878,24 +893,24 @@ export default function App() {
       keyC: '',
       selectedColsC: [],
       lookupType: 'xlookup',
-        exactMatch: true,
-        trimSpaces: true,
-        ignoreCase: true,
-        removeSpecialChars: false,
-        duplicateStrategy: 'first',
-        fuzzyThreshold: 0.8,
-        ifNotFound: '#N/D',
-        ifNotFoundC: '#N/D',
-        matchMode: 0,
-        searchDirection: 1,
-        includeStatusCols: true,
-        resultData: null,
-        resultFilter: 'all',
-        showAdvanced: false,
-        columnSettings: [],
-      }
-    ]);
-    setActiveTaskId(tasks[0].id);
+      exactMatch: true,
+      trimSpaces: true,
+      ignoreCase: true,
+      removeSpecialChars: false,
+      duplicateStrategy: 'first',
+      fuzzyThreshold: 0.8,
+      ifNotFound: '#N/D',
+      ifNotFoundC: '#N/D',
+      matchMode: 0,
+      searchDirection: 1,
+      includeStatusCols: true,
+      resultData: null,
+      resultFilter: 'all',
+      showAdvanced: false,
+      columnSettings: [],
+    };
+    setTasks([freshTask]);
+    setActiveTaskId(freshTask.id);
     setStep('upload');
     setConfigTab('keys');
   };
@@ -937,6 +952,8 @@ export default function App() {
                 </h1>
               </div>
             </div>
+
+            <StepIndicator currentStep={step} />
 
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-2xl border border-black/5 dark:border-white/5">
@@ -1212,10 +1229,7 @@ export default function App() {
                               type="text"
                               placeholder="Filtrar colunas da Tabela B..."
                               className="w-full pl-12 pr-4 py-3 rounded-2xl border border-white/10 bg-black/20 focus:border-blue-500 outline-none text-sm text-zinc-300 font-medium"
-                              onChange={(e) => {
-                                const term = e.target.value.toLowerCase();
-                                setSearchTerm(term);
-                              }}
+                              onChange={(e) => setSearchTermB(e.target.value.toLowerCase())}
                             />
                           </div>
                           <div className="flex gap-2">
@@ -1236,7 +1250,7 @@ export default function App() {
                         
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar p-1">
                           {headersB
-                            .filter(h => h.toLowerCase().includes(searchTerm))
+                            .filter(h => h.toLowerCase().includes(searchTermB))
                             .map(h => (
                             <button
                               key={h}
@@ -1307,10 +1321,7 @@ export default function App() {
                                 type="text"
                                 placeholder="Filtrar colunas da Tabela C..."
                                 className="w-full pl-12 pr-4 py-3 rounded-2xl border border-white/10 bg-black/20 focus:border-blue-500 outline-none text-sm text-zinc-300 font-medium"
-                                onChange={(e) => {
-                                  const term = e.target.value.toLowerCase();
-                                  setSearchTerm(term);
-                                }}
+                                onChange={(e) => setSearchTermC(e.target.value.toLowerCase())}
                               />
                             </div>
                             <div className="flex gap-2">
@@ -1331,7 +1342,7 @@ export default function App() {
                           
                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar p-1">
                             {headersC
-                              .filter(h => h.toLowerCase().includes(searchTerm))
+                              .filter(h => h.toLowerCase().includes(searchTermC))
                               .map(h => (
                               <button
                                 key={h}
@@ -1772,15 +1783,15 @@ export default function App() {
                   <table className="w-full text-left border-collapse">
                     <thead className="sticky top-0 z-20">
                       <tr className="bg-zinc-900/90 backdrop-blur-2xl border-b border-white/10">
-                        {Object.keys(activeTask.resultData[0]).map(h => (
-                          <th key={h} className={cn(
+                        {displayColumns.map(col => (
+                          <th key={col.id} className={cn(
                             "px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] border-b border-white/5",
-                            h.startsWith('Lookup_') ? "text-blue-400 bg-blue-400/5" : 
-                            h.startsWith('LookupC_') ? "text-purple-400 bg-purple-400/5" :
-                            h.startsWith('Status_') ? "text-emerald-400 bg-emerald-400/5" :
+                            col.id.startsWith('Lookup_') ? "text-blue-400 bg-blue-400/5" : 
+                            col.id.startsWith('LookupC_') ? "text-purple-400 bg-purple-400/5" :
+                            col.id.startsWith('Status_') ? "text-emerald-400 bg-emerald-400/5" :
                             "text-zinc-500"
                           )}>
-                            {h}
+                            {col.id}
                           </th>
                         ))}
                       </tr>
@@ -1788,22 +1799,24 @@ export default function App() {
                     <tbody className="divide-y divide-white/5">
                       {filteredResultData.slice(0, 50).map((row, i) => (
                         <tr key={i} className="hover:bg-white/5 transition-all group">
-                          {Object.entries(row).map(([key, val], j) => (
-                            <td key={j} className={cn(
-                              "px-8 py-5 text-xs font-medium whitespace-nowrap transition-colors",
-                              key.startsWith('Lookup_') ? "bg-blue-400/5 text-blue-300 group-hover:text-blue-200" : 
-                              key.startsWith('LookupC_') ? "bg-purple-400/5 text-purple-300 group-hover:text-purple-200" : 
-                              key.startsWith('Status_') ? "bg-emerald-400/5 font-black " + (val === 'VERDADEIRO' ? 'text-emerald-400' : 'text-red-400') : "text-zinc-400 group-hover:text-zinc-100",
-                              key.startsWith('_match_found') ? (val ? "text-emerald-400 font-black" : "text-red-400 font-black") : ""
-                            )}>
-                              {val === null || val === undefined 
-                                ? <span className="text-red-400/50 italic font-bold">#N/D</span> 
-                                : typeof val === 'boolean' 
-                                  ? (val ? 'SIM' : 'NÃO')
-                                  : String(val)
-                              }
-                            </td>
-                          ))}
+                          {displayColumns.map(col => {
+                            const val = row[col.id];
+                            return (
+                              <td key={col.id} className={cn(
+                                "px-8 py-5 text-xs font-medium whitespace-nowrap transition-colors",
+                                col.id.startsWith('Lookup_') ? "bg-blue-400/5 text-blue-300 group-hover:text-blue-200" : 
+                                col.id.startsWith('LookupC_') ? "bg-purple-400/5 text-purple-300 group-hover:text-purple-200" : 
+                                col.id.startsWith('Status_') ? "bg-emerald-400/5 font-black " + (val === 'VERDADEIRO' ? 'text-emerald-400' : 'text-red-400') : "text-zinc-400 group-hover:text-zinc-100"
+                              )}>
+                                {val === null || val === undefined 
+                                  ? <span className="text-red-400/50 italic font-bold">#N/D</span> 
+                                  : typeof val === 'boolean' 
+                                    ? (val ? 'SIM' : 'NÃO')
+                                    : String(val)
+                                }
+                              </td>
+                            );
+                          })}
                         </tr>
                       ))}
                     </tbody>
@@ -1828,25 +1841,6 @@ export default function App() {
         </AnimatePresence>
       </div>
 
-      {error && (
-        <div className="fixed bottom-8 right-8 bg-red-50 border-l-4 border-red-500 p-4 rounded-lg shadow-2xl flex items-start gap-3 max-w-md animate-bounce z-[200]">
-          <AlertCircle className="text-red-500 shrink-0" />
-          <div>
-            <h4 className="font-bold text-red-800">Ops!</h4>
-            <p className="text-sm text-red-700">{error}</p>
-          </div>
-          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600">
-            <X size={16} />
-          </button>
-        </div>
-      )}
-
-      {loading && step === 'configure' && (
-        <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-[200] flex flex-col items-center justify-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p className="text-xl font-bold text-blue-900 animate-pulse">Cruzando dados...</p>
-        </div>
-      )}
         </motion.div>
       </div>
 

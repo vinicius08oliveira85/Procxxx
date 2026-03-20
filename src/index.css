@@ -133,3 +133,7 @@
 .animate-bloom {
   animation: bloom 15s ease-in-out infinite;
 }
+
+.animate-pulse-glow {
+  animation: pulse-glow 6s ease-in-out infinite;
+}
