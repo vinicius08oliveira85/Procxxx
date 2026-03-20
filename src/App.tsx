@@ -1902,59 +1902,81 @@ export default function App() {
               </div>
 
               <div className="fluent-card overflow-hidden">
-                <div className="p-3 sm:p-4 border-b border-white/5 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-                    <div>
+                <div className="p-3 sm:p-4 border-b border-white/5 space-y-2">
+                  {/* Linha principal: filtros + ações */}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    {/* Esquerda: título + tabs de filtro + botão pares */}
+                    <div className="flex flex-wrap items-center gap-2">
                       <h2 className="text-lg sm:text-xl font-black tracking-tight">Resultados</h2>
-                    </div>
-                    
-                    <div className="flex p-1 bg-white/5 rounded-xl gap-1 border border-white/5">
-                      {[
-                        { id: 'all', label: 'Todos', icon: Layers },
-                        { id: 'matched', label: 'Encontrados', icon: CheckCircle2 },
-                        { id: 'orphans', label: 'Órfãos', icon: AlertCircle },
-                        { id: 'divergent', label: 'Divergentes', icon: ArrowUpDown },
-                      ].map(f => (
-                        <button
-                          key={f.id}
-                          onClick={() => updateActiveTask({ resultFilter: f.id as any })}
-                          className={cn(
-                            "flex items-center gap-2 py-2 px-4 rounded-lg text-xs font-bold transition-all",
-                            activeTask.resultFilter === f.id && f.id === 'divergent'
-                              ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20"
-                              : activeTask.resultFilter === f.id
-                              ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" 
-                              : "text-zinc-500 hover:text-zinc-200"
-                          )}
-                        >
-                          <f.icon size={14} /> {f.label}
-                        </button>
-                      ))}
+                      <div className="flex p-1 bg-white/5 rounded-xl gap-1 border border-white/5">
+                        {[
+                          { id: 'all', label: 'Todos', icon: Layers },
+                          { id: 'matched', label: 'Encontrados', icon: CheckCircle2 },
+                          { id: 'orphans', label: 'Órfãos', icon: AlertCircle },
+                          { id: 'divergent', label: 'Divergentes', icon: ArrowUpDown },
+                        ].map(f => (
+                          <button
+                            key={f.id}
+                            onClick={() => updateActiveTask({ resultFilter: f.id as any })}
+                            className={cn(
+                              "flex items-center gap-2 py-2 px-4 rounded-lg text-xs font-bold transition-all",
+                              activeTask.resultFilter === f.id && f.id === 'divergent'
+                                ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20"
+                                : activeTask.resultFilter === f.id
+                                ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
+                                : "text-zinc-500 hover:text-zinc-200"
+                            )}
+                          >
+                            <f.icon size={14} /> {f.label}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => setShowDivergentConfig(v => !v)}
+                        className={cn(
+                          "flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all border",
+                          showDivergentConfig
+                            ? "bg-orange-500/15 text-orange-400 border-orange-500/30"
+                            : activeTask.divergentPairs.length > 0
+                            ? "text-orange-400 border-orange-500/30 hover:bg-orange-500/10"
+                            : "text-zinc-500 border-white/10 hover:bg-white/5 hover:text-zinc-200"
+                        )}
+                        title="Configurar pares de divergência"
+                      >
+                        <Settings2 size={13} />
+                        {activeTask.divergentPairs.length > 0 ? `${activeTask.divergentPairs.length} par(es)` : 'Pares'}
+                      </button>
                     </div>
 
-                    {/* Botão de configuração de pares — aparece sempre ao lado do filtro */}
-                    <button
-                      onClick={() => setShowDivergentConfig(v => !v)}
-                      className={cn(
-                        "flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all border",
-                        showDivergentConfig
-                          ? "bg-orange-500/15 text-orange-400 border-orange-500/30"
-                          : activeTask.divergentPairs.length > 0
-                          ? "text-orange-400 border-orange-500/30 hover:bg-orange-500/10"
-                          : "text-zinc-500 border-white/10 hover:bg-white/5 hover:text-zinc-200"
+                    {/* Direita: botões de ação — sempre visíveis */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {Object.values(columnFilters).some(s => s.size > 0) && (
+                        <button
+                          onClick={() => setColumnFilters({})}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-amber-400 hover:bg-amber-500/10 border border-amber-500/20 transition-all active:scale-95"
+                        >
+                          <X size={13} /> Limpar Filtros
+                        </button>
                       )}
-                      title="Configurar pares de divergência"
-                    >
-                      <Settings2 size={13} />
-                      {activeTask.divergentPairs.length > 0 ? `${activeTask.divergentPairs.length} par(es)` : 'Pares'}
-                    </button>
+                      <button
+                        onClick={() => setStep('configure')}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-400 hover:text-zinc-100 hover:bg-white/5 border border-white/10 transition-all active:scale-95"
+                      >
+                        <Settings2 size={14} /> Editar Config.
+                      </button>
+                      <button
+                        onClick={downloadResult}
+                        className="fluent-button-primary px-4 py-2 text-xs"
+                      >
+                        <Download size={14} /> Baixar Excel
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Painel de configuração de pares de divergência */}
+                  {/* Painel de configuração de pares — linha separada */}
                   {showDivergentConfig && (
-                    <div className="px-3 pb-3 pt-1 border-b border-white/5 space-y-2">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">
+                    <div className="pt-2 border-t border-white/5 space-y-2">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
                         Pares de colunas para comparação de divergências
                       </p>
                       {activeTask.divergentPairs.map((pair, idx) => (
@@ -2008,30 +2030,6 @@ export default function App() {
                       </button>
                     </div>
                   )}
-
-                  <div className="flex items-center gap-2">
-                    {Object.values(columnFilters).some(s => s.size > 0) && (
-                      <button
-                        onClick={() => setColumnFilters({})}
-                        className="flex items-center gap-1.5 px-4 py-3 rounded-xl text-xs font-bold text-amber-400 hover:bg-amber-500/10 border border-amber-500/20 transition-all active:scale-95"
-                      >
-                        <X size={13} /> Limpar Filtros
-                      </button>
-                    )}
-                    <button
-                      onClick={() => setStep('configure')}
-                      className="flex items-center gap-1.5 px-4 py-3 rounded-xl text-xs font-bold text-zinc-400 hover:text-zinc-100 hover:bg-white/5 border border-white/10 transition-all active:scale-95"
-                    >
-                      <Settings2 size={14} /> Editar Config.
-                    </button>
-                    <button
-                      onClick={downloadResult}
-                      className="fluent-button-primary px-5 py-3 text-sm"
-                    >
-                      <Download size={16} /> Baixar Excel
-                    </button>
-                  </div>
-                </div>
                 </div>
 
                 <div className="flex-1 overflow-auto rounded-[32px] border border-white/10 bg-black/40 shadow-inner backdrop-blur-xl custom-scrollbar">
