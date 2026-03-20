@@ -123,6 +123,7 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
   const [showColumnSettings, setShowColumnSettings] = useState(false);
   const [configTab, setConfigTab] = useState<'keys' | 'columns' | 'advanced'>('keys');
+  const [columnFilters, setColumnFilters] = useState<{ [col: string]: string }>({});
 
   useEffect(() => {
     if (isDarkMode) {
@@ -178,6 +179,7 @@ export default function App() {
     setTasks(prev => [...prev, newTask]);
     setActiveTaskId(newTask.id);
     setStep('upload');
+    setColumnFilters({});
   };
 
   /**
@@ -311,21 +313,30 @@ export default function App() {
   }, [activeTask.keyA, activeTask.keyB, activeTask.selectedColsB, activeTask.keyA_C, activeTask.keyC, activeTask.selectedColsC, activeTask.fileC, activeTask.lookupType, headersB, headersC]);
 
   /**
-   * Filtra os dados de resultado com base no filtro selecionado (Todos, Encontrados, Órfãos).
+   * Filtra os dados de resultado com base no filtro global e nos filtros por coluna.
    */
   const filteredResultData = useMemo(() => {
     if (!activeTask.resultData) return [];
-    if (activeTask.resultFilter === 'all') return activeTask.resultData;
-    
-    // Considera um "encontrado" se houver match em B OU (se houver C) match em C
+
+    let data = activeTask.resultData;
+
     if (activeTask.resultFilter === 'matched') {
-      return activeTask.resultData.filter(r => r._match_found_B || (activeTask.fileC ? r._match_found_C : false));
+      data = data.filter(r => r._match_found_B || (activeTask.fileC ? r._match_found_C : false));
+    } else if (activeTask.resultFilter === 'orphans') {
+      data = data.filter(r => !r._match_found_B && (activeTask.fileC ? !r._match_found_C : true));
     }
-    if (activeTask.resultFilter === 'orphans') {
-      return activeTask.resultData.filter(r => !r._match_found_B && (activeTask.fileC ? !r._match_found_C : true));
+
+    const activeColFilters = Object.entries(columnFilters).filter(([, v]) => (v as string).trim() !== '');
+    if (activeColFilters.length > 0) {
+      data = data.filter(row =>
+        activeColFilters.every(([col, term]) =>
+          String(row[col] ?? '').toLowerCase().includes((term as string).toLowerCase())
+        )
+      );
     }
-    return activeTask.resultData;
-  }, [activeTask.resultData, activeTask.resultFilter, activeTask.fileC]);
+
+    return data;
+  }, [activeTask.resultData, activeTask.resultFilter, activeTask.fileC, columnFilters]);
 
   /**
    * Calcula estatísticas básicas sobre o resultado do cruzamento.
@@ -913,6 +924,7 @@ export default function App() {
     setActiveTaskId(freshTask.id);
     setStep('upload');
     setConfigTab('keys');
+    setColumnFilters({});
   };
 
   return (
@@ -1769,7 +1781,15 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    {Object.values(columnFilters).some(v => (v as string).trim() !== '') && (
+                      <button
+                        onClick={() => setColumnFilters({})}
+                        className="flex items-center gap-1.5 px-4 py-3 rounded-xl text-xs font-bold text-amber-400 hover:bg-amber-500/10 border border-amber-500/20 transition-all active:scale-95"
+                      >
+                        <X size={13} /> Limpar Filtros
+                      </button>
+                    )}
                     <button
                       onClick={downloadResult}
                       className="fluent-button-primary px-5 py-3 text-sm"
@@ -1782,16 +1802,39 @@ export default function App() {
                 <div className="flex-1 overflow-auto rounded-[32px] border border-white/10 bg-black/40 shadow-inner backdrop-blur-xl custom-scrollbar">
                   <table className="w-full min-w-[600px] text-left border-collapse">
                     <thead className="sticky top-0 z-20">
-                      <tr className="bg-zinc-900/90 backdrop-blur-2xl border-b border-white/10">
+                      <tr className="bg-zinc-900/90 backdrop-blur-2xl">
                         {displayColumns.map(col => (
                           <th key={col.id} className={cn(
-                            "px-4 sm:px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] border-b border-white/5",
+                            "px-4 sm:px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em]",
                             col.id.startsWith('Lookup_') ? "text-blue-400 bg-blue-400/5" : 
                             col.id.startsWith('LookupC_') ? "text-purple-400 bg-purple-400/5" :
                             col.id.startsWith('Status_') ? "text-emerald-400 bg-emerald-400/5" :
                             "text-zinc-500"
                           )}>
                             {col.id}
+                          </th>
+                        ))}
+                      </tr>
+                      <tr className="bg-zinc-900/80 border-b border-white/10">
+                        {displayColumns.map(col => (
+                          <th key={col.id} className={cn(
+                            "px-2 sm:px-3 py-2",
+                            col.id.startsWith('Lookup_') ? "bg-blue-400/5" :
+                            col.id.startsWith('LookupC_') ? "bg-purple-400/5" :
+                            col.id.startsWith('Status_') ? "bg-emerald-400/5" : ""
+                          )}>
+                            <input
+                              type="text"
+                              value={columnFilters[col.id] ?? ''}
+                              onChange={e => setColumnFilters(prev => ({ ...prev, [col.id]: e.target.value }))}
+                              placeholder="filtrar..."
+                              className={cn(
+                                "w-full bg-white/5 border rounded-lg px-2 py-1 text-[11px] text-zinc-300 placeholder:text-zinc-600 outline-none transition-colors font-normal",
+                                columnFilters[col.id]?.trim()
+                                  ? "border-blue-500/60 bg-blue-500/10"
+                                  : "border-white/10 focus:border-blue-500/50"
+                              )}
+                            />
                           </th>
                         ))}
                       </tr>
@@ -1831,7 +1874,8 @@ export default function App() {
                   )}
                   {filteredResultData.length > 50 && (
                     <div className="p-6 text-center text-slate-400 text-xs font-bold bg-slate-50 dark:bg-slate-800/50 uppercase tracking-widest">
-                      Exibindo as primeiras 50 linhas de {filteredResultData.length}. Baixe o arquivo para ver tudo.
+                      Exibindo as primeiras 50 de {filteredResultData.length} linhas
+                      {Object.values(columnFilters).some(v => (v as string).trim()) ? ' (filtros ativos)' : ''}. Baixe o arquivo para ver tudo.
                     </div>
                   )}
                 </div>
