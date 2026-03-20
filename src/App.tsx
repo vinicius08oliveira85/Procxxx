@@ -1000,7 +1000,7 @@ export default function App() {
           </header>
 
           {/* Main Content Area */}
-          <div className="p-3 sm:p-5 md:p-8 pb-10">
+          <div className="p-3 sm:p-4 md:p-6 pb-8">
             <AnimatePresence mode="wait">
               {step === 'upload' && (
                 <motion.div 
@@ -1011,16 +1011,7 @@ export default function App() {
                   transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                   className="max-w-5xl mx-auto"
                 >
-                  <div className="text-center mb-6 sm:mb-8 md:mb-10">
-                    <h2 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tighter mb-2 sm:mb-3 bg-gradient-to-b from-zinc-900 via-zinc-900 to-zinc-500 dark:from-white dark:via-white dark:to-zinc-600 bg-clip-text text-transparent">
-                      Bem-vindo ao Futuro
-                    </h2>
-                    <p className="text-zinc-500 dark:text-zinc-400 text-sm sm:text-base max-w-2xl mx-auto font-medium">
-                      O cruzamento de dados mais elegante que você já viu. Comece enviando seus arquivos.
-                    </p>
-                  </div>
-
-              <div className="grid md:grid-cols-2 gap-4 md:gap-6">
+              <div className="grid md:grid-cols-2 gap-3 md:gap-4">
                 <UploadCard 
                   title="Tabela Principal (A)" 
                   description="O arquivo base que receberá os novos dados."
@@ -1039,12 +1030,11 @@ export default function App() {
                 />
               </div>
 
-              <div className="mt-6 sm:mt-8 flex flex-col items-center gap-4 sm:gap-6">
-                <div className="flex items-center gap-4 p-1.5 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-xl shadow-inner">
+              <div className="mt-4 flex flex-col items-center gap-3">
                   <button 
                     onClick={() => updateActiveTask({ fileC: activeTask.fileC ? null : { name: '', sheets: {}, selectedSheet: '' } })}
                     className={cn(
-                      "px-8 py-3 rounded-xl text-sm font-black transition-all active:scale-95",
+                      "px-6 py-2 rounded-xl text-sm font-black transition-all active:scale-95",
                       activeTask.fileC 
                         ? "bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20" 
                         : "bg-white/5 text-zinc-400 hover:text-zinc-100 border border-white/5 hover:border-white/10"
@@ -1052,7 +1042,6 @@ export default function App() {
                   >
                     {activeTask.fileC ? "Remover Tabela C" : "Adicionar Tabela C (Opcional)"}
                   </button>
-                </div>
 
                 {activeTask.fileC && activeTask.fileC.name && (
                   <motion.div 
@@ -1140,7 +1129,7 @@ export default function App() {
                       className="grid grid-cols-1 md:grid-cols-2 gap-6"
                     >
                       <div className="fluent-card p-5 sm:p-7 group">
-                        <div className="flex items-center gap-3 mb-5 sm:mb-7">
+                        <div className="flex items-center gap-3 mb-3 sm:mb-4">
                           <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform duration-500">
                             <Target className="w-6 h-6" />
                           </div>
@@ -1178,7 +1167,7 @@ export default function App() {
 
                       {activeTask.fileC && (
                         <div className="fluent-card p-5 sm:p-7 group">
-                          <div className="flex items-center gap-3 mb-5 sm:mb-7">
+                          <div className="flex items-center gap-3 mb-3 sm:mb-4">
                             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-500 group-hover:scale-110 transition-transform duration-500">
                               <Target className="w-6 h-6" />
                             </div>
@@ -1755,22 +1744,23 @@ export default function App() {
                   { label: "Não Encontrados", value: stats.orphans, icon: AlertCircle, color: "text-amber-400", bg: "bg-amber-500/10" },
                   { label: "Taxa de Sucesso", value: `${stats.rate.toFixed(1)}%`, icon: Activity, color: "text-violet-400", bg: "bg-violet-500/10" },
                 ].map((stat, i) => (
-                  <div key={i} className="fluent-card p-4 sm:p-5 flex flex-col items-center text-center gap-1.5">
-                    <div className={cn("p-2 sm:p-3 rounded-xl mb-1", stat.bg)}>
-                      <stat.icon className={stat.color} size={20} />
+                  <div key={i} className="fluent-card p-3 sm:p-4 flex flex-row sm:flex-col items-center sm:text-center gap-3 sm:gap-1.5">
+                    <div className={cn("p-2 rounded-xl shrink-0", stat.bg)}>
+                      <stat.icon className={stat.color} size={18} />
                     </div>
-                    <span className="text-xl sm:text-2xl font-black">{stat.value}</span>
-                    <span className="text-[10px] sm:text-xs font-bold text-zinc-500 uppercase tracking-wider leading-tight">{stat.label}</span>
+                    <div className="flex flex-col sm:items-center">
+                      <span className="text-lg sm:text-xl font-black leading-tight">{stat.value}</span>
+                      <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider leading-tight">{stat.label}</span>
+                    </div>
                   </div>
                 ))}
               </div>
 
               <div className="fluent-card overflow-hidden">
-                <div className="p-4 sm:p-6 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="p-3 sm:p-4 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-3 sm:gap-6">
                     <div>
-                      <h2 className="text-xl sm:text-2xl font-black tracking-tight">Resultados</h2>
-                      <p className="text-zinc-400 text-sm mt-0.5">Visualize e filtre os dados processados.</p>
+                      <h2 className="text-lg sm:text-xl font-black tracking-tight">Resultados</h2>
                     </div>
                     
                     <div className="flex p-1 bg-white/5 rounded-xl gap-1 border border-white/5">
@@ -1964,76 +1954,61 @@ function UploadCard({ title, description, file, onUpload, onRemove, onSheetChang
 }) {
   return (
     <div className={cn(
-      "fluent-card p-4 sm:p-6 md:p-8 transition-all flex flex-col items-center text-center group relative overflow-hidden",
+      "fluent-card p-3 transition-all group relative overflow-hidden",
       file ? "ring-2 ring-blue-500/50" : "hover:ring-2 hover:ring-blue-500/30"
     )}>
-      <div className={cn(
-        "w-14 h-14 sm:w-20 sm:h-20 rounded-2xl sm:rounded-[32px] flex items-center justify-center mb-4 sm:mb-6 transition-all shadow-xl relative z-10",
-        file ? "bg-blue-600 text-white rotate-6" : "bg-white/5 text-zinc-500 group-hover:text-blue-500 group-hover:scale-110 group-hover:rotate-3"
-      )}>
-        {file ? <TableIcon size={28} className="sm:hidden" /> : <FileUp size={28} className="sm:hidden" />}
-        {file ? <TableIcon size={36} className="hidden sm:block" /> : <FileUp size={36} className="hidden sm:block" />}
-      </div>
-      
-      <div className="relative z-10">
-        <h3 className="text-lg sm:text-xl md:text-2xl font-black mb-1 sm:mb-2 tracking-tight text-zinc-900 dark:text-white">{title}</h3>
-        <p className="text-zinc-500 dark:text-zinc-400 text-xs sm:text-sm mb-4 sm:mb-6 leading-relaxed max-w-[260px] font-medium opacity-60">{description}</p>
-      </div>
-
-      {file ? (
-        <div className="w-full space-y-3 sm:space-y-4 relative z-10">
-          <div className="bg-white/5 backdrop-blur-md p-3 sm:p-4 rounded-2xl flex items-center justify-between border border-white/10 shadow-xl">
-            <div className="flex items-center gap-4 overflow-hidden">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-500 shrink-0">
-                <FileSpreadsheet size={20} />
-              </div>
-              <div className="flex flex-col items-start overflow-hidden">
-                <span className="font-bold text-sm truncate w-full text-zinc-900 dark:text-white">{file.name}</span>
-                <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Excel Spreadsheet</span>
-              </div>
-            </div>
-            <button onClick={onRemove} className="p-2.5 hover:bg-red-500/20 text-zinc-400 hover:text-red-500 transition-all rounded-xl">
-              <X size={18} />
-            </button>
-          </div>
-          
-          <div className="space-y-2 text-left">
-            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 ml-1">Selecionar Planilha</label>
-            <select 
-              value={file.selectedSheet}
-              onChange={(e) => onSheetChange(e.target.value)}
-              className="fluent-select w-full py-3 px-4 font-bold text-sm"
-            >
-              {Object.keys(file.sheets).map(name => (
-                <option key={name} value={name} className="bg-white dark:bg-zinc-900">{name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex items-center justify-center gap-2 py-2 px-4 rounded-full bg-blue-500/10 text-blue-500 inline-flex mx-auto">
-            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-widest">
-              {file.sheets[file.selectedSheet].length} registros carregados
-            </span>
-          </div>
-
-          {/\.csv$/i.test(file.name) && (
-            <div className="flex items-start gap-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-medium leading-relaxed">
-              <Info size={12} className="shrink-0 mt-0.5" />
-              <span>CSV detectado. Se houver caracteres incorretos, o arquivo pode usar encoding Windows-1252 (padrão do Excel Brasil).</span>
-            </div>
-          )}
+      <div className="flex items-center gap-3">
+        <div className={cn(
+          "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all",
+          file ? "bg-blue-600 text-white" : "bg-white/5 text-zinc-500 group-hover:text-blue-500"
+        )}>
+          {file ? <TableIcon size={18} /> : <FileUp size={18} />}
         </div>
-      ) : (
-        <label className="w-full relative z-10">
-          <input type="file" accept=".xlsx,.xls,.xlsb,.xlsm,.ods,.csv,.tsv" onChange={onUpload} className="hidden" />
-          <div className="fluent-button-primary w-full py-3 sm:py-4 text-center cursor-pointer text-sm font-black uppercase tracking-widest shadow-lg shadow-blue-500/20">
-            Importar Arquivo
-          </div>
-          <p className="text-[10px] text-zinc-600 dark:text-zinc-500 mt-2 text-center">
-            xlsx · xls · xlsb · xlsm · ods · csv · tsv
-          </p>
-        </label>
+
+        {file ? (
+          <>
+            <div className="flex-1 min-w-0">
+              <span className="font-bold text-sm truncate block text-zinc-900 dark:text-white">{file.name}</span>
+              <span className="text-[10px] text-zinc-500 font-medium">
+                {file.sheets[file.selectedSheet].length} registros
+              </span>
+            </div>
+            {Object.keys(file.sheets).length > 1 && (
+              <select
+                value={file.selectedSheet}
+                onChange={(e) => onSheetChange(e.target.value)}
+                className="fluent-select py-1.5 px-2 text-xs font-bold max-w-[130px]"
+              >
+                {Object.keys(file.sheets).map(name => (
+                  <option key={name} value={name} className="bg-white dark:bg-zinc-900">{name}</option>
+                ))}
+              </select>
+            )}
+            <button onClick={onRemove} className="p-1.5 hover:bg-red-500/20 text-zinc-400 hover:text-red-500 transition-all rounded-lg shrink-0">
+              <X size={16} />
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="flex-1 min-w-0">
+              <span className="font-bold text-sm text-zinc-900 dark:text-white">{title}</span>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium leading-tight truncate">{description}</p>
+            </div>
+            <label className="shrink-0">
+              <input type="file" accept=".xlsx,.xls,.xlsb,.xlsm,.ods,.csv,.tsv" onChange={onUpload} className="hidden" />
+              <div className="fluent-button-primary py-1.5 px-3 cursor-pointer text-xs font-black uppercase tracking-wider whitespace-nowrap">
+                Importar
+              </div>
+            </label>
+          </>
+        )}
+      </div>
+
+      {file && /\.csv$/i.test(file.name) && (
+        <div className="flex items-start gap-2 px-2 py-1.5 mt-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-medium leading-relaxed">
+          <Info size={11} className="shrink-0 mt-0.5" />
+          <span>CSV detectado. Se houver caracteres incorretos, o arquivo pode usar encoding Windows-1252.</span>
+        </div>
       )}
     </div>
   );
