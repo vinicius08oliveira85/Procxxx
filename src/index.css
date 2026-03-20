@@ -1,0 +1,135 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  body {
+    @apply antialiased;
+    font-family: var(--font-sans);
+  }
+}
+
+@utility mica {
+  @apply backdrop-blur-[40px] bg-white/30 dark:bg-zinc-900/30 border border-white/20 dark:border-white/10 shadow-2xl;
+}
+
+@utility mica-acrylic {
+  @apply backdrop-blur-[20px] bg-white/10 dark:bg-zinc-900/10 border border-white/10 dark:border-white/5 shadow-xl;
+}
+
+@utility windows-window {
+  @apply mica rounded-[32px] overflow-hidden flex flex-col border border-white/20 dark:border-white/10 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] transition-all duration-500;
+}
+
+@utility windows-titlebar {
+  @apply h-14 flex items-center justify-between px-6 bg-white/5 dark:bg-zinc-900/5 border-b border-white/10 dark:border-white/5 backdrop-blur-md select-none;
+}
+
+@utility titlebar-button {
+  @apply w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-200 hover:bg-white/10 active:scale-90;
+}
+
+@utility titlebar-button-close {
+  @apply hover:bg-red-500 hover:text-white;
+}
+
+@utility fluent-card {
+  @apply mica rounded-[32px] transition-all duration-500 hover:shadow-blue-500/20 border border-white/20 dark:border-white/10 hover:translate-y-[-4px] hover:bg-white/40 dark:hover:bg-zinc-900/40 relative overflow-hidden;
+}
+
+@utility fluent-button {
+  @apply relative overflow-hidden px-8 py-4 rounded-2xl font-bold transition-all duration-300 active:scale-[0.96] disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-3 shadow-sm;
+}
+
+@utility fluent-button-primary {
+  @apply fluent-button bg-blue-600 text-white hover:bg-blue-500 shadow-[0_12px_32px_-8px_rgba(37,99,235,0.5)] border-t border-blue-400/40;
+}
+
+@utility fluent-button-secondary {
+  @apply fluent-button bg-white/5 hover:bg-white/10 text-zinc-900 dark:text-zinc-100 border border-black/10 dark:border-white/10 backdrop-blur-3xl;
+}
+
+@utility fluent-input {
+  @apply bg-white/40 dark:bg-zinc-800/40 border border-black/10 dark:border-white/10 rounded-2xl px-5 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all duration-300 placeholder:text-zinc-500 backdrop-blur-xl;
+}
+
+@utility fluent-select {
+  @apply fluent-input appearance-none cursor-pointer pr-12;
+}
+
+@utility taskbar-container {
+  @apply mica rounded-[24px] p-2 flex items-center gap-1 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.4)] border-white/20 dark:border-white/10 backdrop-blur-[60px];
+}
+
+@utility taskbar-item {
+  @apply relative flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-500 hover:bg-white/15 dark:hover:bg-white/10 active:scale-90;
+}
+
+@utility desktop-icon {
+  @apply flex flex-col items-center gap-2 p-4 rounded-2xl transition-all duration-300 hover:bg-white/10 active:scale-95 cursor-pointer w-24;
+}
+
+@utility desktop-icon-label {
+  @apply text-[11px] font-bold text-white text-center drop-shadow-md;
+}
+
+@utility start-menu {
+  @apply mica fixed bottom-24 left-1/2 -translate-x-1/2 w-[640px] h-[720px] rounded-[32px] p-8 z-[100] border border-white/20 shadow-[0_64px_128px_-32px_rgba(0,0,0,0.5)] backdrop-blur-[80px];
+}
+
+@layer utilities {
+  .fluent-card::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 transition-opacity duration-500 pointer-events-none;
+  }
+
+  .fluent-card:hover::before {
+    @apply opacity-100;
+  }
+
+  .taskbar-item-active::after {
+    content: '';
+    @apply absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-1 bg-blue-500 rounded-full shadow-[0_0_12px_rgba(59,130,246,1)];
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-zinc-400/30 dark:bg-white/15 rounded-full border-[3px] border-transparent bg-clip-content hover:bg-zinc-400/50 dark:hover:bg-white/30 transition-colors;
+  }
+}
+
+@keyframes float {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  33% { transform: translate(10px, -20px) rotate(1deg); }
+  66% { transform: translate(-10px, 10px) rotate(-1deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+@keyframes bloom {
+  0% { transform: scale(1) translate(0, 0); opacity: 0.2; }
+  33% { transform: scale(1.3) translate(15%, -15%); opacity: 0.4; }
+  66% { transform: scale(0.7) translate(-15%, 15%); opacity: 0.3; }
+  100% { transform: scale(1) translate(0, 0); opacity: 0.2; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.5; filter: blur(100px); }
+  50% { opacity: 0.8; filter: blur(140px); }
+}
+
+.animate-float {
+  animation: float 8s ease-in-out infinite;
+}
+
+.animate-bloom {
+  animation: bloom 15s ease-in-out infinite;
+}
