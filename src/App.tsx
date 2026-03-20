@@ -1111,7 +1111,7 @@ export default function App() {
                       "px-6 py-2 rounded-xl text-sm font-black transition-all active:scale-95",
                       activeTask.fileC 
                         ? "bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20" 
-                        : "bg-white/5 text-zinc-400 hover:text-zinc-100 border border-white/5 hover:border-white/10"
+                        : "dark:bg-white/5 bg-black/5 text-zinc-500 dark:hover:text-zinc-100 hover:text-zinc-900 border dark:border-white/5 border-black/10 dark:hover:border-white/10 hover:border-black/20"
                     )}
                   >
                     {activeTask.fileC ? "Remover Tabela C" : "Adicionar Tabela C (Opcional)"}
@@ -1168,7 +1168,7 @@ export default function App() {
                         "flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-300 font-medium text-xs whitespace-nowrap flex-1 sm:flex-none justify-center",
                         configTab === tab.id 
                           ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30" 
-                          : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-white/5"
+                          : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white dark:hover:bg-white/5 hover:bg-black/5"
                       )}
                     >
                       <tab.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -1180,12 +1180,12 @@ export default function App() {
                 <div className="group relative shrink-0">
                   <button
                     onClick={autoDetectConfig}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-blue-400 rounded-lg font-bold text-xs transition-all border border-white/10 active:scale-95"
+                    className="flex items-center gap-1.5 px-3 py-1.5 dark:bg-white/5 dark:hover:bg-white/10 bg-black/5 hover:bg-black/10 text-blue-400 rounded-lg font-bold text-xs transition-all border dark:border-white/10 border-black/10 active:scale-95"
                   >
                     <Sparkles size={14} className="group-hover/btn:rotate-12 transition-transform text-blue-500" /> 
                     Auto-Detectar
                   </button>
-                  <div className="absolute bottom-full right-0 mb-3 w-72 p-4 bg-zinc-900/95 backdrop-blur-xl text-white text-xs rounded-2xl opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 pointer-events-none z-50 shadow-2xl border border-white/10 font-medium">
+                  <div className="absolute bottom-full right-0 mb-3 w-72 p-4 dark:bg-zinc-900/95 bg-white/95 backdrop-blur-xl dark:text-white text-zinc-800 text-xs rounded-2xl opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 pointer-events-none z-50 shadow-2xl border dark:border-white/10 border-black/10 font-medium">
                     <p className="font-black mb-2 text-blue-400 uppercase tracking-widest text-[10px]">Sugestão Inteligente</p>
                     <p className="opacity-80 leading-relaxed">O sistema analisará os cabeçalhos das tabelas para sugerir automaticamente as melhores chaves de busca e colunas de retorno.</p>
                   </div>
@@ -1309,20 +1309,20 @@ export default function App() {
                             <input
                               type="text"
                               placeholder="Filtrar colunas da Tabela A..."
-                              className="w-full pl-9 pr-3 py-2 rounded-xl border border-white/10 bg-black/20 focus:border-blue-500 outline-none text-xs text-zinc-300 font-medium"
+                              className="w-full pl-9 pr-3 py-2 rounded-xl dark:border-white/10 border-black/10 border dark:bg-black/20 bg-white/60 focus:border-blue-500 outline-none text-xs dark:text-zinc-300 text-zinc-700 font-medium"
                               onChange={(e) => setSearchTermA(e.target.value.toLowerCase())}
                             />
                           </div>
                           <div className="flex gap-1">
                             <button
                               onClick={() => updateActiveTask({ selectedColsA: headersA })}
-                              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-zinc-400 hover:bg-white/5 transition-all border border-white/5"
+                              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-zinc-500 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/5 border-black/10"
                             >
                               Selecionar Tudo
                             </button>
                             <button
                               onClick={() => updateActiveTask({ selectedColsA: [] })}
-                              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-zinc-500 hover:bg-white/5 transition-all border border-white/5"
+                              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-zinc-500 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/5 border-black/10"
                             >
                               Todas (padrão)
                             </button>
@@ -1346,7 +1346,7 @@ export default function App() {
                                 "p-2.5 rounded-xl border-2 text-xs font-bold transition-all text-left flex items-center justify-between group relative overflow-hidden",
                                 activeTask.selectedColsA.includes(h)
                                   ? "border-zinc-500/50 bg-zinc-500/10 text-zinc-300 shadow-sm"
-                                  : "border-white/5 bg-black/20 text-zinc-500 hover:border-white/20 hover:bg-white/5"
+                                  : "dark:border-white/5 dark:bg-black/20 dark:hover:border-white/20 dark:hover:bg-white/5 border-black/10 bg-white/60 hover:border-black/20 hover:bg-black/5"
                               )}
                             >
                               <span className="truncate z-10">{h}</span>
@@ -1355,7 +1355,7 @@ export default function App() {
                                   <CheckCircle2 size={16} className="text-zinc-400" />
                                 </motion.div>
                               ) : (
-                                <div className="w-4 h-4 rounded-full border border-white/10 group-hover:border-zinc-400" />
+                                <div className="w-4 h-4 rounded-full border dark:border-white/10 border-black/10 group-hover:border-zinc-400" />
                               )}
                             </button>
                           ))}
@@ -1374,7 +1374,7 @@ export default function App() {
                               <Columns size={14} className="text-blue-600" /> Retorno da Tabela B
                               <div className="group relative">
                                 <Info size={13} className="text-zinc-500 cursor-help" />
-                                <div className="absolute bottom-full left-0 mb-2 w-64 p-3 bg-zinc-900 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl font-normal">
+                                <div className="absolute bottom-full left-0 mb-2 w-64 p-3 dark:bg-zinc-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10 font-normal">
                                   <p className="font-bold mb-1">O que trazer de volta?</p>
                                   <p className="opacity-80">Selecione as colunas da Tabela B que você deseja anexar à sua Tabela A quando houver uma correspondência.</p>
                                 </div>
@@ -1394,20 +1394,20 @@ export default function App() {
                             <input 
                               type="text"
                               placeholder="Filtrar colunas da Tabela B..."
-                              className="w-full pl-9 pr-3 py-2 rounded-xl border border-white/10 bg-black/20 focus:border-blue-500 outline-none text-xs text-zinc-300 font-medium"
+                              className="w-full pl-9 pr-3 py-2 rounded-xl border dark:border-white/10 border-black/10 dark:bg-black/20 bg-white/60 focus:border-blue-500 outline-none text-xs dark:text-zinc-300 text-zinc-700 font-medium"
                               onChange={(e) => setSearchTermB(e.target.value.toLowerCase())}
                             />
                           </div>
                           <div className="flex gap-1">
                             <button 
                               onClick={() => updateActiveTask({ selectedColsB: headersB })}
-                              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-blue-400 hover:bg-white/5 transition-all border border-white/5"
+                              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-blue-400 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/5 border-black/10"
                             >
                               Selecionar Tudo
                             </button>
                             <button 
                               onClick={() => updateActiveTask({ selectedColsB: [] })}
-                              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-zinc-500 hover:bg-white/5 transition-all border border-white/5"
+                              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-zinc-500 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/5 border-black/10"
                             >
                               Limpar
                             </button>
@@ -1433,7 +1433,7 @@ export default function App() {
                                   ? activeTask.lookupType === 'vlookup' && headersB.indexOf(h) < headersB.indexOf(activeTask.keyB)
                                     ? "border-red-500/50 bg-red-500/10 text-red-400 shadow-sm"
                                     : "border-blue-500/50 bg-blue-500/10 text-blue-400 shadow-sm"
-                                  : "border-white/5 bg-black/20 text-zinc-500 hover:border-white/20 hover:bg-white/5"
+                                  : "dark:border-white/5 dark:bg-black/20 dark:hover:border-white/20 dark:hover:bg-white/5 border-black/10 bg-white/60 hover:border-black/20 hover:bg-black/5"
                               )}
                             >
                               <span className="truncate z-10">{h}</span>
@@ -1449,7 +1449,7 @@ export default function App() {
                                   }
                                 </motion.div>
                               ) : (
-                                <div className="w-4 h-4 rounded-full border border-white/10 group-hover:border-blue-400" />
+                                <div className="w-4 h-4 rounded-full border dark:border-white/10 border-black/10 group-hover:border-blue-400" />
                               )}
                             </button>
                           ))}
@@ -1465,7 +1465,7 @@ export default function App() {
                                 <Columns size={14} className="text-purple-400" /> Retorno da Tabela C
                                 <div className="group relative">
                                   <Info size={13} className="text-zinc-500 cursor-help" />
-                                  <div className="absolute bottom-full left-0 mb-2 w-64 p-3 bg-zinc-900 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl font-normal">
+                                  <div className="absolute bottom-full left-0 mb-2 w-64 p-3 dark:bg-zinc-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10 font-normal">
                                     <p className="font-bold mb-1">O que trazer da Tabela C?</p>
                                     <p className="opacity-80">Selecione as colunas da Tabela C que você deseja anexar à sua Tabela A.</p>
                                   </div>
@@ -1485,20 +1485,20 @@ export default function App() {
                               <input 
                                 type="text"
                                 placeholder="Filtrar colunas da Tabela C..."
-                                className="w-full pl-9 pr-3 py-2 rounded-xl border border-white/10 bg-black/20 focus:border-blue-500 outline-none text-xs text-zinc-300 font-medium"
+                                className="w-full pl-9 pr-3 py-2 rounded-xl border dark:border-white/10 border-black/10 dark:bg-black/20 bg-white/60 focus:border-blue-500 outline-none text-xs dark:text-zinc-300 text-zinc-700 font-medium"
                                 onChange={(e) => setSearchTermC(e.target.value.toLowerCase())}
                               />
                             </div>
                             <div className="flex gap-1">
                               <button 
                                 onClick={() => updateActiveTask({ selectedColsC: headersC })}
-                                className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-purple-400 hover:bg-white/5 transition-all border border-white/5"
+                                className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-purple-400 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/5 border-black/10"
                               >
                                 Selecionar Tudo
                               </button>
                               <button 
                                 onClick={() => updateActiveTask({ selectedColsC: [] })}
-                                className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-zinc-500 hover:bg-white/5 transition-all border border-white/5"
+                                className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-zinc-500 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/5 border-black/10"
                               >
                                 Limpar
                               </button>
@@ -1524,7 +1524,7 @@ export default function App() {
                                     ? activeTask.lookupType === 'vlookup' && headersC.indexOf(h) < headersC.indexOf(activeTask.keyC)
                                       ? "border-red-500/50 bg-red-500/10 text-red-400 shadow-sm"
                                       : "border-purple-500/50 bg-purple-500/10 text-purple-400 shadow-sm"
-                                    : "border-white/5 bg-black/20 text-zinc-500 hover:border-white/20 hover:bg-white/5"
+                                    : "dark:border-white/5 dark:bg-black/20 dark:hover:border-white/20 dark:hover:bg-white/5 border-black/10 bg-white/60 hover:border-black/20 hover:bg-black/5"
                                 )}
                               >
                                 <span className="truncate z-10">{h}</span>
@@ -1540,7 +1540,7 @@ export default function App() {
                                     }
                                   </motion.div>
                                 ) : (
-                                  <div className="w-4 h-4 rounded-full border border-white/10 group-hover:border-purple-400" />
+                                  <div className="w-4 h-4 rounded-full border dark:border-white/10 border-black/10 group-hover:border-purple-400" />
                                 )}
                               </button>
                             ))}
@@ -1565,14 +1565,14 @@ export default function App() {
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                        <div className="space-y-2 p-3 bg-white/5 rounded-2xl border border-white/5">
+                        <div className="space-y-2 p-3 dark:bg-white/5 bg-black/5 rounded-2xl border dark:border-white/5 border-black/10">
                           <div className="flex items-center justify-between">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-1.5">
                               <Zap size={12} className="text-blue-400" /> Limpeza de Dados
                             </h3>
                             <div className="group relative">
                               <Info size={11} className="text-zinc-500 cursor-help" />
-                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-zinc-900 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
+                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-zinc-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
                                 <p className="font-bold mb-1">Tratamento de Dados</p>
                                 <p className="opacity-80">Essas opções ajudam a normalizar os valores antes da comparação, evitando erros por espaços extras ou diferenças entre maiúsculas e minúsculas.</p>
                               </div>
@@ -1600,7 +1600,7 @@ export default function App() {
                                 </label>
                                 <div className="group relative">
                                   <Info size={10} className="text-slate-300 dark:text-slate-600 cursor-help" />
-                                  <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-slate-800 text-white text-[9px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg">
+                                  <div className="absolute bottom-full right-0 mb-2 w-48 p-2 dark:bg-slate-800 bg-white dark:text-white text-zinc-800 text-[9px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg border dark:border-white/10 border-black/10">
                                     {opt.help}
                                   </div>
                                 </div>
@@ -1616,7 +1616,7 @@ export default function App() {
                             </h3>
                             <div className="group relative">
                               <Info size={11} className="text-slate-400 cursor-help" />
-                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-slate-900 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
+                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
                                 <p className="font-bold mb-1">Lidando com Repetições</p>
                                 <p className="opacity-80">Define o que fazer quando a chave de busca aparece mais de uma vez na Tabela B. Você pode escolher o primeiro, o último ou combinar todos os resultados encontrados.</p>
                               </div>
@@ -1648,7 +1648,7 @@ export default function App() {
                             </h3>
                             <div className="group relative">
                               <Info size={11} className="text-slate-400 cursor-help" />
-                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-slate-900 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
+                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
                                 <p className="font-bold mb-1">Tipo de Busca (PROCX)</p>
                                 <p className="opacity-80">Define como o sistema deve se comportar se não encontrar o valor exato. Pode buscar o próximo menor, maior ou usar curingas.</p>
                               </div>
@@ -1684,7 +1684,7 @@ export default function App() {
                             </h3>
                             <div className="group relative">
                               <Info size={11} className="text-slate-400 cursor-help" />
-                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-slate-900 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
+                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
                                 <p className="font-bold mb-1">Sensibilidade da Busca</p>
                                 <p className="opacity-80">Define o quão parecidos os textos devem ser. 100% exige igualdade total. 80% permite pequenas variações ou erros de digitação.</p>
                               </div>
@@ -1715,7 +1715,7 @@ export default function App() {
                             </h3>
                             <div className="group relative">
                               <Info size={11} className="text-slate-400 cursor-help" />
-                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-slate-900 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
+                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
                                 <p className="font-bold mb-1">Indicadores de Match</p>
                                 <p className="opacity-80">Adiciona colunas extras indicando "VERDADEIRO" ou "FALSO" para a existência do registro em cada tabela.</p>
                               </div>
@@ -1750,7 +1750,7 @@ export default function App() {
                             </h3>
                             <div className="group relative">
                               <Info size={11} className="text-slate-400 cursor-help" />
-                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-slate-900 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
+                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
                                 <p className="font-bold mb-1">Tratamento de Erros</p>
                                 <p className="opacity-80">Define o que será exibido nas colunas de retorno quando a busca não encontrar um correspondente. Similar ao parâmetro [if_not_found] do PROCX.</p>
                               </div>
@@ -1790,7 +1790,7 @@ export default function App() {
                             </h3>
                             <div className="group relative">
                               <Info size={11} className="text-slate-400 cursor-help" />
-                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-slate-900 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
+                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
                                 <p className="font-bold mb-1">Ordem de Pesquisa (PROCX)</p>
                                 <p className="opacity-80">Define se o sistema deve começar a procurar do início para o fim ou do fim para o início da tabela.</p>
                               </div>
@@ -1902,13 +1902,13 @@ export default function App() {
               </div>
 
               <div className="fluent-card overflow-hidden">
-                <div className="p-3 sm:p-4 border-b border-white/5 space-y-2">
+                <div className="p-3 sm:p-4 border-b dark:border-white/5 border-black/10 space-y-2">
                   {/* Linha principal: filtros + ações */}
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     {/* Esquerda: título + tabs de filtro + botão pares */}
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="text-lg sm:text-xl font-black tracking-tight">Resultados</h2>
-                      <div className="flex p-1 bg-white/5 rounded-xl gap-1 border border-white/5">
+                      <div className="flex p-1 dark:bg-white/5 bg-black/5 rounded-xl gap-1 border dark:border-white/5 border-black/10">
                         {[
                           { id: 'all', label: 'Todos', icon: Layers },
                           { id: 'matched', label: 'Encontrados', icon: CheckCircle2 },
@@ -1924,7 +1924,7 @@ export default function App() {
                                 ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20"
                                 : activeTask.resultFilter === f.id
                                 ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
-                                : "text-zinc-500 hover:text-zinc-200"
+                                : "text-zinc-500 dark:hover:text-zinc-200 hover:text-zinc-800"
                             )}
                           >
                             <f.icon size={14} /> {f.label}
@@ -1939,7 +1939,7 @@ export default function App() {
                             ? "bg-orange-500/15 text-orange-400 border-orange-500/30"
                             : activeTask.divergentPairs.length > 0
                             ? "text-orange-400 border-orange-500/30 hover:bg-orange-500/10"
-                            : "text-zinc-500 border-white/10 hover:bg-white/5 hover:text-zinc-200"
+                            : "text-zinc-500 dark:border-white/10 border-black/10 dark:hover:bg-white/5 hover:bg-black/5 dark:hover:text-zinc-200 hover:text-zinc-800"
                         )}
                         title="Configurar pares de divergência"
                       >
@@ -1960,7 +1960,7 @@ export default function App() {
                       )}
                       <button
                         onClick={() => setStep('configure')}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-400 hover:text-zinc-100 hover:bg-white/5 border border-white/10 transition-all active:scale-95"
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-500 dark:hover:text-zinc-100 hover:text-zinc-900 dark:hover:bg-white/5 hover:bg-black/5 border dark:border-white/10 border-black/10 transition-all active:scale-95"
                       >
                         <Settings2 size={14} /> Editar Config.
                       </button>
@@ -1975,7 +1975,7 @@ export default function App() {
 
                   {/* Painel de configuração de pares — linha separada */}
                   {showDivergentConfig && (
-                    <div className="pt-2 border-t border-white/5 space-y-2">
+                    <div className="pt-2 border-t dark:border-white/5 border-black/10 space-y-2">
                       <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
                         Pares de colunas para comparação de divergências
                       </p>
@@ -2032,23 +2032,23 @@ export default function App() {
                   )}
                 </div>
 
-                <div className="flex-1 overflow-auto rounded-[32px] border border-white/10 bg-black/40 shadow-inner backdrop-blur-xl custom-scrollbar">
+                <div className="flex-1 overflow-auto rounded-[32px] border dark:border-white/10 border-black/10 dark:bg-black/40 bg-white/60 shadow-inner backdrop-blur-xl custom-scrollbar">
                   <table className="w-full min-w-[600px] text-left border-collapse">
                     <thead className="sticky top-0 z-20">
-                      <tr className="bg-zinc-900/90 backdrop-blur-2xl">
+                      <tr className="dark:bg-zinc-900/90 bg-zinc-50/95 backdrop-blur-2xl">
                         {displayColumns.map(col => (
                           <th key={col.id} className={cn(
                             "px-4 sm:px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em]",
-                            col.id.startsWith('Lookup_') ? "text-blue-400 bg-blue-400/5" : 
-                            col.id.startsWith('LookupC_') ? "text-purple-400 bg-purple-400/5" :
-                            col.id.startsWith('Status_') ? "text-emerald-400 bg-emerald-400/5" :
-                            "text-zinc-500"
+                            col.id.startsWith('Lookup_') ? "text-blue-500 bg-blue-400/5" : 
+                            col.id.startsWith('LookupC_') ? "text-purple-500 bg-purple-400/5" :
+                            col.id.startsWith('Status_') ? "text-emerald-500 bg-emerald-400/5" :
+                            "dark:text-zinc-500 text-zinc-600"
                           )}>
                             {col.id}
                           </th>
                         ))}
                       </tr>
-                      <tr className="bg-zinc-900/80 border-b border-white/10">
+                      <tr className="dark:bg-zinc-900/80 bg-zinc-50/80 border-b dark:border-white/10 border-black/10">
                         {displayColumns.map(col => (
                           <th key={col.id} className={cn(
                             "px-2 sm:px-3 py-2 relative",
@@ -2062,7 +2062,7 @@ export default function App() {
                                 "w-full flex items-center justify-between gap-1 px-2 py-1.5 rounded-lg text-[10px] font-bold transition-all",
                                 columnFilters[col.id]?.size > 0
                                   ? "bg-blue-500/15 border border-blue-500/40 text-blue-400"
-                                  : "bg-white/5 border border-white/10 text-zinc-500 hover:border-white/20 hover:text-zinc-300"
+                                  : "dark:bg-white/5 bg-black/5 border dark:border-white/10 border-black/10 text-zinc-500 dark:hover:border-white/20 hover:border-black/20 dark:hover:text-zinc-300 hover:text-zinc-700"
                               )}
                             >
                               <span className="truncate">
@@ -2097,17 +2097,17 @@ export default function App() {
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5">
+                    <tbody className="divide-y dark:divide-white/5 divide-black/5">
                       {filteredResultData.slice(0, 50).map((row, i) => (
-                        <tr key={i} className="hover:bg-white/5 transition-all group">
+                        <tr key={i} className="dark:hover:bg-white/5 hover:bg-black/5 transition-all group">
                           {displayColumns.map(col => {
                             const val = row[col.id];
                             return (
                               <td key={col.id} className={cn(
                                 "px-4 sm:px-6 py-3 text-xs font-medium whitespace-nowrap transition-colors",
-                                col.id.startsWith('Lookup_') ? "bg-blue-400/5 text-blue-300 group-hover:text-blue-200" : 
-                                col.id.startsWith('LookupC_') ? "bg-purple-400/5 text-purple-300 group-hover:text-purple-200" : 
-                                col.id.startsWith('Status_') ? "bg-emerald-400/5 font-black " + (val === 'VERDADEIRO' ? 'text-emerald-400' : 'text-red-400') : "text-zinc-400 group-hover:text-zinc-100"
+                                col.id.startsWith('Lookup_') ? "bg-blue-400/5 dark:text-blue-300 text-blue-600 dark:group-hover:text-blue-200 group-hover:text-blue-700" : 
+                                col.id.startsWith('LookupC_') ? "bg-purple-400/5 dark:text-purple-300 text-purple-600 dark:group-hover:text-purple-200 group-hover:text-purple-700" : 
+                                col.id.startsWith('Status_') ? "bg-emerald-400/5 font-black " + (val === 'VERDADEIRO' ? 'text-emerald-400' : 'text-red-400') : "dark:text-zinc-400 text-zinc-600 dark:group-hover:text-zinc-100 group-hover:text-zinc-900"
                               )}>
                                 {val === null || val === undefined 
                                   ? <span className="text-red-400/50 italic font-bold">#N/D</span> 
@@ -2189,7 +2189,7 @@ function UploadCard({ title, description, file, onUpload, onRemove, onSheetChang
       <div className="flex items-center gap-3">
         <div className={cn(
           "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all",
-          file ? "bg-blue-600 text-white" : "bg-white/5 text-zinc-500 group-hover:text-blue-500"
+          file ? "bg-blue-600 text-white" : "dark:bg-white/5 bg-black/5 text-zinc-500 group-hover:text-blue-500"
         )}>
           {file ? <TableIcon size={18} /> : <FileUp size={18} />}
         </div>
@@ -2290,30 +2290,30 @@ function ColumnFilterDropdown({
   return (
     <div
       ref={ref}
-      className="absolute z-50 top-full left-0 mt-1 w-56 bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+      className="absolute z-50 top-full left-0 mt-1 w-56 dark:bg-zinc-900/95 bg-white/95 backdrop-blur-xl border dark:border-white/10 border-black/10 rounded-2xl shadow-2xl overflow-hidden"
       onClick={e => e.stopPropagation()}
     >
-      <div className="p-2 border-b border-white/5">
+      <div className="p-2 border-b dark:border-white/5 border-black/10">
         <input
           autoFocus
           type="text"
           placeholder="Buscar valor..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs outline-none text-zinc-300 placeholder:text-zinc-600 focus:border-blue-500/50"
+          className="w-full dark:bg-white/5 bg-black/5 border dark:border-white/10 border-black/10 rounded-lg px-3 py-1.5 text-xs outline-none dark:text-zinc-300 text-zinc-700 placeholder:text-zinc-400 focus:border-blue-500/50"
         />
       </div>
 
-      <div className="flex gap-3 px-3 py-2 border-b border-white/5">
+      <div className="flex gap-3 px-3 py-2 border-b dark:border-white/5 border-black/10">
         <button
           onClick={() => onApply(null)}
-          className="text-[10px] font-bold text-blue-400 hover:text-blue-300 transition-colors"
+          className="text-[10px] font-bold text-blue-400 hover:text-blue-500 transition-colors"
         >
           Selecionar Tudo
         </button>
         <button
           onClick={() => onApply(new Set())}
-          className="text-[10px] font-bold text-zinc-500 hover:text-zinc-300 transition-colors"
+          className="text-[10px] font-bold text-zinc-500 dark:hover:text-zinc-300 hover:text-zinc-700 transition-colors"
         >
           Limpar
         </button>
@@ -2321,19 +2321,19 @@ function ColumnFilterDropdown({
 
       <div className="max-h-52 overflow-y-auto custom-scrollbar py-1">
         {displayed.length === 0 ? (
-          <p className="text-center text-zinc-600 text-xs py-4">Nenhum valor encontrado</p>
+          <p className="text-center text-zinc-500 text-xs py-4">Nenhum valor encontrado</p>
         ) : (
           displayed.map(val => (
             <label
               key={val}
-              className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-white/5 cursor-pointer group"
+              className="flex items-center gap-2.5 px-3 py-1.5 dark:hover:bg-white/5 hover:bg-black/5 cursor-pointer group"
             >
               <div
                 className={cn(
                   "w-4 h-4 rounded flex items-center justify-center border transition-all shrink-0",
                   isChecked(val)
                     ? "bg-blue-600 border-blue-500"
-                    : "border-white/20 bg-white/5 group-hover:border-blue-500/40"
+                    : "dark:border-white/20 border-black/20 dark:bg-white/5 bg-black/5 group-hover:border-blue-500/40"
                 )}
                 onClick={() => toggle(val)}
               >
@@ -2344,17 +2344,17 @@ function ColumnFilterDropdown({
                 )}
               </div>
               <span
-                className="text-xs text-zinc-300 truncate flex-1"
+                className="text-xs dark:text-zinc-300 text-zinc-700 truncate flex-1"
                 onClick={() => toggle(val)}
               >
-                {val === '' ? <span className="italic text-zinc-600">(vazio)</span> : val}
+                {val === '' ? <span className="italic text-zinc-500">(vazio)</span> : val}
               </span>
             </label>
           ))
         )}
       </div>
 
-      <div className="p-2 border-t border-white/5">
+      <div className="p-2 border-t dark:border-white/5 border-black/10">
         <button
           onClick={onClose}
           className="w-full py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black rounded-xl transition-colors"
@@ -2388,11 +2388,11 @@ function StepIndicator({ currentStep }: { currentStep: Step }) {
               <div className={cn(
                 "flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-[18px] transition-all duration-500",
                 isActive ? "bg-blue-600 text-white shadow-lg shadow-blue-500/40 scale-105" : 
-                isCompleted ? "text-emerald-500 hover:bg-emerald-500/10" : "text-zinc-500 hover:bg-white/5"
+                isCompleted ? "text-emerald-500 hover:bg-emerald-500/10" : "text-zinc-500 dark:hover:bg-white/5 hover:bg-black/5"
               )}>
                 <div className={cn(
                   "w-5 h-5 sm:w-6 sm:h-6 rounded-md sm:rounded-lg flex items-center justify-center text-[10px] font-black transition-all duration-500",
-                  isActive ? "bg-white/20" : isCompleted ? "bg-emerald-500/20" : "bg-white/5"
+                  isActive ? "bg-white/20" : isCompleted ? "bg-emerald-500/20" : "dark:bg-white/5 bg-black/5"
                 )}>
                   {isCompleted ? <CheckCircle2 size={12} /> : i + 1}
                 </div>

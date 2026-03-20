@@ -17,7 +17,7 @@
 }
 
 @utility mica-acrylic {
-  @apply backdrop-blur-[20px] bg-white/10 dark:bg-zinc-900/10 border border-white/10 dark:border-white/5 shadow-xl;
+  @apply backdrop-blur-[20px] bg-white/50 dark:bg-zinc-900/10 border border-black/10 dark:border-white/5 shadow-xl;
 }
 
 @utility windows-window {
