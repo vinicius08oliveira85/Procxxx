@@ -78,7 +78,7 @@ interface LookupTask {
   searchDirection: 1 | -1;
   includeStatusCols: boolean;
   resultData: any[] | null;
-  resultFilter: 'all' | 'matched' | 'orphans';
+  resultFilter: 'all' | 'matched' | 'orphans' | 'divergent';
   showAdvanced: boolean;
   columnSettings: ColumnSetting[];
 }
@@ -367,6 +367,22 @@ export default function App() {
       data = data.filter(r => r._match_found_B || (activeTask.fileC ? r._match_found_C : false));
     } else if (activeTask.resultFilter === 'orphans') {
       data = data.filter(r => !r._match_found_B && (activeTask.fileC ? !r._match_found_C : true));
+    } else if (activeTask.resultFilter === 'divergent') {
+      // Linha divergente: foi encontrada mas pelo menos uma coluna Lookup difere
+      // do valor original correspondente em A (comparando pelo nome sem o prefixo)
+      data = data.filter(r => {
+        if (!r._match_found_B && !(activeTask.fileC ? r._match_found_C : false)) return false;
+        const keys = Object.keys(r);
+        return keys.some(key => {
+          const originalKey = key.startsWith('Lookup_') ? key.slice('Lookup_'.length)
+            : key.startsWith('LookupC_') ? key.slice('LookupC_'.length)
+            : null;
+          if (!originalKey || !(originalKey in r)) return false;
+          const original = String(r[originalKey] ?? '').trim().toLowerCase();
+          const looked = String(r[key] ?? '').trim().toLowerCase();
+          return original !== looked;
+        });
+      });
     }
 
     const activeColFilters = Object.entries(columnFilters).filter(([, set]) => set.size > 0);
@@ -1879,13 +1895,16 @@ export default function App() {
                         { id: 'all', label: 'Todos', icon: Layers },
                         { id: 'matched', label: 'Encontrados', icon: CheckCircle2 },
                         { id: 'orphans', label: 'Órfãos', icon: AlertCircle },
+                        { id: 'divergent', label: 'Divergentes', icon: ArrowUpDown },
                       ].map(f => (
                         <button
                           key={f.id}
                           onClick={() => updateActiveTask({ resultFilter: f.id as any })}
                           className={cn(
                             "flex items-center gap-2 py-2 px-4 rounded-lg text-xs font-bold transition-all",
-                            activeTask.resultFilter === f.id 
+                            activeTask.resultFilter === f.id && f.id === 'divergent'
+                              ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20"
+                              : activeTask.resultFilter === f.id
                               ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" 
                               : "text-zinc-500 hover:text-zinc-200"
                           )}
