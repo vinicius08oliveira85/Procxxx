@@ -207,12 +207,19 @@ export default function App() {
     setLoading(true);
     setError(null);
 
-    const reader = new FileReader();
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+    const isText = ext === 'csv' || ext === 'tsv';
 
-    reader.onload = (evt) => {
+    const parseAndUpdate = (result: string | ArrayBuffer | null) => {
       try {
-        const arrayBuffer = evt.target?.result;
-        const wb = XLSX.read(arrayBuffer, { type: 'array' });
+        const wb = isText
+          ? XLSX.read(result as string, { type: 'string' })
+          : XLSX.read(result as ArrayBuffer, { type: 'array' });
+
+        if (!wb.SheetNames.length) {
+          setError("O arquivo não contém planilhas ou está vazio.");
+          return;
+        }
 
         const sheets: { [key: string]: any[] } = {};
         wb.SheetNames.forEach(name => {
@@ -229,18 +236,24 @@ export default function App() {
         else if (type === 'B') updateActiveTask({ fileB: data });
         else updateActiveTask({ fileC: data });
       } catch (err) {
-        setError("Erro ao processar o arquivo. Certifique-se de que é um Excel válido (.xlsx / .xls).");
+        setError(`Não foi possível ler o arquivo "${file.name}" (${ext.toUpperCase()}). Verifique se o formato é suportado e se o arquivo não está corrompido.`);
       } finally {
         setLoading(false);
       }
     };
 
+    const reader = new FileReader();
+    reader.onload = (evt) => parseAndUpdate(evt.target?.result ?? null);
     reader.onerror = () => {
-      setError("Erro ao ler o arquivo. Verifique se o arquivo não está corrompido.");
+      setError("Erro ao ler o arquivo. Verifique se ele não está corrompido ou bloqueado.");
       setLoading(false);
     };
 
-    reader.readAsArrayBuffer(file);
+    if (isText) {
+      reader.readAsText(file, 'UTF-8');
+    } else {
+      reader.readAsArrayBuffer(file);
+    }
   };
 
   /**
@@ -1977,13 +1990,23 @@ function UploadCard({ title, description, file, onUpload, onRemove, onSheetChang
               {file.sheets[file.selectedSheet].length} registros carregados
             </span>
           </div>
+
+          {/\.csv$/i.test(file.name) && (
+            <div className="flex items-start gap-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-medium leading-relaxed">
+              <Info size={12} className="shrink-0 mt-0.5" />
+              <span>CSV detectado. Se houver caracteres incorretos, o arquivo pode usar encoding Windows-1252 (padrão do Excel Brasil).</span>
+            </div>
+          )}
         </div>
       ) : (
         <label className="w-full relative z-10">
-          <input type="file" accept=".xlsx, .xls" onChange={onUpload} className="hidden" />
+          <input type="file" accept=".xlsx,.xls,.xlsb,.xlsm,.ods,.csv,.tsv" onChange={onUpload} className="hidden" />
           <div className="fluent-button-primary w-full py-3 sm:py-4 text-center cursor-pointer text-sm font-black uppercase tracking-widest shadow-lg shadow-blue-500/20">
             Importar Arquivo
           </div>
+          <p className="text-[10px] text-zinc-600 dark:text-zinc-500 mt-2 text-center">
+            xlsx · xls · xlsb · xlsm · ods · csv · tsv
+          </p>
         </label>
       )}
     </div>
