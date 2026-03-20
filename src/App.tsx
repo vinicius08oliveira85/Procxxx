@@ -59,6 +59,7 @@ interface LookupTask {
   fileB: ExcelData | null;
   keyA: string;
   keyB: string;
+  selectedColsA: string[];
   selectedColsB: string[];
   fileC: ExcelData | null;
   keyA_C: string;
@@ -91,6 +92,7 @@ export default function App() {
       fileB: null,
       keyA: '',
       keyB: '',
+      selectedColsA: [],
       selectedColsB: [],
       fileC: null,
       keyA_C: '',
@@ -118,6 +120,7 @@ export default function App() {
   const [step, setStep] = useState<Step>('upload');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchTermA, setSearchTermA] = useState<string>('');
   const [searchTermB, setSearchTermB] = useState<string>('');
   const [searchTermC, setSearchTermC] = useState<string>('');
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
@@ -155,6 +158,7 @@ export default function App() {
       fileB: null,
       keyA: '',
       keyB: '',
+      selectedColsA: [],
       selectedColsB: [],
       fileC: null,
       keyA_C: '',
@@ -436,11 +440,20 @@ export default function App() {
     const workerCode = `
       self.onmessage = function(e) {
         const { 
-          dataA, dataB, keyA, keyB, selectedColsB,
+          dataA: rawDataA, dataB, keyA, keyB, selectedColsA, selectedColsB,
           dataC, keyA_C, keyC, selectedColsC,
           exactMatch, trimSpaces, ignoreCase, removeSpecialChars, duplicateStrategy, fuzzyThreshold,
           ifNotFound, ifNotFoundC, matchMode, searchDirection, includeStatusCols
         } = e.data;
+
+        // Se o usuário selecionou colunas específicas de A, filtra cada linha
+        const dataA = (selectedColsA && selectedColsA.length > 0)
+          ? rawDataA.map(row => {
+              const filtered = {};
+              selectedColsA.forEach(col => { filtered[col] = row[col]; });
+              return filtered;
+            })
+          : rawDataA;
 
         if (!dataA || !dataB) {
           self.postMessage({ error: "Dados ausentes" });
@@ -791,6 +804,7 @@ export default function App() {
       dataB,
       keyA: activeTask.keyA,
       keyB: activeTask.keyB,
+      selectedColsA: activeTask.selectedColsA,
       selectedColsB: activeTask.selectedColsB,
       dataC: activeTask.fileC ? activeTask.fileC.sheets[activeTask.fileC.selectedSheet] : null,
       keyA_C: activeTask.keyA_C,
@@ -934,6 +948,7 @@ export default function App() {
       fileB: null,
       keyA: '',
       keyB: '',
+      selectedColsA: [],
       selectedColsB: [],
       fileC: null,
       keyA_C: '',
@@ -1236,6 +1251,84 @@ export default function App() {
                       exit={{ opacity: 0, x: 10 }}
                       className="space-y-3"
                     >
+                      {/* Configuração Tabela A - Colunas da base */}
+                      <div className="fluent-card p-3 sm:p-4 space-y-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div>
+                            <h2 className="text-sm font-black flex items-center gap-1.5">
+                              <Columns size={14} className="text-zinc-400" /> Colunas da Tabela A (Base)
+                            </h2>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="bg-zinc-500/20 text-zinc-400 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">
+                              {activeTask.selectedColsA.length === 0 ? 'Todas' : `${activeTask.selectedColsA.length} selecionadas`}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 w-3.5 h-3.5" />
+                            <input
+                              type="text"
+                              placeholder="Filtrar colunas da Tabela A..."
+                              className="w-full pl-9 pr-3 py-2 rounded-xl border border-white/10 bg-black/20 focus:border-blue-500 outline-none text-xs text-zinc-300 font-medium"
+                              onChange={(e) => setSearchTermA(e.target.value.toLowerCase())}
+                            />
+                          </div>
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => updateActiveTask({ selectedColsA: headersA })}
+                              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-zinc-400 hover:bg-white/5 transition-all border border-white/5"
+                            >
+                              Selecionar Tudo
+                            </button>
+                            <button
+                              onClick={() => updateActiveTask({ selectedColsA: [] })}
+                              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-zinc-500 hover:bg-white/5 transition-all border border-white/5"
+                            >
+                              Todas (padrão)
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
+                          {headersA
+                            .filter(h => h.toLowerCase().includes(searchTermA))
+                            .map(h => (
+                            <button
+                              key={h}
+                              onClick={() => {
+                                updateActiveTask({
+                                  selectedColsA: activeTask.selectedColsA.includes(h)
+                                    ? activeTask.selectedColsA.filter(c => c !== h)
+                                    : [...activeTask.selectedColsA, h]
+                                });
+                              }}
+                              className={cn(
+                                "p-2.5 rounded-xl border-2 text-xs font-bold transition-all text-left flex items-center justify-between group relative overflow-hidden",
+                                activeTask.selectedColsA.includes(h)
+                                  ? "border-zinc-500/50 bg-zinc-500/10 text-zinc-300 shadow-sm"
+                                  : "border-white/5 bg-black/20 text-zinc-500 hover:border-white/20 hover:bg-white/5"
+                              )}
+                            >
+                              <span className="truncate z-10">{h}</span>
+                              {activeTask.selectedColsA.includes(h) ? (
+                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="z-10">
+                                  <CheckCircle2 size={16} className="text-zinc-400" />
+                                </motion.div>
+                              ) : (
+                                <div className="w-4 h-4 rounded-full border border-white/10 group-hover:border-zinc-400" />
+                              )}
+                            </button>
+                          ))}
+                        </div>
+
+                        {activeTask.selectedColsA.length === 0 && (
+                          <p className="text-[10px] text-zinc-500 italic">Nenhuma coluna selecionada = todas as colunas de A serão incluídas no resultado.</p>
+                        )}
+                      </div>
+
                       {/* Configuração Tabela B */}
                       <div className="fluent-card p-3 sm:p-4 space-y-3">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
