@@ -1903,6 +1903,12 @@ export default function App() {
                       </button>
                     )}
                     <button
+                      onClick={() => setStep('configure')}
+                      className="flex items-center gap-1.5 px-4 py-3 rounded-xl text-xs font-bold text-zinc-400 hover:text-zinc-100 hover:bg-white/5 border border-white/10 transition-all active:scale-95"
+                    >
+                      <Settings2 size={14} /> Editar Config.
+                    </button>
+                    <button
                       onClick={downloadResult}
                       className="fluent-button-primary px-5 py-3 text-sm"
                     >
