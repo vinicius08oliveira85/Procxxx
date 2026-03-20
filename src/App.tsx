@@ -215,19 +215,12 @@ export default function App() {
     const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
     const isText = ext === 'csv' || ext === 'tsv';
 
-    // Formata células que o xlsx retorna como tipos especiais.
-    // Datas viram string "DD/MM/AAAA HH:MM" e números grandes (CPF, códigos)
-    // viram string sem notação científica.
+    // Garante que números exibidos em notação científica (ex: CPF, códigos)
+    // sejam convertidos para string sem perda de dígitos como fallback.
     const normalizeRow = (row: Record<string, unknown>): Record<string, unknown> => {
       const result: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(row)) {
-        if (v instanceof Date) {
-          const pad = (n: number) => String(n).padStart(2, '0');
-          const dateStr = `${pad(v.getDate())}/${pad(v.getMonth() + 1)}/${v.getFullYear()}`;
-          const hasTime = v.getHours() !== 0 || v.getMinutes() !== 0;
-          result[k] = hasTime ? `${dateStr} ${pad(v.getHours())}:${pad(v.getMinutes())}` : dateStr;
-        } else if (typeof v === 'number' && !isNaN(v) && Math.abs(v) >= 1e9) {
-          // Números inteiros grandes (CPF 11 dígitos, códigos 15 dígitos, etc.)
+        if (typeof v === 'number' && !isNaN(v) && Math.abs(v) >= 1e9) {
           result[k] = Number.isInteger(v) ? String(v) : v.toFixed(0);
         } else {
           result[k] = v;
@@ -238,9 +231,11 @@ export default function App() {
 
     const parseAndUpdate = (result: string | ArrayBuffer | null) => {
       try {
+        // cellText: true → adiciona propriedade "w" (texto formatado pelo Excel) em cada célula
+        // Não usamos cellDates para evitar conversão incorreta de datas/competências
         const wb = isText
           ? XLSX.read(result as string, { type: 'string' })
-          : XLSX.read(result as ArrayBuffer, { type: 'array', cellDates: true });
+          : XLSX.read(result as ArrayBuffer, { type: 'array', cellText: true });
 
         if (!wb.SheetNames.length) {
           setError("O arquivo não contém planilhas ou está vazio.");
@@ -249,7 +244,12 @@ export default function App() {
 
         const sheets: { [key: string]: any[] } = {};
         wb.SheetNames.forEach(name => {
-          const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[name], { defval: '' });
+          // raw: false usa o texto formatado "w" (igual ao que aparece no Excel)
+          // defval: '' garante que células vazias apareçam como string vazia
+          const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(
+            wb.Sheets[name],
+            { defval: '', raw: false }
+          );
           sheets[name] = raw.map(normalizeRow);
         });
 
