@@ -31,6 +31,7 @@ import {
   ArrowUpDown,
   FileSpreadsheet,
   Upload,
+  Plus,
   ChevronRight,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -79,6 +80,7 @@ interface LookupTask {
   includeStatusCols: boolean;
   resultData: any[] | null;
   resultFilter: 'all' | 'matched' | 'orphans' | 'divergent';
+  divergentPairs: { colA: string; colLookup: string }[];
   showAdvanced: boolean;
   columnSettings: ColumnSetting[];
 }
@@ -112,6 +114,7 @@ export default function App() {
       includeStatusCols: true,
       resultData: null,
       resultFilter: 'all',
+      divergentPairs: [],
       showAdvanced: false,
       columnSettings: [],
     }
@@ -128,6 +131,7 @@ export default function App() {
   const [configTab, setConfigTab] = useState<'keys' | 'columns' | 'advanced'>('keys');
   const [columnFilters, setColumnFilters] = useState<{ [col: string]: Set<string> }>({});
   const [openFilterCol, setOpenFilterCol] = useState<string | null>(null);
+  const [showDivergentConfig, setShowDivergentConfig] = useState(false);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -178,6 +182,7 @@ export default function App() {
       includeStatusCols: true,
       resultData: null,
       resultFilter: 'all',
+      divergentPairs: [],
       showAdvanced: false,
       columnSettings: [],
     };
@@ -368,9 +373,7 @@ export default function App() {
     } else if (activeTask.resultFilter === 'orphans') {
       data = data.filter(r => !r._match_found_B && (activeTask.fileC ? !r._match_found_C : true));
     } else if (activeTask.resultFilter === 'divergent') {
-      // Normaliza string para comparação semântica:
-      // minúsculas + sem acentos + underscores viram espaços + espaços extras removidos
-      const normalizeDivergent = (val: unknown): string =>
+      const normDivergent = (val: unknown): string =>
         String(val ?? '')
           .toLowerCase()
           .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -378,16 +381,25 @@ export default function App() {
           .replace(/\s+/g, ' ')
           .trim();
 
-      data = data.filter(r => {
-        if (!r._match_found_B && !(activeTask.fileC ? r._match_found_C : false)) return false;
-        return Object.keys(r).some(key => {
-          const originalKey = key.startsWith('Lookup_') ? key.slice('Lookup_'.length)
-            : key.startsWith('LookupC_') ? key.slice('LookupC_'.length)
-            : null;
-          if (!originalKey || !(originalKey in r)) return false;
-          return normalizeDivergent(r[originalKey]) !== normalizeDivergent(r[key]);
+      const pairs = activeTask.divergentPairs;
+      if (pairs.length > 0) {
+        // Usa os pares configurados manualmente pelo usuário
+        data = data.filter(r =>
+          pairs.some(p => normDivergent(r[p.colA]) !== normDivergent(r[p.colLookup]))
+        );
+      } else {
+        // Fallback: auto-detecta por prefixo Lookup_ / LookupC_
+        data = data.filter(r => {
+          if (!r._match_found_B && !(activeTask.fileC ? r._match_found_C : false)) return false;
+          return Object.keys(r).some(key => {
+            const originalKey = key.startsWith('Lookup_') ? key.slice('Lookup_'.length)
+              : key.startsWith('LookupC_') ? key.slice('LookupC_'.length)
+              : null;
+            if (!originalKey || !(originalKey in r)) return false;
+            return normDivergent(r[originalKey]) !== normDivergent(r[key]);
+          });
         });
-      });
+      }
     }
 
     const activeColFilters = Object.entries(columnFilters).filter(([, set]) => set.size > 0);
@@ -992,6 +1004,7 @@ export default function App() {
       includeStatusCols: true,
       resultData: null,
       resultFilter: 'all',
+      divergentPairs: [],
       showAdvanced: false,
       columnSettings: [],
     };
@@ -1889,8 +1902,9 @@ export default function App() {
               </div>
 
               <div className="fluent-card overflow-hidden">
-                <div className="p-3 sm:p-4 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex flex-wrap items-center gap-3 sm:gap-6">
+                <div className="p-3 sm:p-4 border-b border-white/5 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                     <div>
                       <h2 className="text-lg sm:text-xl font-black tracking-tight">Resultados</h2>
                     </div>
@@ -1918,7 +1932,82 @@ export default function App() {
                         </button>
                       ))}
                     </div>
+
+                    {/* Botão de configuração de pares — aparece sempre ao lado do filtro */}
+                    <button
+                      onClick={() => setShowDivergentConfig(v => !v)}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all border",
+                        showDivergentConfig
+                          ? "bg-orange-500/15 text-orange-400 border-orange-500/30"
+                          : activeTask.divergentPairs.length > 0
+                          ? "text-orange-400 border-orange-500/30 hover:bg-orange-500/10"
+                          : "text-zinc-500 border-white/10 hover:bg-white/5 hover:text-zinc-200"
+                      )}
+                      title="Configurar pares de divergência"
+                    >
+                      <Settings2 size={13} />
+                      {activeTask.divergentPairs.length > 0 ? `${activeTask.divergentPairs.length} par(es)` : 'Pares'}
+                    </button>
                   </div>
+
+                  {/* Painel de configuração de pares de divergência */}
+                  {showDivergentConfig && (
+                    <div className="px-3 pb-3 pt-1 border-b border-white/5 space-y-2">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">
+                        Pares de colunas para comparação de divergências
+                      </p>
+                      {activeTask.divergentPairs.map((pair, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <select
+                            value={pair.colA}
+                            onChange={e => {
+                              const updated = [...activeTask.divergentPairs];
+                              updated[idx] = { ...updated[idx], colA: e.target.value };
+                              updateActiveTask({ divergentPairs: updated });
+                            }}
+                            className="fluent-select flex-1 py-1.5 text-xs"
+                          >
+                            <option value="">Coluna original (A)...</option>
+                            {activeTask.resultData && activeTask.resultData[0] &&
+                              Object.keys(activeTask.resultData[0])
+                                .filter(k => !k.startsWith('_') && !k.startsWith('Lookup') && !k.startsWith('Status_'))
+                                .map(k => <option key={k} value={k}>{k}</option>)
+                            }
+                          </select>
+                          <span className="text-zinc-500 text-xs font-bold shrink-0">↔</span>
+                          <select
+                            value={pair.colLookup}
+                            onChange={e => {
+                              const updated = [...activeTask.divergentPairs];
+                              updated[idx] = { ...updated[idx], colLookup: e.target.value };
+                              updateActiveTask({ divergentPairs: updated });
+                            }}
+                            className="fluent-select flex-1 py-1.5 text-xs"
+                          >
+                            <option value="">Coluna lookup...</option>
+                            {activeTask.resultData && activeTask.resultData[0] &&
+                              Object.keys(activeTask.resultData[0])
+                                .filter(k => k.startsWith('Lookup_') || k.startsWith('LookupC_'))
+                                .map(k => <option key={k} value={k}>{k}</option>)
+                            }
+                          </select>
+                          <button
+                            onClick={() => updateActiveTask({ divergentPairs: activeTask.divergentPairs.filter((_, i) => i !== idx) })}
+                            className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-all shrink-0"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => updateActiveTask({ divergentPairs: [...activeTask.divergentPairs, { colA: '', colLookup: '' }] })}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-orange-400 hover:bg-orange-500/10 border border-orange-500/20 transition-all"
+                      >
+                        <Plus size={13} /> Adicionar par
+                      </button>
+                    </div>
+                  )}
 
                   <div className="flex items-center gap-2">
                     {Object.values(columnFilters).some(s => s.size > 0) && (
@@ -1942,6 +2031,7 @@ export default function App() {
                       <Download size={16} /> Baixar Excel
                     </button>
                   </div>
+                </div>
                 </div>
 
                 <div className="flex-1 overflow-auto rounded-[32px] border border-white/10 bg-black/40 shadow-inner backdrop-blur-xl custom-scrollbar">
