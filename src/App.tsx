@@ -368,19 +368,24 @@ export default function App() {
     } else if (activeTask.resultFilter === 'orphans') {
       data = data.filter(r => !r._match_found_B && (activeTask.fileC ? !r._match_found_C : true));
     } else if (activeTask.resultFilter === 'divergent') {
-      // Linha divergente: foi encontrada mas pelo menos uma coluna Lookup difere
-      // do valor original correspondente em A (comparando pelo nome sem o prefixo)
+      // Normaliza string para comparação semântica:
+      // minúsculas + sem acentos + underscores viram espaços + espaços extras removidos
+      const normalizeDivergent = (val: unknown): string =>
+        String(val ?? '')
+          .toLowerCase()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+          .replace(/_/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+
       data = data.filter(r => {
         if (!r._match_found_B && !(activeTask.fileC ? r._match_found_C : false)) return false;
-        const keys = Object.keys(r);
-        return keys.some(key => {
+        return Object.keys(r).some(key => {
           const originalKey = key.startsWith('Lookup_') ? key.slice('Lookup_'.length)
             : key.startsWith('LookupC_') ? key.slice('LookupC_'.length)
             : null;
           if (!originalKey || !(originalKey in r)) return false;
-          const original = String(r[originalKey] ?? '').trim().toLowerCase();
-          const looked = String(r[key] ?? '').trim().toLowerCase();
-          return original !== looked;
+          return normalizeDivergent(r[originalKey]) !== normalizeDivergent(r[key]);
         });
       });
     }
