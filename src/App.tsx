@@ -313,8 +313,9 @@ export default function App() {
    * Cabeçalhos extraídos da Tabela C (planilha selecionada).
    */
   const headersC = useMemo(() => {
-    if (!activeTask.fileC) return [];
+    if (!activeTask.fileC || !activeTask.fileC.selectedSheet) return [];
     const data = activeTask.fileC.sheets[activeTask.fileC.selectedSheet];
+    if (!data) return [];
     return data.length > 0 ? Object.keys(data[0]) : [];
   }, [activeTask.fileC]);
 
