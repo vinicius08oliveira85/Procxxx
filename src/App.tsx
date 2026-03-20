@@ -937,17 +937,17 @@ export default function App() {
       </div>
 
       {/* Main Window Container */}
-      <div className="relative z-10 min-h-screen flex flex-col p-4 md:p-8 lg:p-12">
+      <div className="relative z-10 min-h-screen flex flex-col p-2 sm:p-4 md:p-6 lg:p-8">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="windows-window flex flex-col max-w-7xl mx-auto w-full"
         >
           {/* App Header (Inside Window) */}
-          <header className="py-6 flex items-center justify-between px-8 bg-white/5 dark:bg-zinc-900/5 border-b border-white/10 dark:border-white/5">
+          <header className="py-3 sm:py-4 flex items-center justify-between px-4 sm:px-6 md:px-8 bg-white/5 dark:bg-zinc-900/5 border-b border-white/10 dark:border-white/5">
             <div className="flex items-center gap-4">
               <div>
-                <h1 className="text-2xl font-black tracking-tighter bg-gradient-to-r from-zinc-900 to-zinc-500 dark:from-white dark:to-zinc-400 bg-clip-text text-transparent">
+                <h1 className="text-lg sm:text-xl md:text-2xl font-black tracking-tighter bg-gradient-to-r from-zinc-900 to-zinc-500 dark:from-white dark:to-zinc-400 bg-clip-text text-transparent">
                   Lookup Master
                 </h1>
               </div>
@@ -974,7 +974,7 @@ export default function App() {
           </header>
 
           {/* Main Content Area */}
-          <div className="p-8 pb-24">
+          <div className="p-3 sm:p-5 md:p-8 pb-10">
             <AnimatePresence mode="wait">
               {step === 'upload' && (
                 <motion.div 
@@ -985,16 +985,16 @@ export default function App() {
                   transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                   className="max-w-5xl mx-auto"
                 >
-                  <div className="text-center mb-12">
-                    <h2 className="text-5xl font-black tracking-tighter mb-4 bg-gradient-to-b from-zinc-900 via-zinc-900 to-zinc-500 dark:from-white dark:via-white dark:to-zinc-600 bg-clip-text text-transparent">
+                  <div className="text-center mb-6 sm:mb-8 md:mb-10">
+                    <h2 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tighter mb-2 sm:mb-3 bg-gradient-to-b from-zinc-900 via-zinc-900 to-zinc-500 dark:from-white dark:via-white dark:to-zinc-600 bg-clip-text text-transparent">
                       Bem-vindo ao Futuro
                     </h2>
-                    <p className="text-zinc-500 dark:text-zinc-400 text-lg max-w-2xl mx-auto font-medium">
+                    <p className="text-zinc-500 dark:text-zinc-400 text-sm sm:text-base max-w-2xl mx-auto font-medium">
                       O cruzamento de dados mais elegante que você já viu. Comece enviando seus arquivos.
                     </p>
                   </div>
 
-              <div className="grid md:grid-cols-2 gap-8">
+              <div className="grid md:grid-cols-2 gap-4 md:gap-6">
                 <UploadCard 
                   title="Tabela Principal (A)" 
                   description="O arquivo base que receberá os novos dados."
@@ -1013,7 +1013,7 @@ export default function App() {
                 />
               </div>
 
-              <div className="mt-12 flex flex-col items-center gap-8">
+              <div className="mt-6 sm:mt-8 flex flex-col items-center gap-4 sm:gap-6">
                 <div className="flex items-center gap-4 p-1.5 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-xl shadow-inner">
                   <button 
                     onClick={() => updateActiveTask({ fileC: activeTask.fileC ? null : { name: '', sheets: {}, selectedSheet: '' } })}
@@ -1048,10 +1048,10 @@ export default function App() {
                 <button
                   disabled={!activeTask.fileA || !activeTask.fileB}
                   onClick={() => setStep('configure')}
-                  className="fluent-button-primary mt-4 px-16 py-6 text-xl group shadow-[0_20px_50px_rgba(37,99,235,0.3)]"
+                  className="fluent-button-primary w-full sm:w-auto mt-2 px-8 sm:px-12 py-4 text-base sm:text-lg group shadow-[0_12px_32px_rgba(37,99,235,0.3)]"
                 >
                   Continuar para Configuração
-                  <ArrowRight size={24} className="inline-block ml-3 group-hover:translate-x-2 transition-transform" />
+                  <ArrowRight size={20} className="inline-block ml-2 group-hover:translate-x-1 transition-transform" />
                 </button>
               </div>
             </motion.div>
@@ -1063,35 +1063,35 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.05 }}
-              className="max-w-5xl mx-auto space-y-6"
+              className="max-w-5xl mx-auto space-y-4"
             >
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div className="flex gap-2 p-1.5 mica rounded-2xl border border-white/20 dark:border-white/10 w-fit">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex gap-1 sm:gap-2 p-1 sm:p-1.5 mica rounded-xl sm:rounded-2xl border border-white/20 dark:border-white/10 w-full sm:w-fit overflow-x-auto">
                   {[
-                    { id: 'keys', label: 'Chaves de Busca', icon: Target },
-                    { id: 'columns', label: 'Colunas de Retorno', icon: Columns },
-                    { id: 'advanced', label: 'Configurações Avançadas', icon: Settings2 }
+                    { id: 'keys', label: 'Chaves', icon: Target },
+                    { id: 'columns', label: 'Colunas', icon: Columns },
+                    { id: 'advanced', label: 'Avançado', icon: Settings2 }
                   ].map((tab) => (
                     <button
                       key={tab.id}
                       onClick={() => setConfigTab(tab.id as any)}
                       className={cn(
-                        "flex items-center gap-2 px-6 py-2.5 rounded-xl transition-all duration-300 font-medium text-sm whitespace-nowrap",
+                        "flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl transition-all duration-300 font-medium text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none justify-center",
                         configTab === tab.id 
                           ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30" 
                           : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-white/5"
                       )}
                     >
-                      <tab.icon className="w-4 h-4" />
+                      <tab.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       {tab.label}
                     </button>
                   ))}
                 </div>
 
-                <div className="group relative">
+                <div className="group relative shrink-0">
                   <button
                     onClick={autoDetectConfig}
-                    className="flex items-center gap-2.5 px-6 py-4 bg-white/5 hover:bg-white/10 text-blue-400 rounded-2xl font-black text-sm transition-all border border-white/10 backdrop-blur-xl shadow-xl group/btn active:scale-95"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-blue-400 rounded-xl font-black text-sm transition-all border border-white/10 backdrop-blur-xl shadow-xl group/btn active:scale-95"
                   >
                     <Sparkles size={18} className="group-hover/btn:rotate-12 transition-transform text-blue-500" /> 
                     Auto-Detectar
@@ -1113,9 +1113,9 @@ export default function App() {
                       exit={{ opacity: 0, y: -10 }}
                       className="grid grid-cols-1 md:grid-cols-2 gap-6"
                     >
-                      <div className="fluent-card p-8 group">
-                        <div className="flex items-center gap-4 mb-8">
-                          <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform duration-500">
+                      <div className="fluent-card p-5 sm:p-7 group">
+                        <div className="flex items-center gap-3 mb-5 sm:mb-7">
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform duration-500">
                             <Target className="w-6 h-6" />
                           </div>
                           <div>
@@ -1151,9 +1151,9 @@ export default function App() {
                       </div>
 
                       {activeTask.fileC && (
-                        <div className="fluent-card p-8 group">
-                          <div className="flex items-center gap-4 mb-8">
-                            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-500 group-hover:scale-110 transition-transform duration-500">
+                        <div className="fluent-card p-5 sm:p-7 group">
+                          <div className="flex items-center gap-3 mb-5 sm:mb-7">
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-500 group-hover:scale-110 transition-transform duration-500">
                               <Target className="w-6 h-6" />
                             </div>
                             <div>
@@ -1200,8 +1200,8 @@ export default function App() {
                       className="space-y-8"
                     >
                       {/* Configuração Tabela B */}
-                      <div className="fluent-card p-8 space-y-6">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="fluent-card p-4 sm:p-6 space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                           <div>
                             <h2 className="text-2xl font-black mb-2 flex items-center gap-2">
                               <Columns className="text-blue-600" /> Selecionar Retorno (Tabela B)
@@ -1292,8 +1292,8 @@ export default function App() {
 
                       {/* Configuração Tabela C (Opcional) */}
                       {activeTask.fileC && (
-                        <div className="fluent-card p-8 space-y-6">
-                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="fluent-card p-4 sm:p-6 space-y-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             <div>
                               <h2 className="text-2xl font-black mb-2 flex items-center gap-2">
                                 <Columns className="text-purple-400" /> Selecionar Retorno (Tabela C)
@@ -1391,16 +1391,16 @@ export default function App() {
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 10 }}
-                      className="fluent-card p-8 space-y-8"
+                      className="fluent-card p-4 sm:p-6 space-y-5"
                     >
                       <div>
-                        <h2 className="text-2xl font-black mb-2 flex items-center gap-2">
+                        <h2 className="text-lg sm:text-2xl font-black mb-1 flex items-center gap-2">
                           <Settings2 className="text-blue-600" /> Opções Avançadas
                         </h2>
                         <p className="text-zinc-400 text-sm">Refine o tratamento dos dados durante o cruzamento.</p>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
                         <div className="space-y-4 p-6 bg-white/5 rounded-3xl border border-white/5">
                           <div className="flex items-center justify-between">
                             <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500 flex items-center gap-2">
@@ -1545,7 +1545,7 @@ export default function App() {
                         </div>
 
                         {/* Colunas de Status */}
-                        <div className="space-y-4 p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800 md:col-span-3">
+                        <div className="space-y-4 p-4 sm:p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl sm:rounded-3xl border border-slate-100 dark:border-slate-800 sm:col-span-2 md:col-span-3">
                           <div className="flex items-center justify-between">
                             <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
                               <CheckCircle2 size={14} className="text-blue-500" /> Colunas de Status de Existência
@@ -1580,7 +1580,7 @@ export default function App() {
                         </div>
 
                         {/* Valor se não encontrado */}
-                        <div className="space-y-4 p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800 md:col-span-3">
+                        <div className="space-y-4 p-4 sm:p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl sm:rounded-3xl border border-slate-100 dark:border-slate-800 sm:col-span-2 md:col-span-3">
                           <div className="flex items-center justify-between">
                             <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
                               <HelpCircle size={14} className="text-blue-500" /> Valor se não encontrado (if_not_found)
@@ -1620,7 +1620,7 @@ export default function App() {
                         </div>
 
                         {/* Direção da Busca (XLOOKUP style) */}
-                        <div className="space-y-4 p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800 md:col-span-3">
+                        <div className="space-y-4 p-4 sm:p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl sm:rounded-3xl border border-slate-100 dark:border-slate-800 sm:col-span-2 md:col-span-3">
                           <div className="flex items-center justify-between">
                             <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
                               <ArrowUpDown size={14} className="text-blue-500" /> Direção da Busca
@@ -1672,10 +1672,10 @@ export default function App() {
                 </motion.div>
               )}
 
-              <div className="flex justify-between items-center pt-6">
+              <div className="flex justify-between items-center pt-4">
                 <button 
                   onClick={() => setStep('upload')}
-                  className="px-8 py-4 rounded-2xl font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all active:scale-95"
+                  className="px-5 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all active:scale-95 text-sm"
                 >
                   Voltar
                 </button>
@@ -1683,16 +1683,16 @@ export default function App() {
                   {configTab !== 'advanced' && (
                     <button
                       onClick={() => setConfigTab(configTab === 'keys' ? 'columns' : 'advanced')}
-                      className="px-8 py-4 rounded-2xl font-bold text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all border border-blue-100 dark:border-blue-900/40"
+                      className="px-5 py-3 rounded-xl font-bold text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all border border-blue-100 dark:border-blue-900/40"
                     >
-                      Próximo Passo
+                      Próximo
                     </button>
                   )}
                   <button
                     disabled={!validation.isValid || loading}
                     onClick={performLookup}
                     className={cn(
-                      "px-12 py-4 rounded-2xl font-black text-lg flex items-center gap-3 transition-all shadow-2xl active:scale-95",
+                      "px-8 sm:px-10 py-3 rounded-xl font-black text-sm sm:text-base flex items-center gap-2 transition-all shadow-xl active:scale-95",
                       !validation.isValid
                         ? "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
                         : "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20"
@@ -1719,32 +1719,32 @@ export default function App() {
               key="result"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="max-w-6xl mx-auto space-y-6"
+              className="max-w-6xl mx-auto space-y-4"
             >
               {/* Dashboard Stats */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[
                   { label: "Total Processado", value: stats.total, icon: Database, color: "text-blue-400", bg: "bg-blue-500/10" },
                   { label: "Correspondências", value: stats.matched, icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10" },
                   { label: "Não Encontrados", value: stats.orphans, icon: AlertCircle, color: "text-amber-400", bg: "bg-amber-500/10" },
                   { label: "Taxa de Sucesso", value: `${stats.rate.toFixed(1)}%`, icon: Activity, color: "text-violet-400", bg: "bg-violet-500/10" },
                 ].map((stat, i) => (
-                  <div key={i} className="fluent-card p-6 flex flex-col items-center text-center gap-2">
-                    <div className={cn("p-3 rounded-2xl mb-2", stat.bg)}>
-                      <stat.icon className={stat.color} size={24} />
+                  <div key={i} className="fluent-card p-4 sm:p-5 flex flex-col items-center text-center gap-1.5">
+                    <div className={cn("p-2 sm:p-3 rounded-xl mb-1", stat.bg)}>
+                      <stat.icon className={stat.color} size={20} />
                     </div>
-                    <span className="text-2xl font-black">{stat.value}</span>
-                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">{stat.label}</span>
+                    <span className="text-xl sm:text-2xl font-black">{stat.value}</span>
+                    <span className="text-[10px] sm:text-xs font-bold text-zinc-500 uppercase tracking-wider leading-tight">{stat.label}</span>
                   </div>
                 ))}
               </div>
 
               <div className="fluent-card overflow-hidden">
-                <div className="p-8 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                  <div className="flex items-center gap-6">
+                <div className="p-4 sm:p-6 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex flex-wrap items-center gap-3 sm:gap-6">
                     <div>
-                      <h2 className="text-3xl font-black tracking-tight">Resultados</h2>
-                      <p className="text-zinc-400 mt-1">Visualize e filtre os dados processados.</p>
+                      <h2 className="text-xl sm:text-2xl font-black tracking-tight">Resultados</h2>
+                      <p className="text-zinc-400 text-sm mt-0.5">Visualize e filtre os dados processados.</p>
                     </div>
                     
                     <div className="flex p-1 bg-white/5 rounded-xl gap-1 border border-white/5">
@@ -1772,20 +1772,20 @@ export default function App() {
                   <div className="flex items-center gap-3">
                     <button
                       onClick={downloadResult}
-                      className="fluent-button-primary px-8 py-4"
+                      className="fluent-button-primary px-5 py-3 text-sm"
                     >
-                      <Download size={20} /> Baixar Excel
+                      <Download size={16} /> Baixar Excel
                     </button>
                   </div>
                 </div>
 
                 <div className="flex-1 overflow-auto rounded-[32px] border border-white/10 bg-black/40 shadow-inner backdrop-blur-xl custom-scrollbar">
-                  <table className="w-full text-left border-collapse">
+                  <table className="w-full min-w-[600px] text-left border-collapse">
                     <thead className="sticky top-0 z-20">
                       <tr className="bg-zinc-900/90 backdrop-blur-2xl border-b border-white/10">
                         {displayColumns.map(col => (
                           <th key={col.id} className={cn(
-                            "px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] border-b border-white/5",
+                            "px-4 sm:px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] border-b border-white/5",
                             col.id.startsWith('Lookup_') ? "text-blue-400 bg-blue-400/5" : 
                             col.id.startsWith('LookupC_') ? "text-purple-400 bg-purple-400/5" :
                             col.id.startsWith('Status_') ? "text-emerald-400 bg-emerald-400/5" :
@@ -1803,7 +1803,7 @@ export default function App() {
                             const val = row[col.id];
                             return (
                               <td key={col.id} className={cn(
-                                "px-8 py-5 text-xs font-medium whitespace-nowrap transition-colors",
+                                "px-4 sm:px-6 py-3 text-xs font-medium whitespace-nowrap transition-colors",
                                 col.id.startsWith('Lookup_') ? "bg-blue-400/5 text-blue-300 group-hover:text-blue-200" : 
                                 col.id.startsWith('LookupC_') ? "bg-purple-400/5 text-purple-300 group-hover:text-purple-200" : 
                                 col.id.startsWith('Status_') ? "bg-emerald-400/5 font-black " + (val === 'VERDADEIRO' ? 'text-emerald-400' : 'text-red-400') : "text-zinc-400 group-hover:text-zinc-100"
@@ -1881,24 +1881,25 @@ function UploadCard({ title, description, file, onUpload, onRemove, onSheetChang
 }) {
   return (
     <div className={cn(
-      "fluent-card p-8 transition-all flex flex-col items-center text-center group relative overflow-hidden min-h-[360px]",
+      "fluent-card p-4 sm:p-6 md:p-8 transition-all flex flex-col items-center text-center group relative overflow-hidden",
       file ? "ring-2 ring-blue-500/50" : "hover:ring-2 hover:ring-blue-500/30"
     )}>
       <div className={cn(
-        "w-24 h-24 rounded-[32px] flex items-center justify-center mb-8 transition-all shadow-2xl relative z-10",
+        "w-14 h-14 sm:w-20 sm:h-20 rounded-2xl sm:rounded-[32px] flex items-center justify-center mb-4 sm:mb-6 transition-all shadow-xl relative z-10",
         file ? "bg-blue-600 text-white rotate-6" : "bg-white/5 text-zinc-500 group-hover:text-blue-500 group-hover:scale-110 group-hover:rotate-3"
       )}>
-        {file ? <TableIcon size={40} /> : <FileUp size={40} />}
+        {file ? <TableIcon size={28} className="sm:hidden" /> : <FileUp size={28} className="sm:hidden" />}
+        {file ? <TableIcon size={36} className="hidden sm:block" /> : <FileUp size={36} className="hidden sm:block" />}
       </div>
       
       <div className="relative z-10">
-        <h3 className="text-2xl font-black mb-2 tracking-tight text-zinc-900 dark:text-white">{title}</h3>
-        <p className="text-zinc-500 dark:text-zinc-400 text-sm mb-10 leading-relaxed max-w-[260px] font-medium opacity-60">{description}</p>
+        <h3 className="text-lg sm:text-xl md:text-2xl font-black mb-1 sm:mb-2 tracking-tight text-zinc-900 dark:text-white">{title}</h3>
+        <p className="text-zinc-500 dark:text-zinc-400 text-xs sm:text-sm mb-4 sm:mb-6 leading-relaxed max-w-[260px] font-medium opacity-60">{description}</p>
       </div>
 
       {file ? (
-        <div className="w-full space-y-6 relative z-10">
-          <div className="bg-white/5 backdrop-blur-md p-5 rounded-3xl flex items-center justify-between border border-white/10 shadow-xl">
+        <div className="w-full space-y-3 sm:space-y-4 relative z-10">
+          <div className="bg-white/5 backdrop-blur-md p-3 sm:p-4 rounded-2xl flex items-center justify-between border border-white/10 shadow-xl">
             <div className="flex items-center gap-4 overflow-hidden">
               <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-500 shrink-0">
                 <FileSpreadsheet size={20} />
@@ -1913,12 +1914,12 @@ function UploadCard({ title, description, file, onUpload, onRemove, onSheetChang
             </button>
           </div>
           
-          <div className="space-y-3 text-left">
+          <div className="space-y-2 text-left">
             <label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 ml-1">Selecionar Planilha</label>
             <select 
               value={file.selectedSheet}
               onChange={(e) => onSheetChange(e.target.value)}
-              className="fluent-select w-full py-4 px-5 font-bold text-sm"
+              className="fluent-select w-full py-3 px-4 font-bold text-sm"
             >
               {Object.keys(file.sheets).map(name => (
                 <option key={name} value={name} className="bg-white dark:bg-zinc-900">{name}</option>
@@ -1936,7 +1937,7 @@ function UploadCard({ title, description, file, onUpload, onRemove, onSheetChang
       ) : (
         <label className="w-full relative z-10">
           <input type="file" accept=".xlsx, .xls" onChange={onUpload} className="hidden" />
-          <div className="fluent-button-primary w-full py-5 text-center cursor-pointer text-sm font-black uppercase tracking-widest shadow-xl shadow-blue-500/20">
+          <div className="fluent-button-primary w-full py-3 sm:py-4 text-center cursor-pointer text-sm font-black uppercase tracking-widest shadow-lg shadow-blue-500/20">
             Importar Arquivo
           </div>
         </label>
@@ -1956,8 +1957,8 @@ function StepIndicator({ currentStep }: { currentStep: Step }) {
   ];
 
   return (
-    <div className="flex items-center justify-center mb-12">
-      <div className="flex items-center gap-1.5 p-1.5 mica rounded-[24px] border border-white/10 shadow-2xl">
+    <div className="flex items-center justify-center">
+      <div className="flex items-center gap-1 sm:gap-1.5 p-1 sm:p-1.5 mica rounded-2xl sm:rounded-[24px] border border-white/10 shadow-xl">
         {steps.map((s, i) => {
           const isActive = s.id === currentStep;
           const isCompleted = steps.findIndex(st => st.id === currentStep) > i;
@@ -1965,22 +1966,22 @@ function StepIndicator({ currentStep }: { currentStep: Step }) {
           return (
             <React.Fragment key={s.id}>
               <div className={cn(
-                "flex items-center gap-3 px-6 py-2.5 rounded-[18px] transition-all duration-500",
+                "flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-[18px] transition-all duration-500",
                 isActive ? "bg-blue-600 text-white shadow-lg shadow-blue-500/40 scale-105" : 
                 isCompleted ? "text-emerald-500 hover:bg-emerald-500/10" : "text-zinc-500 hover:bg-white/5"
               )}>
                 <div className={cn(
-                  "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black transition-all duration-500",
+                  "w-5 h-5 sm:w-6 sm:h-6 rounded-md sm:rounded-lg flex items-center justify-center text-[10px] font-black transition-all duration-500",
                   isActive ? "bg-white/20" : isCompleted ? "bg-emerald-500/20" : "bg-white/5"
                 )}>
-                  {isCompleted ? <CheckCircle2 size={14} /> : i + 1}
+                  {isCompleted ? <CheckCircle2 size={12} /> : i + 1}
                 </div>
-                <span className="text-[10px] font-black uppercase tracking-[0.2em]">
+                <span className="hidden sm:inline text-[10px] font-black uppercase tracking-[0.2em]">
                   {s.label}
                 </span>
               </div>
               {i < steps.length - 1 && (
-                <ChevronRight size={12} className="mx-1 opacity-20" />
+                <ChevronRight size={10} className="mx-0.5 opacity-20" />
               )}
             </React.Fragment>
           );
