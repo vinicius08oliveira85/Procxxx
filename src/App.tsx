@@ -2418,6 +2418,3 @@ function StepIndicator({ currentStep }: { currentStep: Step }) {
     </div>
   );
 }
-    </div>
-  );
-}
