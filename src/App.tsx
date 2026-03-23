@@ -85,6 +85,236 @@ interface LookupTask {
   columnSettings: ColumnSetting[];
 }
 
+// Web Worker Code extracted to a constant for better performance and maintainability
+// Optimized Levenshtein algorithm to use O(min(m,n)) space instead of O(m*n)
+const WORKER_CODE = `
+  self.onmessage = function(e) {
+    const { 
+      dataA: rawDataA, dataB, keyA, keyB, selectedColsA, selectedColsB,
+      dataC, keyA_C, keyC, selectedColsC,
+      exactMatch, trimSpaces, ignoreCase, removeSpecialChars, duplicateStrategy, fuzzyThreshold,
+      ifNotFound, ifNotFoundC, matchMode, searchDirection, includeStatusCols
+    } = e.data;
+
+    // Se o usuário selecionou colunas específicas de A, filtra cada linha
+    const dataA = (selectedColsA && selectedColsA.length > 0)
+      ? rawDataA.map(row => {
+          const filtered = {};
+          selectedColsA.forEach(col => { filtered[col] = row[col]; });
+          return filtered;
+        })
+      : rawDataA;
+
+    if (!dataA || !dataB) {
+      self.postMessage({ error: "Dados ausentes" });
+      return;
+    }
+
+    function clean(val) {
+      if (val === undefined || val === null) return "";
+      let s = String(val);
+      if (trimSpaces) s = s.trim();
+      if (ignoreCase) s = s.toLowerCase();
+      if (removeSpecialChars) s = s.replace(/[^a-z0-9]/gi, '');
+      return s;
+    }
+
+    // Optimized Levenshtein (Wagner-Fischer with two rows) to save memory
+    function levenshtein(s, t) {
+      if (s === t) return 0;
+      if (s.length === 0) return t.length;
+      if (t.length === 0) return s.length;
+
+      // Swap to ensure we use the smaller array for memory efficiency
+      if (s.length > t.length) [s, t] = [t, s];
+
+      const sLen = s.length;
+      const tLen = t.length;
+      
+      let v0 = new Uint16Array(sLen + 1);
+      let v1 = new Uint16Array(sLen + 1);
+
+      for (let i = 0; i <= sLen; i++) v0[i] = i;
+
+      for (let i = 0; i < tLen; i++) {
+        v1[0] = i + 1;
+        for (let j = 0; j < sLen; j++) {
+          const cost = s[j] === t[i] ? 0 : 1;
+          v1[j + 1] = Math.min(v1[j] + 1, v0[j + 1] + 1, v0[j] + cost);
+        }
+        // Swap arrays for next iteration
+        let temp = v0; v0 = v1; v1 = temp;
+      }
+      return v0[sLen];
+    }
+
+    function similarity(a, b) {
+      const longer = a.length > b.length ? a : b;
+      const shorter = a.length > b.length ? b : a;
+      if (longer.length === 0) return 1.0;
+      return (longer.length - levenshtein(longer, shorter)) / parseFloat(longer.length);
+    }
+
+    function createLookupMap(data, key, selectedCols) {
+      const lookupMap = new Map();
+      data.forEach(row => {
+        const keyValue = clean(row[key]);
+        if (keyValue !== "") {
+          if (duplicateStrategy === 'first' && lookupMap.has(keyValue)) return;
+          
+          if (duplicateStrategy === 'concatenate' && lookupMap.has(keyValue)) {
+            const existing = lookupMap.get(keyValue);
+            const merged = { ...existing };
+            selectedCols.forEach(col => {
+              if (row[col] !== undefined && row[col] !== null) {
+                merged[col] = String(merged[col]) + "; " + String(row[col]);
+              }
+            });
+            lookupMap.set(keyValue, merged);
+          } else {
+            lookupMap.set(keyValue, row);
+          }
+        }
+      });
+      return lookupMap;
+    }
+
+    function findMatch(valA, data, key) {
+      const cleanA = clean(valA);
+      if (cleanA === "") return null;
+      const searchData = searchDirection === -1 ? [...data].reverse() : data;
+
+      if (matchMode === 0) {
+        return searchData.find(row => clean(row[key]) === cleanA);
+      } else if (matchMode === -1 || matchMode === 1) {
+        let bestMatch = null;
+        let bestDiff = Infinity;
+        for (const row of searchData) {
+          const valB = row[key];
+          const cleanB = clean(valB);
+          if (cleanB === cleanA) return row;
+          const numA = parseFloat(valA);
+          const numB = parseFloat(valB);
+          if (!isNaN(numA) && !isNaN(numB)) {
+            const diff = numA - numB;
+            if (matchMode === -1 && diff > 0 && diff < bestDiff) { bestDiff = diff; bestMatch = row; }
+            else if (matchMode === 1 && diff < 0 && Math.abs(diff) < bestDiff) { bestDiff = Math.abs(diff); bestMatch = row; }
+          } else {
+            if (matchMode === -1 && cleanB < cleanA) { if (bestMatch === null || cleanB > clean(bestMatch[key])) { bestMatch = row; } }
+            else if (matchMode === 1 && cleanB > cleanA) { if (bestMatch === null || cleanB < clean(bestMatch[key])) { bestMatch = row; } }
+          }
+        }
+        return bestMatch;
+      } else if (matchMode === 2) {
+        const escaped = cleanA.replace(new RegExp("[.+^" + "$" + "{}()|\\\\[\\\\]\\\\\\\\\\\\]", "g"), "\\\\$&");
+        const regexStr = "^" + escaped.replace(/[?]/g, ".").replace(/[*]/g, ".*") + "$";
+        try { const regex = new RegExp(regexStr, ignoreCase ? "i" : ""); return searchData.find(row => regex.test(String(row[key]))); } catch (e) { return null; }
+      }
+      return null;
+    }
+
+    let result;
+
+    if (exactMatch) {
+      if (matchMode === 0) {
+        const searchDataB = searchDirection === -1 ? [...dataB].reverse() : dataB;
+        const lookupMapB = createLookupMap(searchDataB, keyB, selectedColsB);
+        const searchDataC = dataC && searchDirection === -1 ? [...dataC].reverse() : dataC;
+        const lookupMapC = dataC ? createLookupMap(searchDataC, keyC, selectedColsC) : null;
+        result = dataA.map(rowA => {
+          const keyValueA = clean(rowA[keyA]);
+          const matchB = lookupMapB.get(keyValueA);
+          const newRow = { ...rowA };
+          selectedColsB.forEach(col => { newRow['Lookup_' + col] = matchB ? matchB[col] : ifNotFound; });
+          newRow['_match_found_B'] = !!matchB;
+          if (includeStatusCols) newRow['Status_B'] = matchB ? "VERDADEIRO" : "FALSO";
+          let matchFoundC = false;
+          if (lookupMapC) {
+            const keyValueA_C = clean(rowA[keyA_C]);
+            const matchC = lookupMapC.get(keyValueA_C);
+            selectedColsC.forEach(col => { newRow['LookupC_' + col] = matchC ? matchC[col] : ifNotFoundC; });
+            matchFoundC = !!matchC;
+            newRow['_match_found_C'] = matchFoundC;
+            if (includeStatusCols) newRow['Status_C'] = matchFoundC ? "VERDADEIRO" : "FALSO";
+          }
+          newRow['_match_found'] = !!matchB || matchFoundC;
+          if (includeStatusCols && lookupMapC) newRow['Status_Ambas'] = (!!matchB && matchFoundC) ? "VERDADEIRO" : "FALSO";
+          return newRow;
+        });
+      } else {
+        result = dataA.map(rowA => {
+          const matchB = findMatch(rowA[keyA], dataB, keyB);
+          const newRow = { ...rowA };
+          selectedColsB.forEach(col => { newRow['Lookup_' + col] = matchB ? matchB[col] : ifNotFound; });
+          newRow['_match_found_B'] = !!matchB;
+          if (includeStatusCols) newRow['Status_B'] = matchB ? "VERDADEIRO" : "FALSO";
+          let matchFoundC = false;
+          if (dataC) {
+            const matchC = findMatch(rowA[keyA_C], dataC, keyC);
+            selectedColsC.forEach(col => { newRow['LookupC_' + col] = matchC ? matchC[col] : ifNotFoundC; });
+            matchFoundC = !!matchC;
+            newRow['_match_found_C'] = matchFoundC;
+            if (includeStatusCols) newRow['Status_C'] = matchFoundC ? "VERDADEIRO" : "FALSO";
+          }
+          newRow['_match_found'] = !!matchB || matchFoundC;
+          if (includeStatusCols && dataC) newRow['Status_Ambas'] = (!!matchB && matchFoundC) ? "VERDADEIRO" : "FALSO";
+          return newRow;
+        });
+      }
+    } else {
+      result = dataA.map(rowA => {
+        const strA = clean(rowA[keyA]);
+        const newRow = { ...rowA };
+        if (strA === "") {
+          selectedColsB.forEach(col => newRow['Lookup_' + col] = ifNotFound);
+          newRow['_match_found_B'] = false;
+        } else {
+          let bestMatchB = null;
+          let highestSimB = 0;
+          for (const rowB of dataB) {
+            const strB = clean(rowB[keyB]);
+            if (strB === "") continue;
+            const sim = similarity(strA, strB);
+            if (sim > highestSimB && sim >= fuzzyThreshold) { highestSimB = sim; bestMatchB = rowB; }
+            if (highestSimB === 1) break;
+          }
+          selectedColsB.forEach(col => { newRow['Lookup_' + col] = bestMatchB ? bestMatchB[col] : ifNotFound; });
+          newRow['_match_found_B'] = !!bestMatchB;
+          if (includeStatusCols) newRow['Status_B'] = bestMatchB ? "VERDADEIRO" : "FALSO";
+        }
+        let matchFoundC = false;
+        if (dataC) {
+          const strA_C = clean(rowA[keyA_C]);
+          if (strA_C === "") {
+            selectedColsC.forEach(col => newRow['LookupC_' + col] = ifNotFoundC);
+            matchFoundC = false;
+            newRow['_match_found_C'] = false;
+            if (includeStatusCols) newRow['Status_C'] = "FALSO";
+          } else {
+            let bestMatchC = null;
+            let highestSimC = 0;
+            for (const rowC of dataC) {
+              const strC = clean(rowC[keyC]);
+              if (strC === "") continue;
+              const sim = similarity(strA_C, strC);
+              if (sim > highestSimC && sim >= fuzzyThreshold) { highestSimC = sim; bestMatchC = rowC; }
+              if (highestSimC === 1) break;
+            }
+            selectedColsC.forEach(col => { newRow['LookupC_' + col] = bestMatchC ? bestMatchC[col] : ifNotFoundC; });
+            matchFoundC = !!bestMatchC;
+            newRow['_match_found_C'] = matchFoundC;
+            if (includeStatusCols) newRow['Status_C'] = matchFoundC ? "VERDADEIRO" : "FALSO";
+          }
+        }
+        newRow['_match_found'] = newRow['_match_found_B'] || matchFoundC;
+        if (includeStatusCols && dataC) newRow['Status_Ambas'] = (newRow['_match_found_B'] && matchFoundC) ? "VERDADEIRO" : "FALSO";
+        return newRow;
+      });
+    }
+    self.postMessage(result);
+  };
+`;
+
 export default function App() {
   const [tasks, setTasks] = useState<LookupTask[]>([
     {
@@ -473,332 +703,7 @@ export default function App() {
 
     setLoading(true);
 
-    // Web Worker Code as a String
-    const workerCode = `
-      self.onmessage = function(e) {
-        const { 
-          dataA: rawDataA, dataB, keyA, keyB, selectedColsA, selectedColsB,
-          dataC, keyA_C, keyC, selectedColsC,
-          exactMatch, trimSpaces, ignoreCase, removeSpecialChars, duplicateStrategy, fuzzyThreshold,
-          ifNotFound, ifNotFoundC, matchMode, searchDirection, includeStatusCols
-        } = e.data;
-
-        // Se o usuário selecionou colunas específicas de A, filtra cada linha
-        const dataA = (selectedColsA && selectedColsA.length > 0)
-          ? rawDataA.map(row => {
-              const filtered = {};
-              selectedColsA.forEach(col => { filtered[col] = row[col]; });
-              return filtered;
-            })
-          : rawDataA;
-
-        if (!dataA || !dataB) {
-          self.postMessage({ error: "Dados ausentes" });
-          return;
-        }
-
-        /**
-         * Limpa e normaliza um valor para comparação com base nas configurações de limpeza.
-         * @param val Valor original a ser limpo.
-         * @returns Valor limpo e normalizado.
-         */
-        function clean(val) {
-          if (val === undefined || val === null) return "";
-          let s = String(val);
-          if (trimSpaces) s = s.trim();
-          if (ignoreCase) s = s.toLowerCase();
-          if (removeSpecialChars) s = s.replace(/[^a-z0-9]/gi, '');
-          return s;
-        }
-
-        /**
-         * Calcula a distância de Levenshtein entre duas strings para medir a diferença entre elas.
-         * @param a Primeira string.
-         * @param b Segunda string.
-         * @returns Número de edições necessárias para transformar a em b.
-         */
-        function levenshtein(a, b) {
-          if (a.length === 0) return b.length;
-          if (b.length === 0) return a.length;
-          const matrix = [];
-          for (let i = 0; i <= b.length; i++) matrix[i] = [i];
-          for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
-          for (let i = 1; i <= b.length; i++) {
-            for (let j = 1; j <= a.length; j++) {
-              if (b.charAt(i - 1) === a.charAt(j - 1)) {
-                matrix[i][j] = matrix[i - 1][j - 1];
-              } else {
-                matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j] + 1);
-              }
-            }
-          }
-          return matrix[b.length][a.length];
-        }
-
-        /**
-         * Calcula a similaridade entre duas strings (de 0 a 1) baseada na distância de Levenshtein.
-         * @param a Primeira string.
-         * @param b Segunda string.
-         * @returns Índice de similaridade (1.0 é idêntico).
-         */
-        function similarity(a, b) {
-          const longer = a.length > b.length ? a : b;
-          const shorter = a.length > b.length ? b : a;
-          if (longer.length === 0) return 1.0;
-          return (longer.length - levenshtein(longer, shorter)) / parseFloat(longer.length);
-        }
-
-        /**
-         * Cria um mapa de consulta para busca rápida.
-         */
-        function createLookupMap(data, key, selectedCols) {
-          const lookupMap = new Map();
-          data.forEach(row => {
-            const keyValue = clean(row[key]);
-            if (keyValue !== "") {
-              if (duplicateStrategy === 'first' && lookupMap.has(keyValue)) return;
-              
-              if (duplicateStrategy === 'concatenate' && lookupMap.has(keyValue)) {
-                const existing = lookupMap.get(keyValue);
-                const merged = { ...existing };
-                selectedCols.forEach(col => {
-                  if (row[col] !== undefined && row[col] !== null) {
-                    merged[col] = String(merged[col]) + "; " + String(row[col]);
-                  }
-                });
-                lookupMap.set(keyValue, merged);
-              } else {
-                lookupMap.set(keyValue, row);
-              }
-            }
-          });
-          return lookupMap;
-        }
-
-        /**
-         * Realiza busca com base no matchMode (0, -1, 1, 2).
-         */
-        function findMatch(valA, data, key) {
-          const cleanA = clean(valA);
-          if (cleanA === "") return null;
-
-          // Se a direção for -1, invertemos a busca
-          const searchData = searchDirection === -1 ? [...data].reverse() : data;
-
-          if (matchMode === 0) {
-            // Exact match
-            return searchData.find(row => clean(row[key]) === cleanA);
-          } else if (matchMode === -1 || matchMode === 1) {
-            // Next smaller or larger
-            let bestMatch = null;
-            let bestDiff = Infinity;
-
-            for (const row of searchData) {
-              const valB = row[key];
-              const cleanB = clean(valB);
-              if (cleanB === cleanA) return row;
-
-              const numA = parseFloat(valA);
-              const numB = parseFloat(valB);
-
-              if (!isNaN(numA) && !isNaN(numB)) {
-                const diff = numA - numB;
-                if (matchMode === -1 && diff > 0 && diff < bestDiff) {
-                  bestDiff = diff;
-                  bestMatch = row;
-                } else if (matchMode === 1 && diff < 0 && Math.abs(diff) < bestDiff) {
-                  bestDiff = Math.abs(diff);
-                  bestMatch = row;
-                }
-              } else {
-                if (matchMode === -1 && cleanB < cleanA) {
-                  if (bestMatch === null || cleanB > clean(bestMatch[key])) {
-                    bestMatch = row;
-                  }
-                } else if (matchMode === 1 && cleanB > cleanA) {
-                  if (bestMatch === null || cleanB < clean(bestMatch[key])) {
-                    bestMatch = row;
-                  }
-                }
-              }
-            }
-            return bestMatch;
-          } else if (matchMode === 2) {
-            // Wildcard match: escape regex special chars, then restore ? and * as wildcards
-            const escaped = cleanA.replace(new RegExp("[.+^" + "$" + "{}()|\\[\\]\\\\\\\\]", "g"), "\\\\$&");
-            const regexStr = "^" + escaped.replace(/[?]/g, ".").replace(/[*]/g, ".*") + "$";
-            try {
-              const regex = new RegExp(regexStr, ignoreCase ? "i" : "");
-              return searchData.find(row => regex.test(String(row[key])));
-            } catch (e) {
-              return null;
-            }
-          }
-          return null;
-        }
-
-        let result;
-
-        if (exactMatch) {
-          // Se for exactMatch mas matchMode != 0, usamos a lógica de findMatch
-          // Caso contrário, usamos o lookupMap para performance
-          if (matchMode === 0) {
-            const searchDataB = searchDirection === -1 ? [...dataB].reverse() : dataB;
-            const lookupMapB = createLookupMap(searchDataB, keyB, selectedColsB);
-            
-            const searchDataC = dataC && searchDirection === -1 ? [...dataC].reverse() : dataC;
-            const lookupMapC = dataC ? createLookupMap(searchDataC, keyC, selectedColsC) : null;
-
-            result = dataA.map(rowA => {
-              const keyValueA = clean(rowA[keyA]);
-              const matchB = lookupMapB.get(keyValueA);
-              
-              const newRow = { ...rowA };
-              selectedColsB.forEach(col => {
-                newRow['Lookup_' + col] = matchB ? matchB[col] : ifNotFound;
-              });
-              newRow['_match_found_B'] = !!matchB;
-              if (includeStatusCols) {
-                newRow['Status_B'] = matchB ? "VERDADEIRO" : "FALSO";
-              }
-
-              let matchFoundC = false;
-              if (lookupMapC) {
-                const keyValueA_C = clean(rowA[keyA_C]);
-                const matchC = lookupMapC.get(keyValueA_C);
-                selectedColsC.forEach(col => {
-                  newRow['LookupC_' + col] = matchC ? matchC[col] : ifNotFoundC;
-                });
-                matchFoundC = !!matchC;
-                newRow['_match_found_C'] = matchFoundC;
-                if (includeStatusCols) {
-                  newRow['Status_C'] = matchFoundC ? "VERDADEIRO" : "FALSO";
-                }
-              }
-
-              newRow['_match_found'] = !!matchB || matchFoundC;
-              if (includeStatusCols && lookupMapC) {
-                newRow['Status_Ambas'] = (!!matchB && matchFoundC) ? "VERDADEIRO" : "FALSO";
-              }
-
-              return newRow;
-            });
-          } else {
-            result = dataA.map(rowA => {
-              const matchB = findMatch(rowA[keyA], dataB, keyB);
-              const newRow = { ...rowA };
-              selectedColsB.forEach(col => {
-                newRow['Lookup_' + col] = matchB ? matchB[col] : ifNotFound;
-              });
-              newRow['_match_found_B'] = !!matchB;
-              if (includeStatusCols) {
-                newRow['Status_B'] = matchB ? "VERDADEIRO" : "FALSO";
-              }
-
-              let matchFoundC = false;
-              if (dataC) {
-                const matchC = findMatch(rowA[keyA_C], dataC, keyC);
-                selectedColsC.forEach(col => {
-                  newRow['LookupC_' + col] = matchC ? matchC[col] : ifNotFoundC;
-                });
-                matchFoundC = !!matchC;
-                newRow['_match_found_C'] = matchFoundC;
-                if (includeStatusCols) {
-                  newRow['Status_C'] = matchFoundC ? "VERDADEIRO" : "FALSO";
-                }
-              }
-
-              newRow['_match_found'] = !!matchB || matchFoundC;
-              if (includeStatusCols && dataC) {
-                newRow['Status_Ambas'] = (!!matchB && matchFoundC) ? "VERDADEIRO" : "FALSO";
-              }
-              return newRow;
-            });
-          }
-        } else {
-          result = dataA.map(rowA => {
-            const strA = clean(rowA[keyA]);
-            const newRow = { ...rowA };
-
-            if (strA === "") {
-              selectedColsB.forEach(col => newRow['Lookup_' + col] = ifNotFound);
-              newRow['_match_found_B'] = false;
-            } else {
-              let bestMatchB = null;
-              let highestSimB = 0;
-
-              for (const rowB of dataB) {
-                const strB = clean(rowB[keyB]);
-                if (strB === "") continue;
-
-                const sim = similarity(strA, strB);
-                if (sim > highestSimB && sim >= fuzzyThreshold) {
-                  highestSimB = sim;
-                  bestMatchB = rowB;
-                }
-                if (highestSimB === 1) break;
-              }
-
-              selectedColsB.forEach(col => {
-                newRow['Lookup_' + col] = bestMatchB ? bestMatchB[col] : ifNotFound;
-              });
-              newRow['_match_found_B'] = !!bestMatchB;
-              if (includeStatusCols) {
-                newRow['Status_B'] = bestMatchB ? "VERDADEIRO" : "FALSO";
-              }
-            }
-
-            let matchFoundC = false;
-            if (dataC) {
-              const strA_C = clean(rowA[keyA_C]);
-              if (strA_C === "") {
-                selectedColsC.forEach(col => newRow['LookupC_' + col] = ifNotFoundC);
-                matchFoundC = false;
-                newRow['_match_found_C'] = false;
-                if (includeStatusCols) {
-                  newRow['Status_C'] = "FALSO";
-                }
-              } else {
-                let bestMatchC = null;
-                let highestSimC = 0;
-
-                for (const rowC of dataC) {
-                  const strC = clean(rowC[keyC]);
-                  if (strC === "") continue;
-
-                  const sim = similarity(strA_C, strC);
-                  if (sim > highestSimC && sim >= fuzzyThreshold) {
-                    highestSimC = sim;
-                    bestMatchC = rowC;
-                  }
-                  if (highestSimC === 1) break;
-                }
-
-                selectedColsC.forEach(col => {
-                  newRow['LookupC_' + col] = bestMatchC ? bestMatchC[col] : ifNotFoundC;
-                });
-                matchFoundC = !!bestMatchC;
-                newRow['_match_found_C'] = matchFoundC;
-                if (includeStatusCols) {
-                  newRow['Status_C'] = matchFoundC ? "VERDADEIRO" : "FALSO";
-                }
-              }
-            }
-
-            newRow['_match_found'] = newRow['_match_found_B'] || matchFoundC;
-            if (includeStatusCols && dataC) {
-              newRow['Status_Ambas'] = (newRow['_match_found_B'] && matchFoundC) ? "VERDADEIRO" : "FALSO";
-            }
-
-            return newRow;
-          });
-        }
-
-        self.postMessage(result);
-      };
-    `;
-
-    const blob = new Blob([workerCode], { type: 'application/javascript' });
+    const blob = new Blob([WORKER_CODE], { type: 'application/javascript' });
     const workerUrl = URL.createObjectURL(blob);
     const worker = new Worker(workerUrl);
     URL.revokeObjectURL(workerUrl);
@@ -1069,6 +974,8 @@ export default function App() {
                   <button 
                     onClick={() => setIsDarkMode(!isDarkMode)}
                     className="p-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-all text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 active:scale-90"
+                    aria-label={isDarkMode ? "Ativar tema claro" : "Ativar tema escuro"}
+                    title={isDarkMode ? "Ativar tema claro" : "Ativar tema escuro"}
                   >
                     {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
                   </button>
@@ -1967,12 +1874,16 @@ export default function App() {
                           <button
                             onClick={() => setStep('configure')}
                             className="p-1.5 rounded-lg text-zinc-500 dark:hover:bg-white/5 hover:bg-black/5 border dark:border-white/10 border-black/10 transition-all active:scale-95"
+                            aria-label="Editar configurações"
+                            title="Editar configurações"
                           >
                             <Settings2 size={15} />
                           </button>
                           <button
                             onClick={downloadResult}
                             className="fluent-button-primary px-3 py-1.5 text-[11px]"
+                            aria-label="Baixar resultado"
+                            title="Baixar resultado"
                           >
                             <Download size={13} />
                           </button>
@@ -2089,6 +2000,8 @@ export default function App() {
                           <button
                             onClick={() => updateActiveTask({ divergentPairs: activeTask.divergentPairs.filter((_, i) => i !== idx) })}
                             className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-all shrink-0"
+                            aria-label="Remover par"
+                            title="Remover par"
                           >
                             <X size={14} />
                           </button>
@@ -2238,7 +2151,11 @@ export default function App() {
             <h4 className="font-bold text-red-800">Ops!</h4>
             <p className="text-sm text-red-700">{error}</p>
           </div>
-          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600">
+          <button 
+            onClick={() => setError(null)} 
+            className="text-red-400 hover:text-red-600"
+            aria-label="Fechar mensagem de erro"
+          >
             <X size={16} />
           </button>
         </div>
@@ -2298,7 +2215,12 @@ function UploadCard({ title, description, file, onUpload, onRemove, onSheetChang
                 ))}
               </select>
             )}
-            <button onClick={onRemove} className="p-1.5 hover:bg-red-500/20 text-zinc-400 hover:text-red-500 transition-all rounded-lg shrink-0">
+            <button 
+              onClick={onRemove} 
+              className="p-1.5 hover:bg-red-500/20 text-zinc-400 hover:text-red-500 transition-all rounded-lg shrink-0"
+              aria-label="Remover arquivo"
+              title="Remover arquivo"
+            >
               <X size={16} />
             </button>
           </>
