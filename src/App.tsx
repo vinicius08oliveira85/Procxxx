@@ -362,6 +362,7 @@ export default function App() {
   const [columnFilters, setColumnFilters] = useState<{ [col: string]: Set<string> }>({});
   const [openFilterCol, setOpenFilterCol] = useState<string | null>(null);
   const [showDivergentConfig, setShowDivergentConfig] = useState(false);
+  const [visibleRows, setVisibleRows] = useState(50);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -959,7 +960,7 @@ export default function App() {
                 </div>
                 <div>
                   <h1 className="text-base sm:text-xl md:text-2xl font-black tracking-tighter bg-gradient-to-r from-zinc-900 to-zinc-500 dark:from-white dark:to-zinc-400 bg-clip-text text-transparent whitespace-nowrap">
-                    Lookup Master
+                    Assistente de Cruzamento (Lookup)
                   </h1>
                 </div>
               </div>
@@ -1009,16 +1010,16 @@ export default function App() {
                 >
               <div className="grid md:grid-cols-2 gap-4 md:gap-6">
                 <UploadCard 
-                  title="Tabela Principal (A)" 
-                  description="O arquivo base que receberá os novos dados."
+                  title="1. Tabela Principal (Base)" 
+                  description="Carregue aqui a planilha que você quer preencher ou completar."
                   file={activeTask.fileA}
                   onUpload={(e) => handleFileUpload(e, 'A')}
                   onRemove={() => updateActiveTask({ fileA: null })}
                   onSheetChange={(sheetName) => updateActiveTask({ fileA: activeTask.fileA ? { ...activeTask.fileA, selectedSheet: sheetName } : null })}
                 />
                 <UploadCard 
-                  title="Tabela de Busca (B)" 
-                  description="O arquivo onde buscaremos as informações."
+                  title="2. Tabela de Busca (Fonte)" 
+                  description="Carregue aqui a planilha que contém as informações que você procura."
                   file={activeTask.fileB}
                   onUpload={(e) => handleFileUpload(e, 'B')}
                   onRemove={() => updateActiveTask({ fileB: null })}
@@ -1068,8 +1069,8 @@ export default function App() {
                     className="w-full max-w-md"
                   >
                     <UploadCard 
-                      title="Tabela de Busca (C)" 
-                      description="Uma segunda fonte de dados opcional para cruzamento múltiplo."
+                      title="3. Tabela de Busca Extra" 
+                      description="Use esta opção se precisar buscar dados em mais um arquivo."
                       file={activeTask.fileC}
                       onUpload={(e) => handleFileUpload(e, 'C')}
                       onRemove={() => updateActiveTask({ fileC: null })}
@@ -1101,9 +1102,9 @@ export default function App() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex gap-1 sm:gap-2 p-1 sm:p-1.5 mica rounded-xl sm:rounded-2xl border border-white/20 dark:border-white/10 w-full sm:w-fit overflow-x-auto scrollbar-none" style={{ scrollbarWidth: 'none' }}>
                   {[
-                    { id: 'keys', label: 'Chaves', icon: Target },
-                    { id: 'columns', label: 'Colunas', icon: Columns },
-                    { id: 'advanced', label: 'Avançado', icon: Settings2 }
+                    { id: 'keys', label: '1. Conexão', icon: Target },
+                    { id: 'columns', label: '2. Colunas a Trazer', icon: Columns },
+                    { id: 'advanced', label: '3. Opções Extras', icon: Settings2 }
                   ].map((tab) => (
                     <button
                       key={tab.id}
@@ -1127,11 +1128,11 @@ export default function App() {
                     className="flex items-center gap-1.5 px-3 py-1.5 dark:bg-white/5 dark:hover:bg-white/10 bg-black/5 hover:bg-black/10 text-blue-400 rounded-lg font-bold text-xs transition-all border dark:border-white/10 border-black/10 active:scale-95"
                   >
                     <Sparkles size={14} className="group-hover/btn:rotate-12 transition-transform text-blue-500" /> 
-                    Auto-Detectar
+                    Tentar Configuração Automática
                   </button>
                   <div className="absolute bottom-full right-0 mb-3 w-72 p-4 dark:bg-zinc-900/95 bg-white/95 backdrop-blur-xl dark:text-white text-zinc-800 text-xs rounded-2xl opacity-0 group-hover:opacity-100 transition-all delay-300 translate-y-2 group-hover:translate-y-0 pointer-events-none z-50 shadow-2xl border dark:border-white/10 border-black/10 font-medium">
                     <p className="font-black mb-2 text-blue-400 uppercase tracking-widest text-[10px]">Sugestão Inteligente</p>
-                    <p className="opacity-80 leading-relaxed">O sistema analisará os cabeçalhos das tabelas para sugerir automaticamente as melhores chaves de busca e colunas de retorno.</p>
+                    <p className="opacity-80 leading-relaxed">O sistema tentará adivinhar quais colunas ligam as duas tabelas (ex: CPF com CPF) e quais colunas você provavelmente quer copiar.</p>
                   </div>
                 </div>
               </div>
@@ -1152,14 +1153,14 @@ export default function App() {
                             <Target className="w-4 h-4" />
                           </div>
                           <div>
-                            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Tabela A → B</h3>
-                            <p className="text-[11px] text-zinc-500">Defina como as tabelas se conectam</p>
+                            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Conexão Tabela Principal ↔ Busca</h3>
+                            <p className="text-[11px] text-zinc-500">Selecione a coluna que existe em ambas as tabelas (ex: Código, CPF, E-mail)</p>
                           </div>
                         </div>
                         
                         <div className="space-y-3">
                           <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-1">Chave na Tabela A</label>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-1">Coluna na Tabela Principal</label>
                             <select 
                               value={activeTask.keyA}
                               onChange={(e) => updateActiveTask({ keyA: e.target.value })}
@@ -1170,7 +1171,7 @@ export default function App() {
                             </select>
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-1">Chave na Tabela B</label>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-1">Coluna correspondente na Tabela de Busca</label>
                             <select 
                               value={activeTask.keyB}
                               onChange={(e) => updateActiveTask({ keyB: e.target.value })}
@@ -1190,14 +1191,14 @@ export default function App() {
                               <Target className="w-4 h-4" />
                             </div>
                             <div>
-                              <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Tabela A → C</h3>
-                              <p className="text-[11px] text-zinc-500">Conexão com a tabela secundária</p>
+                              <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Conexão Tabela Principal ↔ Busca Extra</h3>
+                              <p className="text-[11px] text-zinc-500">Selecione a coluna que existe em ambas as tabelas</p>
                             </div>
                           </div>
                           
                           <div className="space-y-3">
                             <div className="space-y-1">
-                              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-1">Chave na Tabela A</label>
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-1">Coluna na Tabela Principal</label>
                               <select 
                                 value={activeTask.keyA_C}
                                 onChange={(e) => updateActiveTask({ keyA_C: e.target.value })}
@@ -1208,7 +1209,7 @@ export default function App() {
                               </select>
                             </div>
                             <div className="space-y-1">
-                              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-1">Chave na Tabela C</label>
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-1">Coluna na Tabela Extra</label>
                               <select 
                                 value={activeTask.keyC}
                                 onChange={(e) => updateActiveTask({ keyC: e.target.value })}
@@ -1237,7 +1238,7 @@ export default function App() {
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                           <div>
                             <h2 className="text-sm font-black flex items-center gap-1.5">
-                              <Columns size={14} className="text-zinc-400" /> Colunas da Tabela A (Base)
+                              <Columns size={14} className="text-zinc-400" /> Colunas Originais (Tabela Principal)
                             </h2>
                           </div>
                           <div className="flex items-center gap-2">
@@ -1252,7 +1253,7 @@ export default function App() {
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 w-3.5 h-3.5" />
                             <input
                               type="text"
-                              placeholder="Filtrar colunas da Tabela A..."
+                              placeholder="Filtrar nomes de colunas..."
                               className="w-full pl-9 pr-3 py-2 rounded-xl dark:border-white/10 border-black/10 border dark:bg-black/20 bg-white/60 focus:border-blue-500 outline-none text-xs dark:text-zinc-300 text-zinc-700 font-medium"
                               onChange={(e) => setSearchTermA(e.target.value.toLowerCase())}
                             />
@@ -1306,7 +1307,7 @@ export default function App() {
                         </div>
 
                         {activeTask.selectedColsA.length === 0 && (
-                          <p className="text-[10px] text-zinc-500 italic">Nenhuma coluna selecionada = todas as colunas de A serão incluídas no resultado.</p>
+                          <p className="text-[10px] text-zinc-500 italic">Se não selecionar nada, todas as colunas originais serão mantidas.</p>
                         )}
                       </div>
 
@@ -1315,12 +1316,12 @@ export default function App() {
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                           <div>
                             <h2 className="text-sm font-black flex items-center gap-1.5">
-                              <Columns size={14} className="text-blue-600" /> Retorno da Tabela B
+                              <Columns size={14} className="text-blue-600" /> Colunas para Importar (Tabela de Busca)
                               <div className="group relative">
                                 <Info size={13} className="text-zinc-500 cursor-help" />
                                 <div className="absolute bottom-full left-0 mb-2 w-64 p-3 dark:bg-zinc-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10 font-normal">
-                                  <p className="font-bold mb-1">O que trazer de volta?</p>
-                                  <p className="opacity-80">Selecione as colunas da Tabela B que você deseja anexar à sua Tabela A quando houver uma correspondência.</p>
+                                  <p className="font-bold mb-1">O que trazer?</p>
+                                  <p className="opacity-80">Marque as colunas que contêm as informações que você quer copiar para a sua tabela principal.</p>
                                 </div>
                               </div>
                             </h2>
@@ -1337,7 +1338,7 @@ export default function App() {
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 w-3.5 h-3.5" />
                             <input 
                               type="text"
-                              placeholder="Filtrar colunas da Tabela B..."
+                              placeholder="Filtrar nomes de colunas..."
                               className="w-full pl-9 pr-3 py-2 rounded-xl border dark:border-white/10 border-black/10 dark:bg-black/20 bg-white/60 focus:border-blue-500 outline-none text-xs dark:text-zinc-300 text-zinc-700 font-medium"
                               onChange={(e) => setSearchTermB(e.target.value.toLowerCase())}
                             />
@@ -1346,7 +1347,7 @@ export default function App() {
                             <button 
                               onClick={() => updateActiveTask({ selectedColsB: headersB })}
                               className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-blue-400 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/5 border-black/10"
-                            >
+                            > 
                               Selecionar Tudo
                             </button>
                             <button 
@@ -1406,12 +1407,12 @@ export default function App() {
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                             <div>
                               <h2 className="text-sm font-black flex items-center gap-1.5">
-                                <Columns size={14} className="text-purple-400" /> Retorno da Tabela C
+                                <Columns size={14} className="text-purple-400" /> Colunas para Importar (Tabela Extra)
                                 <div className="group relative">
                                   <Info size={13} className="text-zinc-500 cursor-help" />
                                   <div className="absolute bottom-full left-0 mb-2 w-64 p-3 dark:bg-zinc-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10 font-normal">
-                                    <p className="font-bold mb-1">O que trazer da Tabela C?</p>
-                                    <p className="opacity-80">Selecione as colunas da Tabela C que você deseja anexar à sua Tabela A.</p>
+                                    <p className="font-bold mb-1">O que trazer?</p>
+                                    <p className="opacity-80">Marque as colunas que você quer copiar desta tabela extra.</p>
                                   </div>
                                 </div>
                               </h2>
@@ -1504,7 +1505,7 @@ export default function App() {
                     >
                       <div>
                         <h2 className="text-sm font-black flex items-center gap-2">
-                          <Settings2 size={14} className="text-blue-600" /> Opções Avançadas
+                          <Settings2 size={14} className="text-blue-600" /> Ajustes Finos
                         </h2>
                       </div>
 
@@ -1512,13 +1513,13 @@ export default function App() {
                         <div className="space-y-2 p-3 dark:bg-white/5 bg-black/5 rounded-2xl border dark:border-white/5 border-black/10">
                           <div className="flex items-center justify-between">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-1.5">
-                              <Zap size={12} className="text-blue-400" /> Limpeza de Dados
+                              <Zap size={12} className="text-blue-400" /> Padronização
                             </h3>
                             <div className="group relative">
                               <Info size={11} className="text-zinc-500 cursor-help" />
                               <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-zinc-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
-                                <p className="font-bold mb-1">Tratamento de Dados</p>
-                                <p className="opacity-80">Essas opções ajudam a normalizar os valores antes da comparação, evitando erros por espaços extras ou diferenças entre maiúsculas e minúsculas.</p>
+                                <p className="font-bold mb-1">Evitar erros comuns</p>
+                                <p className="opacity-80">Ajuda a encontrar correspondências mesmo que o texto não esteja idêntico (ex: "JOSÉ" e "jose").</p>
                               </div>
                             </div>
                           </div>
@@ -1556,13 +1557,13 @@ export default function App() {
                         <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
                           <div className="flex items-center justify-between">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
-                              <Layers size={12} className="text-blue-500" /> Estratégia de Duplicatas
+                              <Layers size={12} className="text-blue-500" /> Se houver repetidos
                             </h3>
                             <div className="group relative">
                               <Info size={11} className="text-slate-400 cursor-help" />
                               <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
-                                <p className="font-bold mb-1">Lidando com Repetições</p>
-                                <p className="opacity-80">Define o que fazer quando a chave de busca aparece mais de uma vez na Tabela B. Você pode escolher o primeiro, o último ou combinar todos os resultados encontrados.</p>
+                                <p className="font-bold mb-1">Duplicatas na busca</p>
+                                <p className="opacity-80">Se o código procurado aparecer mais de uma vez na tabela de busca, qual deles devemos usar?</p>
                               </div>
                             </div>
                           </div>
@@ -1572,9 +1573,9 @@ export default function App() {
                               onChange={(e: any) => updateActiveTask({ duplicateStrategy: e.target.value })}
                               className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold outline-none focus:border-blue-500"
                             >
-                              <option value="first">Pegar Primeiro Encontro</option>
-                              <option value="last">Pegar Último Encontro</option>
-                              <option value="concatenate">Concatenar Valores (;) </option>
+                              <option value="first">Usar o primeiro encontrado</option>
+                              <option value="last">Usar o último encontrado</option>
+                              <option value="concatenate">Juntar todos (Separar por ;)</option>
                             </select>
                             <p className="text-[10px] text-slate-400 italic leading-relaxed">
                               {activeTask.duplicateStrategy === 'first' && "Retorna apenas a primeira ocorrência encontrada."}
@@ -1588,13 +1589,13 @@ export default function App() {
                         <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
                           <div className="flex items-center justify-between">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
-                              <Target size={12} className="text-blue-500" /> Modo de Correspondência
+                              <Target size={12} className="text-blue-500" /> Modo de Busca
                             </h3>
                             <div className="group relative">
                               <Info size={11} className="text-slate-400 cursor-help" />
                               <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
-                                <p className="font-bold mb-1">Tipo de Busca (PROCX)</p>
-                                <p className="opacity-80">Define como o sistema deve se comportar se não encontrar o valor exato. Pode buscar o próximo menor, maior ou usar curingas.</p>
+                                <p className="font-bold mb-1">Como comparar?</p>
+                                <p className="opacity-80">Define se o valor precisa ser idêntico ou se pode buscar valores próximos (útil para faixas de números).</p>
                               </div>
                             </div>
                           </div>
@@ -1605,10 +1606,10 @@ export default function App() {
                               className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold outline-none focus:border-blue-500"
                               disabled={!activeTask.exactMatch}
                             >
-                              <option value="0">0 - Correspondência Exata</option>
-                              <option value="-1">-1 - Exata ou Próximo Menor</option>
-                              <option value="1">1 - Exata ou Próximo Maior</option>
-                              <option value="2">2 - Correspondência de Curinga (*, ?)</option>
+                              <option value="0">Correspondência Exata (Padrão)</option>
+                              <option value="-1">Aproximada (Menor valor próximo)</option>
+                              <option value="1">Aproximada (Maior valor próximo)</option>
+                              <option value="2">Usar Curingas (* e ?)</option>
                             </select>
                             <p className="text-[10px] text-slate-400 italic leading-relaxed">
                               {!activeTask.exactMatch ? "Desativado em modo Fuzzy." : 
@@ -1624,13 +1625,13 @@ export default function App() {
                         <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
                           <div className="flex items-center justify-between">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
-                              <Activity size={12} className="text-blue-500" /> Precisão Fuzzy ({Math.round(activeTask.fuzzyThreshold * 100)}%)
+                              <Activity size={12} className="text-blue-500" /> Corretor de Digitação ({Math.round(activeTask.fuzzyThreshold * 100)}%)
                             </h3>
                             <div className="group relative">
                               <Info size={11} className="text-slate-400 cursor-help" />
                               <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
-                                <p className="font-bold mb-1">Sensibilidade da Busca</p>
-                                <p className="opacity-80">Define o quão parecidos os textos devem ser. 100% exige igualdade total. 80% permite pequenas variações ou erros de digitação.</p>
+                                <p className="font-bold mb-1">Tolerância a erros</p>
+                                <p className="opacity-80">Útil quando os nomes podem estar digitados errado. Quanto menor a porcentagem, mais diferenças ele aceita.</p>
                               </div>
                             </div>
                           </div>
@@ -1655,13 +1656,13 @@ export default function App() {
                         <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 sm:col-span-2 md:col-span-3">
                           <div className="flex items-center justify-between">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
-                              <CheckCircle2 size={12} className="text-blue-500" /> Colunas de Status de Existência
+                              <CheckCircle2 size={12} className="text-blue-500" /> Colunas de Verificação
                             </h3>
                             <div className="group relative">
                               <Info size={11} className="text-slate-400 cursor-help" />
                               <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
-                                <p className="font-bold mb-1">Indicadores de Match</p>
-                                <p className="opacity-80">Adiciona colunas extras indicando "VERDADEIRO" ou "FALSO" para a existência do registro em cada tabela.</p>
+                                <p className="font-bold mb-1">Achou ou não?</p>
+                                <p className="opacity-80">Cria colunas no final dizendo "VERDADEIRO" se encontrou o valor ou "FALSO" se não encontrou.</p>
                               </div>
                             </div>
                           </div>
@@ -1681,7 +1682,7 @@ export default function App() {
                               />
                             </button>
                             <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
-                              Incluir colunas de status (Status_B, Status_C, Status_Ambas)
+                              Criar colunas que dizem se achou ou não (VERDADEIRO/FALSO)
                             </span>
                           </div>
                         </div>
@@ -1690,13 +1691,13 @@ export default function App() {
                         <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 sm:col-span-2 md:col-span-3">
                           <div className="flex items-center justify-between">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
-                              <HelpCircle size={12} className="text-blue-500" /> Valor se não encontrado (if_not_found)
+                              <HelpCircle size={12} className="text-blue-500" /> O que escrever se não encontrar?
                             </h3>
                             <div className="group relative">
                               <Info size={11} className="text-slate-400 cursor-help" />
                               <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
-                                <p className="font-bold mb-1">Tratamento de Erros</p>
-                                <p className="opacity-80">Define o que será exibido nas colunas de retorno quando a busca não encontrar um correspondente. Similar ao parâmetro [if_not_found] do PROCX.</p>
+                                <p className="font-bold mb-1">Texto padrão</p>
+                                <p className="opacity-80">Quando não houver correspondência, este texto será preenchido na célula (ex: #N/D, Não Encontrado, 0).</p>
                               </div>
                             </div>
                           </div>
@@ -1730,13 +1731,13 @@ export default function App() {
                         <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 sm:col-span-2 md:col-span-3">
                           <div className="flex items-center justify-between">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
-                              <ArrowUpDown size={12} className="text-blue-500" /> Direção da Busca
+                              <ArrowUpDown size={12} className="text-blue-500" /> Ordem da Busca
                             </h3>
                             <div className="group relative">
                               <Info size={11} className="text-slate-400 cursor-help" />
                               <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
-                                <p className="font-bold mb-1">Ordem de Pesquisa (PROCX)</p>
-                                <p className="opacity-80">Define se o sistema deve começar a procurar do início para o fim ou do fim para o início da tabela.</p>
+                                <p className="font-bold mb-1">De cima ou de baixo?</p>
+                                <p className="opacity-80">Define se começa a procurar do início da tabela (padrão) ou do fim.</p>
                               </div>
                             </div>
                           </div>
@@ -1746,8 +1747,8 @@ export default function App() {
                               onChange={(e: any) => updateActiveTask({ searchDirection: parseInt(e.target.value) })}
                               className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold outline-none focus:border-blue-500"
                             >
-                              <option value="1">1 - Do Primeiro ao Último</option>
-                              <option value="-1">-1 - Do Último ao Primeiro</option>
+                              <option value="1">Do Primeiro ao Último (Padrão)</option>
+                              <option value="-1">Do Último ao Primeiro</option>
                             </select>
                           </div>
                         </div>
@@ -2028,6 +2029,9 @@ export default function App() {
                   <table className="w-full min-w-[600px] text-left border-collapse">
                     <thead className="sticky top-0 z-20">
                       <tr className="dark:bg-zinc-900/90 bg-zinc-50/95 backdrop-blur-2xl">
+                        <th className="px-3 py-4 text-[10px] font-black uppercase tracking-wider text-zinc-400 w-12 text-center sticky left-0 z-30 dark:bg-zinc-900/95 bg-zinc-50/95 backdrop-blur-xl shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]">
+                          #
+                        </th>
                         {displayColumns.map(col => (
                           <th key={col.id} className={cn(
                             "px-4 sm:px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em]",
@@ -2036,11 +2040,23 @@ export default function App() {
                             col.id.startsWith('Status_') ? "text-emerald-500 bg-emerald-400/5" :
                             "dark:text-zinc-500 text-zinc-600"
                           )}>
-                            {col.id}
+                            <div className="flex items-center gap-2">
+                              <span className="truncate max-w-[150px]" title={col.id}>
+                                {col.id.startsWith('Lookup_') ? col.id.replace('Lookup_', '') : 
+                                 col.id.startsWith('LookupC_') ? col.id.replace('LookupC_', '') : 
+                                 col.id.startsWith('Status_') ? (col.id === 'Status_B' ? 'Enc. em B' : col.id === 'Status_C' ? 'Enc. em C' : 'Enc. em Ambos') :
+                                 col.id}
+                              </span>
+                              {col.id.startsWith('Lookup_') && <span className="px-1.5 py-0.5 rounded text-[8px] bg-blue-500/10 text-blue-500 border border-blue-500/20 font-bold">FONTE B</span>}
+                              {col.id.startsWith('LookupC_') && <span className="px-1.5 py-0.5 rounded text-[8px] bg-purple-500/10 text-purple-500 border border-purple-500/20 font-bold">FONTE C</span>}
+                              {col.id.startsWith('Status_') && <span className="px-1.5 py-0.5 rounded text-[8px] bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-bold">STATUS</span>}
+                              {!col.id.startsWith('Lookup') && !col.id.startsWith('Status_') && <span className="px-1.5 py-0.5 rounded text-[8px] bg-zinc-500/10 text-zinc-500 border border-zinc-500/20 font-bold">BASE</span>}
+                            </div>
                           </th>
                         ))}
                       </tr>
                       <tr className="dark:bg-zinc-900/80 bg-zinc-50/80 border-b dark:border-white/10 border-black/10">
+                        <th className="sticky left-0 z-30 dark:bg-zinc-900/90 bg-zinc-50/90 backdrop-blur-xl shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]"></th>
                         {displayColumns.map(col => (
                           <th key={col.id} className={cn(
                             "px-2 sm:px-3 py-2 relative",
@@ -2089,11 +2105,14 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody className="divide-y dark:divide-white/5 divide-black/5">
-                      {filteredResultData.slice(0, 50).map((row, i) => (
+                      {filteredResultData.slice(0, visibleRows).map((row, i) => (
                         <tr key={i} className={cn(
                           "transition-all group dark:hover:bg-white/5 hover:bg-black/5",
                           i % 2 === 0 ? "dark:bg-white/[0.02] bg-black/[0.02]" : ""
                         )}>
+                          <td className="px-3 py-3 text-[10px] font-bold text-zinc-400 text-center sticky left-0 z-10 dark:bg-[#0f0f10] bg-[#fcfcfc] group-hover:bg-inherit shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)] border-r dark:border-white/5 border-black/5">
+                            {i + 1}
+                          </td>
                           {displayColumns.map(col => {
                             const val = row[col.id];
                             return (
@@ -2127,10 +2146,17 @@ export default function App() {
                       </div>
                     </div>
                   )}
-                  {filteredResultData.length > 50 && (
-                    <div className="p-6 text-center text-slate-400 text-xs font-bold bg-slate-50 dark:bg-slate-800/50 uppercase tracking-widest">
-                      Exibindo as primeiras 50 de {filteredResultData.length} linhas
-                      {Object.values(columnFilters).some(s => s.size > 0) ? ' (filtros ativos)' : ''}. Baixe o arquivo para ver tudo.
+                  {filteredResultData.length > visibleRows && (
+                    <div className="p-4 flex flex-col items-center justify-center gap-2 bg-slate-50 dark:bg-slate-800/30 border-t dark:border-white/5 border-black/5">
+                      <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
+                        Exibindo {visibleRows} de {filteredResultData.length} linhas
+                      </p>
+                      <button 
+                        onClick={() => setVisibleRows(prev => prev + 100)}
+                        className="px-6 py-2 rounded-xl bg-white dark:bg-zinc-800 shadow-sm border border-zinc-200 dark:border-zinc-700 text-xs font-bold text-zinc-700 dark:text-zinc-300 hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-95"
+                      >
+                        Carregar mais resultados
+                      </button>
                     </div>
                   )}
                 </div>
