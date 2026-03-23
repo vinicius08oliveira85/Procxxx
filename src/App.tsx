@@ -1061,7 +1061,7 @@ export default function App() {
                     {activeTask.fileC ? "Remover Tabela C" : "Adicionar Tabela C (Opcional)"}
                   </button>
 
-                {activeTask.fileC && activeTask.fileC.name && (
+                {activeTask.fileC && (
                   <motion.div 
                     initial={{ opacity: 0, y: 20, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -2182,20 +2182,22 @@ function UploadCard({ title, description, file, onUpload, onRemove, onSheetChang
   onRemove: () => void;
   onSheetChange: (sheetName: string) => void;
 }) {
+  const hasFile = file && file.name;
   return (
     <div className={cn(
       "fluent-card p-3 transition-all group relative overflow-hidden",
-      file ? "ring-2 ring-blue-500/50" : "hover:ring-2 hover:ring-blue-500/30"
+      hasFile ? "ring-2 ring-blue-500/50" : "hover:ring-2 hover:ring-blue-500/30"
     )}>
       <div className="flex items-center gap-3">
         <div className={cn(
           "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all",
-          file ? "bg-blue-600 text-white" : "dark:bg-white/5 bg-black/5 text-zinc-500 group-hover:text-blue-500"
+          hasFile ? "bg-blue-600 text-white" : "dark:bg-white/5 bg-black/5 text-zinc-500 group-hover:text-blue-500"
         )}>
           {file ? <TableIcon size={18} /> : <FileUp size={18} />}
+          {hasFile ? <TableIcon size={18} /> : <FileUp size={18} />}
         </div>
 
-        {file ? (
+        {hasFile && file ? (
           <>
             <div className="flex-1 min-w-0">
               <span className="font-bold text-xs sm:text-sm truncate block text-zinc-900 dark:text-white">{file.name}</span>
