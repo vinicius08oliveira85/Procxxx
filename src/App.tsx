@@ -633,7 +633,7 @@ export default function App() {
       }
     }
 
-    const activeColFilters = Object.entries(columnFilters).filter(([, set]) => set.size > 0);
+    const activeColFilters = Object.entries(columnFilters);
     if (activeColFilters.length > 0) {
       data = data.filter(row =>
         activeColFilters.every(([col, allowedSet]) =>
@@ -2073,14 +2073,13 @@ export default function App() {
                                 onApply={(set) => {
                                   setColumnFilters(prev => {
                                     const next = { ...prev };
-                                    if (set === null || set.size === 0) {
+                                    if (set === null) {
                                       delete next[col.id];
                                     } else {
                                       next[col.id] = set;
                                     }
                                     return next;
                                   });
-                                  setOpenFilterCol(null);
                                 }}
                                 onClose={() => setOpenFilterCol(null)}
                               />
@@ -2324,7 +2323,7 @@ function ColumnFilterDropdown({
           onClick={() => onApply(new Set())}
           className="text-[10px] font-bold text-zinc-500 dark:hover:text-zinc-300 hover:text-zinc-700 transition-colors"
         >
-          Limpar
+          Desmarcar Tudo
         </button>
       </div>
 
@@ -2416,6 +2415,9 @@ function StepIndicator({ currentStep }: { currentStep: Step }) {
           );
         })}
       </div>
+    </div>
+  );
+}
     </div>
   );
 }
