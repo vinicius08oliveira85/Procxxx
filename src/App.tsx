@@ -33,6 +33,8 @@ import {
   Upload,
   Plus,
   ChevronRight,
+  Pencil,
+  type LucideIcon,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -83,6 +85,15 @@ interface LookupTask {
   divergentPairs: { colA: string; colLookup: string }[];
   showAdvanced: boolean;
   columnSettings: ColumnSetting[];
+}
+
+/** `Object.entries` perde o tipo dos valores; aqui preservamos `Set<string>`. */
+function columnFilterEntries(filters: Record<string, Set<string>>): [string, Set<string>][] {
+  return Object.entries(filters) as [string, Set<string>][];
+}
+
+function columnFilterValueSets(filters: Record<string, Set<string>>): Set<string>[] {
+  return Object.values(filters) as Set<string>[];
 }
 
 // Web Worker Code extracted to a constant for better performance and maintainability
@@ -634,7 +645,7 @@ export default function App() {
       }
     }
 
-    const activeColFilters = Object.entries(columnFilters);
+    const activeColFilters = columnFilterEntries(columnFilters);
     if (activeColFilters.length > 0) {
       data = data.filter(row =>
         activeColFilters.every(([col, allowedSet]) =>
@@ -1016,6 +1027,7 @@ export default function App() {
                   onUpload={(e) => handleFileUpload(e, 'A')}
                   onRemove={() => updateActiveTask({ fileA: null })}
                   onSheetChange={(sheetName) => updateActiveTask({ fileA: activeTask.fileA ? { ...activeTask.fileA, selectedSheet: sheetName } : null })}
+                  onRename={(newName) => updateActiveTask({ fileA: activeTask.fileA ? { ...activeTask.fileA, name: newName } : null })}
                 />
                 <UploadCard 
                   title="2. Tabela de Busca (Fonte)" 
@@ -1024,6 +1036,7 @@ export default function App() {
                   onUpload={(e) => handleFileUpload(e, 'B')}
                   onRemove={() => updateActiveTask({ fileB: null })}
                   onSheetChange={(sheetName) => updateActiveTask({ fileB: activeTask.fileB ? { ...activeTask.fileB, selectedSheet: sheetName } : null })}
+                  onRename={(newName) => updateActiveTask({ fileB: activeTask.fileB ? { ...activeTask.fileB, name: newName } : null })}
                 />
               </div>
 
@@ -1075,6 +1088,7 @@ export default function App() {
                       onUpload={(e) => handleFileUpload(e, 'C')}
                       onRemove={() => updateActiveTask({ fileC: null })}
                       onSheetChange={(sheetName) => updateActiveTask({ fileC: activeTask.fileC ? { ...activeTask.fileC, selectedSheet: sheetName } : null })}
+                      onRename={(newName) => updateActiveTask({ fileC: activeTask.fileC ? { ...activeTask.fileC, name: newName } : null })}
                     />
                   </motion.div>
                 )}
@@ -1101,14 +1115,14 @@ export default function App() {
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex gap-1 sm:gap-2 p-1 sm:p-1.5 mica rounded-xl sm:rounded-2xl border border-white/20 dark:border-white/10 w-full sm:w-fit overflow-x-auto scrollbar-none" style={{ scrollbarWidth: 'none' }}>
-                  {[
-                    { id: 'keys', label: '1. Conexão', icon: Target },
-                    { id: 'columns', label: '2. Colunas a Trazer', icon: Columns },
-                    { id: 'advanced', label: '3. Opções Extras', icon: Settings2 }
-                  ].map((tab) => (
+                  {([
+                    { id: 'keys' as const, label: '1. Conexão', icon: Target },
+                    { id: 'columns' as const, label: '2. Colunas a Trazer', icon: Columns },
+                    { id: 'advanced' as const, label: '3. Opções Extras', icon: Settings2 },
+                  ] satisfies { id: 'keys' | 'columns' | 'advanced'; label: string; icon: LucideIcon }[]).map((tab) => (
                     <button
                       key={tab.id}
-                      onClick={() => setConfigTab(tab.id as any)}
+                      onClick={() => setConfigTab(tab.id)}
                       className={cn(
                         "flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-300 font-medium text-xs whitespace-nowrap flex-1 sm:flex-none justify-center",
                         configTab === tab.id 
@@ -1524,17 +1538,17 @@ export default function App() {
                             </div>
                           </div>
                           <div className="space-y-2">
-                            {[
-                              { id: 'trimSpaces', label: 'Remover espaços extras', field: 'trimSpaces', help: 'Remove espaços no início e fim do texto.' },
-                              { id: 'ignoreCase', label: 'Ignorar Maiúsculas/Minúsculas', field: 'ignoreCase', help: 'Trata "TEXTO" e "texto" como iguais.' },
-                              { id: 'removeSpecialChars', label: 'Remover Caracteres Especiais', field: 'removeSpecialChars', help: 'Remove acentos e símbolos (ex: "ç" vira "c").' }
-                            ].map((opt) => (
+                            {([
+                              { id: 'trimSpaces', label: 'Remover espaços extras', field: 'trimSpaces' as const, help: 'Remove espaços no início e fim do texto.' },
+                              { id: 'ignoreCase', label: 'Ignorar Maiúsculas/Minúsculas', field: 'ignoreCase' as const, help: 'Trata "TEXTO" e "texto" como iguais.' },
+                              { id: 'removeSpecialChars', label: 'Remover Caracteres Especiais', field: 'removeSpecialChars' as const, help: 'Remove acentos e símbolos (ex: "ç" vira "c").' },
+                            ] as const).map((opt) => (
                               <div key={opt.id} className="flex items-center justify-between group/item">
                                 <label className="flex items-center gap-2 cursor-pointer group">
                                   <div className="relative flex items-center">
                                     <input 
                                       type="checkbox" 
-                                      checked={(activeTask as any)[opt.field]} 
+                                      checked={activeTask[opt.field]} 
                                       onChange={e => updateActiveTask({ [opt.field]: e.target.checked })} 
                                       className="peer sr-only" 
                                     />
@@ -1570,7 +1584,7 @@ export default function App() {
                           <div className="space-y-1.5">
                             <select 
                               value={activeTask.duplicateStrategy}
-                              onChange={(e: any) => updateActiveTask({ duplicateStrategy: e.target.value })}
+                              onChange={(e) => updateActiveTask({ duplicateStrategy: e.target.value as LookupTask['duplicateStrategy'] })}
                               className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold outline-none focus:border-blue-500"
                             >
                               <option value="first">Usar o primeiro encontrado</option>
@@ -1602,7 +1616,7 @@ export default function App() {
                           <div className="space-y-1.5">
                             <select 
                               value={activeTask.matchMode}
-                              onChange={(e: any) => updateActiveTask({ matchMode: parseInt(e.target.value) })}
+                              onChange={(e) => updateActiveTask({ matchMode: Number(e.target.value) as LookupTask['matchMode'] })}
                               className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold outline-none focus:border-blue-500"
                               disabled={!activeTask.exactMatch}
                             >
@@ -1744,7 +1758,7 @@ export default function App() {
                           <div className="space-y-1.5">
                             <select 
                               value={activeTask.searchDirection}
-                              onChange={(e: any) => updateActiveTask({ searchDirection: parseInt(e.target.value) })}
+                              onChange={(e) => updateActiveTask({ searchDirection: Number(e.target.value) as LookupTask['searchDirection'] })}
                               className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold outline-none focus:border-blue-500"
                             >
                               <option value="1">Do Primeiro ao Último (Padrão)</option>
@@ -1864,7 +1878,7 @@ export default function App() {
                         <h2 className="text-lg sm:text-xl font-black tracking-tight shrink-0">Resultados</h2>
                         {/* Botões de ação — visíveis somente em mobile aqui */}
                         <div className="flex items-center gap-1.5 sm:hidden shrink-0">
-                          {Object.values(columnFilters).some(s => s.size > 0) && (
+                          {columnFilterValueSets(columnFilters).some(s => s.size > 0) && (
                             <button
                               onClick={() => setColumnFilters({})}
                               className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-bold text-amber-400 hover:bg-amber-500/10 border border-amber-500/20 transition-all active:scale-95"
@@ -1892,15 +1906,15 @@ export default function App() {
                       </div>
                       <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-0.5" style={{ scrollbarWidth: 'none' }}>
                         <div className="flex p-1 dark:bg-white/5 bg-black/5 rounded-xl gap-1 border dark:border-white/5 border-black/10 shrink-0">
-                          {[
-                            { id: 'all', label: 'Todos', icon: Layers },
-                            { id: 'matched', label: 'Encontrados', icon: CheckCircle2 },
-                            { id: 'orphans', label: 'Órfãos', icon: AlertCircle },
-                            { id: 'divergent', label: 'Divergentes', icon: ArrowUpDown },
-                          ].map(f => (
+                          {([
+                            { id: 'all' as const, label: 'Todos', icon: Layers },
+                            { id: 'matched' as const, label: 'Encontrados', icon: CheckCircle2 },
+                            { id: 'orphans' as const, label: 'Órfãos', icon: AlertCircle },
+                            { id: 'divergent' as const, label: 'Divergentes', icon: ArrowUpDown },
+                          ] satisfies { id: LookupTask['resultFilter']; label: string; icon: LucideIcon }[]).map(f => (
                             <button
                               key={f.id}
-                              onClick={() => updateActiveTask({ resultFilter: f.id as any })}
+                              onClick={() => updateActiveTask({ resultFilter: f.id })}
                               className={cn(
                                 "flex items-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all whitespace-nowrap",
                                 activeTask.resultFilter === f.id && f.id === 'divergent'
@@ -1934,7 +1948,7 @@ export default function App() {
 
                     {/* Direita: botões de ação — ocultos em mobile (exibidos acima) */}
                     <div className="hidden sm:flex items-center gap-2 shrink-0">
-                      {Object.values(columnFilters).some(s => s.size > 0) && (
+                      {columnFilterValueSets(columnFilters).some(s => s.size > 0) && (
                         <button
                           onClick={() => setColumnFilters({})}
                           className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-amber-400 hover:bg-amber-500/10 border border-amber-500/20 transition-all active:scale-95"
@@ -2200,15 +2214,33 @@ export default function App() {
    * Componente de cartão para upload de arquivos Excel.
    * Exibe o status do arquivo, permite trocar de planilha e remover o arquivo.
    */
-function UploadCard({ title, description, file, onUpload, onRemove, onSheetChange }: { 
+function UploadCard({ title, description, file, onUpload, onRemove, onSheetChange, onRename }: { 
   title: string; 
   description: string; 
   file: ExcelData | null;
   onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemove: () => void;
   onSheetChange: (sheetName: string) => void;
+  onRename?: (newName: string) => void;
 }) {
   const hasFile = file && file.name;
+  const [isEditing, setIsEditing] = useState(false);
+  const [tempName, setTempName] = useState("");
+
+  const startEditing = () => {
+    if (file) {
+      setTempName(file.name);
+      setIsEditing(true);
+    }
+  };
+
+  const saveName = () => {
+    if (tempName.trim() && onRename) {
+      onRename(tempName.trim());
+    }
+    setIsEditing(false);
+  };
+
   return (
     <div className={cn(
       "fluent-card p-3 transition-all group relative overflow-hidden",
@@ -2220,13 +2252,29 @@ function UploadCard({ title, description, file, onUpload, onRemove, onSheetChang
           hasFile ? "bg-blue-600 text-white" : "dark:bg-white/5 bg-black/5 text-zinc-500 group-hover:text-blue-500"
         )}>
           {file ? <TableIcon size={18} /> : <FileUp size={18} />}
-          {hasFile ? <TableIcon size={18} /> : <FileUp size={18} />}
         </div>
 
         {hasFile && file ? (
           <>
             <div className="flex-1 min-w-0">
-              <span className="font-bold text-xs sm:text-sm truncate block text-zinc-900 dark:text-white">{file.name}</span>
+              {isEditing ? (
+                <div className="flex items-center gap-2 mb-0.5">
+                  <input 
+                    type="text" 
+                    value={tempName}
+                    onChange={(e) => setTempName(e.target.value)}
+                    onBlur={saveName}
+                    onKeyDown={(e) => e.key === 'Enter' && saveName()}
+                    autoFocus
+                    className="w-full bg-transparent border-b border-blue-500 outline-none text-xs sm:text-sm font-bold text-zinc-900 dark:text-white pb-0.5"
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 group/name cursor-pointer mb-0.5" onClick={startEditing} title="Clique para renomear">
+                  <span className="font-bold text-xs sm:text-sm truncate block text-zinc-900 dark:text-white">{file.name}</span>
+                  <Pencil size={12} className="text-zinc-400 opacity-0 group-hover/name:opacity-100 transition-opacity" />
+                </div>
+              )}
               <span className="text-[10px] text-zinc-500 font-medium">
                 {file.sheets[file.selectedSheet].length} registros
               </span>
@@ -2295,7 +2343,7 @@ function ColumnFilterDropdown({
   const [search, setSearch] = React.useState('');
   const ref = React.useRef<HTMLDivElement>(null);
 
-  const uniqueValues = React.useMemo(() => {
+  const uniqueValues = React.useMemo((): string[] => {
     const vals = new Set(allData.map(row => String(row[colId] ?? '')));
     return [...vals].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
   }, [allData, colId]);
@@ -2309,7 +2357,7 @@ function ColumnFilterDropdown({
   const isChecked = (val: string) => isAllSelected || selectedSet!.has(val);
 
   const toggle = (val: string) => {
-    const base = isAllSelected ? new Set(uniqueValues) : new Set(selectedSet!);
+    const base: Set<string> = isAllSelected ? new Set(uniqueValues) : new Set(selectedSet!);
     if (base.has(val)) base.delete(val);
     else base.add(val);
     onApply(base.size === uniqueValues.length ? null : base);
@@ -2406,7 +2454,7 @@ function ColumnFilterDropdown({
    * Indicador visual de progresso dos passos da aplicação.
    */
 function StepIndicator({ currentStep }: { currentStep: Step }) {
-  const steps: { id: Step; label: string; icon: any }[] = [
+  const steps: { id: Step; label: string; icon: LucideIcon }[] = [
     { id: 'upload', label: 'Upload', icon: Upload },
     { id: 'configure', label: 'Configurar', icon: Settings },
     { id: 'result', label: 'Resultado', icon: CheckCircle2 }
