@@ -64,6 +64,14 @@ Retorne JSON com o formato:
 
 // --- Núcleo suggestConfig (antes suggestConfig.ts) ---
 
+const MAX_LOG_SNIPPET = 1200;
+
+/** Trecho seguro para logs (sem dados sensíveis; evita linhas gigantes). */
+function clipForLog(s: string, max = MAX_LOG_SNIPPET): string {
+  const t = s.replace(/\s+/g, ' ').trim();
+  return t.length <= max ? t : `${t.slice(0, max)}…`;
+}
+
 async function geminiGenerateJsonText(
   apiKey: string,
   model: string,
@@ -73,34 +81,54 @@ async function geminiGenerateJsonText(
   const modelId = model.replace(/^models\//, '');
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId)}:generateContent`;
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-goog-api-key': apiKey,
-    },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: systemInstruction }] },
-      contents: [{ role: 'user', parts: [{ text: userText }] }],
-      generationConfig: {
-        responseMimeType: 'application/json',
-        maxOutputTokens: 2048,
-        temperature: 0.2,
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
       },
-    }),
-  });
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemInstruction }] },
+        contents: [{ role: 'user', parts: [{ text: userText }] }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          maxOutputTokens: 2048,
+          temperature: 0.2,
+        },
+      }),
+    });
+  } catch (netErr) {
+    console.error('[suggest-config][gemini] fetch failed', {
+      model: modelId,
+      message: netErr instanceof Error ? netErr.message : String(netErr),
+    });
+    throw new Error('GEMINI_NETWORK');
+  }
 
   const rawBody = await res.text();
   let data: Record<string, unknown> = {};
   try {
     if (rawBody) data = JSON.parse(rawBody) as Record<string, unknown>;
   } catch {
+    console.error('[suggest-config][gemini] response body is not JSON', {
+      httpStatus: res.status,
+      model: modelId,
+      bodyPreview: clipForLog(rawBody),
+    });
     throw new Error(`GEMINI_HTTP_${res.status}: corpo da resposta não é JSON válido`);
   }
 
   if (!res.ok) {
     const errObj = data.error as { message?: string; status?: string } | undefined;
     const detail = errObj?.message ?? res.statusText;
+    console.error('[suggest-config][gemini] API HTTP error', {
+      httpStatus: res.status,
+      model: modelId,
+      googleMessage: detail,
+      googleStatus: errObj?.status ?? null,
+    });
     if (res.status === 401 || res.status === 403) {
       throw new Error('GEMINI_AUTH');
     }
@@ -108,10 +136,18 @@ async function geminiGenerateJsonText(
   }
 
   const candidates = data.candidates as
-    | Array<{ content?: { parts?: Array<{ text?: string }> } }>
+    | Array<{ content?: { parts?: Array<{ text?: string }> }; finishReason?: string }>
     | undefined;
   const text = candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text || typeof text !== 'string') {
+    const c0 = candidates?.[0];
+    console.error('[suggest-config][gemini] empty or missing text', {
+      model: modelId,
+      responseKeys: Object.keys(data),
+      promptFeedback: data.promptFeedback ?? null,
+      finishReason: c0?.finishReason ?? null,
+      candidatesLength: candidates?.length ?? 0,
+    });
     throw new Error('EMPTY_MODEL_RESPONSE');
   }
   return text;
@@ -240,11 +276,19 @@ export async function runSuggestConfig(
   try {
     json = parseJsonFromModelText(text);
   } catch {
+    console.error('[suggest-config][gemini] model output is not valid JSON', {
+      model,
+      textPreview: clipForLog(text, 800),
+    });
     throw new Error('MODEL_JSON_PARSE');
   }
 
   const aiParsed = aiRawSchema.safeParse(json);
   if (!aiParsed.success) {
+    console.error('[suggest-config][gemini] model JSON does not match schema', {
+      model,
+      zodIssues: aiParsed.error.issues.slice(0, 16),
+    });
     throw new Error('MODEL_SCHEMA_MISMATCH');
   }
 
@@ -332,6 +376,12 @@ async function handleSuggest(req: VercelRequest, res: VercelResponse): Promise<v
       sendJson(res, 502, {
         error:
           'Chave Gemini inválida ou sem permissão. Confira GEMINI_API_KEY no painel da Vercel (Production e Preview).',
+      });
+      return;
+    }
+    if (msg === 'GEMINI_NETWORK') {
+      sendJson(res, 502, {
+        error: 'Não foi possível contactar a API do Gemini (rede). Tente de novo ou veja os logs da função.',
       });
       return;
     }

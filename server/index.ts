@@ -63,26 +63,37 @@ app.post('/api/ai/suggest-config', async (req, res) => {
     }
     const msg = e instanceof Error ? e.message : String(e);
     if (msg === 'GEMINI_AUTH') {
+      console.error('[suggest-config][gemini] auth rejected (401/403)');
       res.status(502).json({
         error: 'Chave Gemini inválida ou sem permissão. Confira GEMINI_API_KEY no .env / .env.local.',
       });
       return;
     }
-    if (msg.startsWith('GEMINI_HTTP_')) {
+    if (msg === 'GEMINI_NETWORK') {
+      console.error('[suggest-config][gemini] network error (detalhe já logado em api/ai/suggest-config)');
       res.status(502).json({
-        error: 'A API do Gemini recusou a requisição. Verifique cota e GEMINI_MODEL.',
+        error: 'Não foi possível contactar a API do Gemini (rede). Tente de novo.',
+      });
+      return;
+    }
+    if (msg.startsWith('GEMINI_HTTP_')) {
+      console.error('[suggest-config][gemini] upstream HTTP (detalhe já logado em api/ai/suggest-config)', msg);
+      res.status(502).json({
+        error: 'A API do Gemini recusou a requisição. Verifique cota e GEMINI_MODEL (veja o terminal para detalhes).',
       });
       return;
     }
     if (msg === 'MODEL_SCHEMA_MISMATCH' || msg === 'MODEL_JSON_PARSE') {
+      console.error('[suggest-config][gemini] parse/schema (detalhe já logado em api/ai/suggest-config)', msg);
       res.status(502).json({ error: 'A resposta do modelo não pôde ser interpretada. Tente novamente.' });
       return;
     }
     if (msg === 'EMPTY_MODEL_RESPONSE') {
+      console.error('[suggest-config][gemini] empty output (detalhe já logado em api/ai/suggest-config)');
       res.status(502).json({ error: 'O modelo não retornou conteúdo. Tente novamente.' });
       return;
     }
-    console.error('[suggest-config]', msg);
+    console.error('[suggest-config] unexpected', msg, e);
     res.status(502).json({ error: 'Falha ao consultar o modelo. Tente novamente mais tarde.' });
   }
 });
