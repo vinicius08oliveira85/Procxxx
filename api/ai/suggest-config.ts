@@ -37,20 +37,30 @@ function parseBody(req: VercelRequest): unknown {
   return raw;
 }
 
+/** Evita segundo 500 se res.json() falhar (ex.: headers já enviados). */
+function sendJson(res: VercelResponse, status: number, payload: unknown): void {
+  try {
+    if (res.headersSent) return;
+    res.status(status).json(payload);
+  } catch (err) {
+    console.error('[suggest-config] sendJson failed', err);
+  }
+}
+
 async function handleSuggest(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method === 'OPTIONS') {
-    res.status(204).end();
+    if (!res.headersSent) res.status(204).end();
     return;
   }
 
   if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Método não permitido.' });
+    sendJson(res, 405, { error: 'Método não permitido.' });
     return;
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    res.status(503).json({
+    sendJson(res, 503, {
       error: 'Serviço de IA indisponível: defina GEMINI_API_KEY no ambiente do servidor.',
     });
     return;
@@ -59,41 +69,43 @@ async function handleSuggest(req: VercelRequest, res: VercelResponse): Promise<v
   const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
   const body = parseBody(req);
   if (body === undefined) {
-    res.status(400).json({ error: 'Corpo JSON ausente ou inválido.' });
+    sendJson(res, 400, { error: 'Corpo JSON ausente ou inválido.' });
     return;
   }
 
   try {
     const result = await runSuggestConfig(body, apiKey, model);
-    res.status(200).json(result);
+    sendJson(res, 200, result);
   } catch (e) {
     if (isZodLike(e)) {
-      res.status(400).json({ error: 'Corpo da requisição inválido.' });
+      sendJson(res, 400, { error: 'Corpo da requisição inválido.' });
       return;
     }
     const msg = e instanceof Error ? e.message : String(e);
     if (msg === 'GEMINI_AUTH') {
-      res.status(502).json({
-        error: 'Chave Gemini inválida ou sem permissão. Confira GEMINI_API_KEY no painel da Vercel (Production e Preview).',
+      sendJson(res, 502, {
+        error:
+          'Chave Gemini inválida ou sem permissão. Confira GEMINI_API_KEY no painel da Vercel (Production e Preview).',
       });
       return;
     }
     if (msg.startsWith('GEMINI_HTTP_')) {
-      res.status(502).json({
-        error: 'A API do Gemini recusou a requisição. Verifique cota, modelo (GEMINI_MODEL) e os logs da função.',
+      sendJson(res, 502, {
+        error:
+          'A API do Gemini recusou a requisição. Verifique cota, modelo (GEMINI_MODEL) e os logs da função.',
       });
       return;
     }
     if (msg === 'MODEL_SCHEMA_MISMATCH' || msg === 'MODEL_JSON_PARSE') {
-      res.status(502).json({ error: 'A resposta do modelo não pôde ser interpretada. Tente novamente.' });
+      sendJson(res, 502, { error: 'A resposta do modelo não pôde ser interpretada. Tente novamente.' });
       return;
     }
     if (msg === 'EMPTY_MODEL_RESPONSE') {
-      res.status(502).json({ error: 'O modelo não retornou conteúdo. Tente novamente.' });
+      sendJson(res, 502, { error: 'O modelo não retornou conteúdo. Tente novamente.' });
       return;
     }
     console.error('[suggest-config]', msg, e);
-    res.status(502).json({ error: 'Falha ao consultar o modelo. Tente novamente mais tarde.' });
+    sendJson(res, 502, { error: 'Falha ao consultar o modelo. Tente novamente mais tarde.' });
   }
 }
 
@@ -102,10 +114,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     await handleSuggest(req, res);
   } catch (top: unknown) {
     console.error('[suggest-config] fatal', top);
-    if (!res.headersSent) {
-      res.status(500).json({
-        error: 'Erro interno na função. Consulte os logs em Vercel → Functions.',
-      });
-    }
+    sendJson(res, 500, {
+      error: 'Erro interno na função. Consulte os logs em Vercel → Functions.',
+    });
   }
 }
