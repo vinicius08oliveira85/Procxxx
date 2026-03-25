@@ -30,7 +30,7 @@ View your app in AI Studio: https://ai.studio/apps/3a39bb1b-adca-416d-a6f0-c648f
 O repositório inclui [vercel.json](vercel.json) e funções em [api/](api/):
 
 - **Build:** `npm run build` (preset Vite / `outputDirectory`: `dist`).
-- **Assistente IA:** `POST /api/ai/suggest-config` é uma Serverless Function ([api/ai/suggest-config.ts](api/ai/suggest-config.ts)) que reutiliza [server/suggestConfig.ts](server/suggestConfig.ts). A chamada ao Gemini usa **HTTP (`fetch`)** à API oficial, sem o SDK `@google/genai`, para evitar falhas no bundle serverless.
+- **Assistente IA:** `POST /api/ai/suggest-config` é uma Serverless Function ([api/ai/suggest-config.ts](api/ai/suggest-config.ts)) que reutiliza [api/lib/suggestConfig.ts](api/lib/suggestConfig.ts) (em `api/lib/` para o deploy serverless incluir o código). A chamada ao Gemini usa **HTTP (`fetch`)** à API oficial, sem o SDK `@google/genai`, para evitar falhas no bundle serverless.
 - **Health:** `GET /api/health` ([api/health.ts](api/health.ts)).
 
 No painel da Vercel (**Settings → Environment Variables**), defina pelo menos **`GEMINI_API_KEY`**. Opcional: **`GEMINI_MODEL`**. Não é necessário `VITE_API_ORIGIN` quando front e API estão no mesmo deploy.
