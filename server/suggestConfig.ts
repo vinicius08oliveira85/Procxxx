@@ -3,7 +3,7 @@ import {
   SUGGEST_CONFIG_SYSTEM_INSTRUCTION,
   buildSuggestConfigUserMessage,
   type SuggestConfigPromptInput,
-} from '../src/ai/prompts.ts';
+} from './geminiPrompts.ts';
 
 /**
  * Chamada HTTP direta à API Gemini (compatível com Vercel Serverless; evita @google/genai/node no bundle).
@@ -34,7 +34,13 @@ async function geminiGenerateJsonText(
     }),
   });
 
-  const data = (await res.json()) as Record<string, unknown>;
+  const rawBody = await res.text();
+  let data: Record<string, unknown> = {};
+  try {
+    if (rawBody) data = JSON.parse(rawBody) as Record<string, unknown>;
+  } catch {
+    throw new Error(`GEMINI_HTTP_${res.status}: corpo da resposta não é JSON válido`);
+  }
 
   if (!res.ok) {
     const errObj = data.error as { message?: string; status?: string } | undefined;

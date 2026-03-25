@@ -1,6 +1,6 @@
 /**
- * Textos usados pelo endpoint de sugestão de configuração (servidor + documentação).
- * O modelo deve responder apenas com JSON válido (reforçado por responseMimeType no servidor).
+ * Textos do assistente de configuração (só servidor / bundle da função Vercel).
+ * Mantido em server/ para não depender de src/ no deploy serverless.
  */
 
 export const SUGGEST_CONFIG_SYSTEM_INSTRUCTION = `Você é um assistente especializado em cruzamento de planilhas (tipo PROCV/XLOOKUP).
@@ -23,9 +23,6 @@ export type SuggestConfigPromptInput = {
   sampleRowsC?: Record<string, string>[];
 };
 
-/**
- * Monta o texto do usuário enviado ao modelo (cabeçalhos + amostras truncadas).
- */
 export function buildSuggestConfigUserMessage(input: SuggestConfigPromptInput): string {
   const hasC = Boolean(input.headersC && input.headersC.length > 0);
   const parts: string[] = [
@@ -61,7 +58,6 @@ Retorne JSON com o formato:
   return parts.join('\n');
 }
 
-/** Schema esperado na resposta (documentação / alinhamento com o servidor). */
 export const SUGGEST_CONFIG_JSON_SHAPE = `{
   "keyA": string,
   "keyB": string,
