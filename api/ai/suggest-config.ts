@@ -72,6 +72,18 @@ async function handleSuggest(req: VercelRequest, res: VercelResponse): Promise<v
       return;
     }
     const msg = e instanceof Error ? e.message : String(e);
+    if (msg === 'GEMINI_AUTH') {
+      res.status(502).json({
+        error: 'Chave Gemini inválida ou sem permissão. Confira GEMINI_API_KEY no painel da Vercel (Production e Preview).',
+      });
+      return;
+    }
+    if (msg.startsWith('GEMINI_HTTP_')) {
+      res.status(502).json({
+        error: 'A API do Gemini recusou a requisição. Verifique cota, modelo (GEMINI_MODEL) e os logs da função.',
+      });
+      return;
+    }
     if (msg === 'MODEL_SCHEMA_MISMATCH' || msg === 'MODEL_JSON_PARSE') {
       res.status(502).json({ error: 'A resposta do modelo não pôde ser interpretada. Tente novamente.' });
       return;
