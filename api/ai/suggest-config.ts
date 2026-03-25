@@ -1,10 +1,10 @@
 /**
  * Vercel Serverless: mesma rota que o Express em desenvolvimento.
- * Import estático para o bundler incluir server/suggestConfig (import() com .ts quebra em runtime na Vercel).
+ * Lógica compartilhada em api/lib/ (a Vercel não empacota corretamente imports para server/ no Lambda).
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { ZodError } from 'zod';
-import { runSuggestConfig } from '../../server/suggestConfig.ts';
+import { runSuggestConfig } from '../lib/suggestConfig';
 
 export const config = {
   api: {

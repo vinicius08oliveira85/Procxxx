@@ -3,7 +3,7 @@ import {
   SUGGEST_CONFIG_SYSTEM_INSTRUCTION,
   buildSuggestConfigUserMessage,
   type SuggestConfigPromptInput,
-} from './geminiPrompts.ts';
+} from './geminiPrompts';
 
 /**
  * Chamada HTTP direta à API Gemini (compatível com Vercel Serverless; evita @google/genai/node no bundle).

@@ -1,6 +1,6 @@
 /**
- * Textos do assistente de configuração (só servidor / bundle da função Vercel).
- * Mantido em server/ para não depender de src/ no deploy serverless.
+ * Textos do assistente de configuração (só servidor).
+ * Local em api/lib/ para o rastreamento da Vercel incluir no bundle da função (imports para server/ quebravam em runtime).
  */
 
 export const SUGGEST_CONFIG_SYSTEM_INSTRUCTION = `Você é um assistente especializado em cruzamento de planilhas (tipo PROCV/XLOOKUP).

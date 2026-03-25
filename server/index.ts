@@ -8,7 +8,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { ZodError } from 'zod';
-import { runSuggestConfig } from './suggestConfig.ts';
+import { runSuggestConfig } from '../api/lib/suggestConfig';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
