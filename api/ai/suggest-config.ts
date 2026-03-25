@@ -1,9 +1,10 @@
 /**
  * Vercel Serverless: mesma rota que o Express em desenvolvimento.
- * Import dinâmico reduz falhas de bundle; rewrite da SPA não deve capturar /api (ver vercel.json).
+ * Import estático para o bundler incluir server/suggestConfig (import() com .ts quebra em runtime na Vercel).
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { ZodError } from 'zod';
+import { runSuggestConfig } from '../../server/suggestConfig.ts';
 
 export const config = {
   api: {
@@ -61,8 +62,6 @@ async function handleSuggest(req: VercelRequest, res: VercelResponse): Promise<v
     res.status(400).json({ error: 'Corpo JSON ausente ou inválido.' });
     return;
   }
-
-  const { runSuggestConfig } = await import('../../server/suggestConfig.ts');
 
   try {
     const result = await runSuggestConfig(body, apiKey, model);
