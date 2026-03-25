@@ -55,6 +55,22 @@ interface ColumnSetting {
   pinned: boolean;
 }
 
+type PairColumnSide = 'a' | 'lookup';
+
+/** Destaque visual para colunas que formam um par de comparação (lado a lado na grade). */
+function pairHighlightClasses(
+  colId: string,
+  meta: Record<string, { pairIndex: number; side: PairColumnSide }>
+): string {
+  const m = meta[colId];
+  if (!m) return '';
+  const isEven = m.pairIndex % 2 === 0;
+  const borderColor = isEven ? 'border-orange-500/55' : 'border-amber-500/55';
+  const bgTint = isEven ? 'bg-orange-500/[0.08]' : 'bg-amber-500/[0.08]';
+  if (m.side === 'a') return cn(borderColor, bgTint, 'border-l-2');
+  return cn(borderColor, bgTint, 'border-r-2');
+}
+
 interface LookupTask {
   id: string;
   name: string;
@@ -679,6 +695,51 @@ export default function App() {
     const unpinned = visible.filter(c => !c.pinned);
     return [...pinned, ...unpinned];
   }, [activeTask.columnSettings]);
+
+  /**
+   * Reordena colunas para manter cada par (A ↔ lookup) adjacente e expõe metadados para destaque na grade.
+   */
+  const { tableDisplayColumns, pairColumnMeta } = useMemo(() => {
+    const empty: Record<string, { pairIndex: number; side: PairColumnSide }> = {};
+    const configured = activeTask.divergentPairs.filter(p => p.colA && p.colLookup);
+    if (configured.length === 0) {
+      return { tableDisplayColumns: displayColumns, pairColumnMeta: empty };
+    }
+    const idSet = new Set(displayColumns.map(c => c.id));
+    const validPairs = configured.filter(p => idSet.has(p.colA) && idSet.has(p.colLookup));
+    if (validPairs.length === 0) {
+      return { tableDisplayColumns: displayColumns, pairColumnMeta: empty };
+    }
+
+    const lookupSkip = new Set(validPairs.map(p => p.colLookup));
+    const colAToPair = new Map<string, { colA: string; colLookup: string }>();
+    validPairs.forEach(p => {
+      colAToPair.set(p.colA, { colA: p.colA, colLookup: p.colLookup });
+    });
+
+    const pairMeta: Record<string, { pairIndex: number; side: PairColumnSide }> = {};
+    validPairs.forEach((p, i) => {
+      pairMeta[p.colA] = { pairIndex: i, side: 'a' };
+      pairMeta[p.colLookup] = { pairIndex: i, side: 'lookup' };
+    });
+
+    const byId = new Map(displayColumns.map(c => [c.id, c]));
+    const out: ColumnSetting[] = [];
+    for (const col of displayColumns) {
+      if (lookupSkip.has(col.id)) continue;
+      const paired = colAToPair.get(col.id);
+      if (paired) {
+        const ca = byId.get(paired.colA);
+        const cl = byId.get(paired.colLookup);
+        if (ca) out.push(ca);
+        if (cl) out.push(cl);
+      } else {
+        out.push(col);
+      }
+    }
+
+    return { tableDisplayColumns: out, pairColumnMeta: pairMeta };
+  }, [displayColumns, activeTask.divergentPairs]);
 
   /**
    * Executa a lógica de cruzamento de dados utilizando um Web Worker para não travar a UI.
@@ -2046,13 +2107,14 @@ export default function App() {
                         <th className="px-3 py-4 text-[10px] font-black uppercase tracking-wider text-zinc-400 w-12 text-center sticky left-0 z-30 dark:bg-zinc-900/95 bg-zinc-50/95 backdrop-blur-xl shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]">
                           #
                         </th>
-                        {displayColumns.map(col => (
+                        {tableDisplayColumns.map(col => (
                           <th key={col.id} className={cn(
                             "px-4 sm:px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em]",
                             col.id.startsWith('Lookup_') ? "text-blue-500 bg-blue-400/5" : 
                             col.id.startsWith('LookupC_') ? "text-purple-500 bg-purple-400/5" :
                             col.id.startsWith('Status_') ? "text-emerald-500 bg-emerald-400/5" :
-                            "dark:text-zinc-500 text-zinc-600"
+                            "dark:text-zinc-500 text-zinc-600",
+                            pairHighlightClasses(col.id, pairColumnMeta)
                           )}>
                             <div className="flex items-center gap-2">
                               <span className="truncate max-w-[150px]" title={col.id}>
@@ -2071,12 +2133,13 @@ export default function App() {
                       </tr>
                       <tr className="dark:bg-zinc-900/80 bg-zinc-50/80 border-b dark:border-white/10 border-black/10">
                         <th className="sticky left-0 z-30 dark:bg-zinc-900/90 bg-zinc-50/90 backdrop-blur-xl shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]"></th>
-                        {displayColumns.map(col => (
+                        {tableDisplayColumns.map(col => (
                           <th key={col.id} className={cn(
                             "px-2 sm:px-3 py-2 relative",
                             col.id.startsWith('Lookup_') ? "bg-blue-400/5" :
                             col.id.startsWith('LookupC_') ? "bg-purple-400/5" :
-                            col.id.startsWith('Status_') ? "bg-emerald-400/5" : ""
+                            col.id.startsWith('Status_') ? "bg-emerald-400/5" : "",
+                            pairHighlightClasses(col.id, pairColumnMeta)
                           )}>
                             <button
                               onClick={() => setOpenFilterCol(openFilterCol === col.id ? null : col.id)}
@@ -2127,14 +2190,15 @@ export default function App() {
                           <td className="px-3 py-3 text-[10px] font-bold text-zinc-400 text-center sticky left-0 z-10 dark:bg-[#0f0f10] bg-[#fcfcfc] group-hover:bg-inherit shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)] border-r dark:border-white/5 border-black/5">
                             {i + 1}
                           </td>
-                          {displayColumns.map(col => {
+                          {tableDisplayColumns.map(col => {
                             const val = row[col.id];
                             return (
                               <td key={col.id} className={cn(
                                 "px-4 sm:px-6 py-3 text-xs font-medium whitespace-nowrap transition-colors",
                                 col.id.startsWith('Lookup_') ? "bg-blue-400/5 dark:text-blue-300 text-blue-600 dark:group-hover:text-blue-200 group-hover:text-blue-700" : 
                                 col.id.startsWith('LookupC_') ? "bg-purple-400/5 dark:text-purple-300 text-purple-600 dark:group-hover:text-purple-200 group-hover:text-purple-700" : 
-                                col.id.startsWith('Status_') ? "bg-emerald-400/5 font-black " + (val === 'VERDADEIRO' ? 'text-emerald-400' : 'text-red-400') : "dark:text-zinc-400 text-zinc-600 dark:group-hover:text-zinc-100 group-hover:text-zinc-900"
+                                col.id.startsWith('Status_') ? "bg-emerald-400/5 font-black " + (val === 'VERDADEIRO' ? 'text-emerald-400' : 'text-red-400') : "dark:text-zinc-400 text-zinc-600 dark:group-hover:text-zinc-100 group-hover:text-zinc-900",
+                                pairHighlightClasses(col.id, pairColumnMeta)
                               )}>
                                 {val === null || val === undefined 
                                   ? <span className="text-red-400/50 italic font-bold">#N/D</span> 
