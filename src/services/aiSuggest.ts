@@ -59,6 +59,11 @@ function httpErrorMessage(status: number): string {
   if (status === 502 || status === 504) {
     return 'Não foi possível contatar a API (proxy/servidor). Verifique se o servidor na porta 3001 está ativo.';
   }
+  if (status === 500) {
+    return (
+      'Erro interno na API (500). Na Vercel: Deployments → Functions → logs; confira GEMINI_API_KEY no ambiente do deploy e Node >= 20.'
+    );
+  }
   return `Erro HTTP ${status}`;
 }
 

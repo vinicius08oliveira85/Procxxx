@@ -38,3 +38,5 @@ No painel da Vercel (**Settings → Environment Variables**), defina pelo menos 
 **Limites:** `maxDuration` das funções está em 60s em [vercel.json](vercel.json); no plano Hobby da Vercel o máximo pode ser menor — ajuste se o deploy falhar na validação.
 
 Fluxo: importe o repo na Vercel, confirme Framework **Vite**, faça deploy e teste **Sugerir com IA** na etapa de configuração.
+
+Se o **manifest** ou outros assets retornarem **401** em URLs `*.vercel.app`, revise **Settings → Deployment Protection** (previews protegidos exigem login e podem bloquear o `fetch` do manifest pelo navegador).

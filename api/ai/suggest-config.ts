@@ -1,9 +1,9 @@
 /**
  * Vercel Serverless: mesma rota que o Express em desenvolvimento.
+ * Import dinâmico reduz falhas de bundle; rewrite da SPA não deve capturar /api (ver vercel.json).
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { ZodError } from 'zod';
-import { runSuggestConfig } from '../../server/suggestConfig.ts';
 
 export const config = {
   api: {
@@ -13,7 +13,30 @@ export const config = {
   },
 };
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+function isZodLike(e: unknown): boolean {
+  if (e instanceof ZodError) return true;
+  return (
+    typeof e === 'object' &&
+    e !== null &&
+    'issues' in e &&
+    Array.isArray((e as { issues: unknown }).issues)
+  );
+}
+
+function parseBody(req: VercelRequest): unknown {
+  const raw = req.body;
+  if (raw == null) return undefined;
+  if (typeof raw === 'string') {
+    try {
+      return JSON.parse(raw) as unknown;
+    } catch {
+      return undefined;
+    }
+  }
+  return raw;
+}
+
+async function handleSuggest(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method === 'OPTIONS') {
     res.status(204).end();
     return;
@@ -33,12 +56,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+  const body = parseBody(req);
+  if (body === undefined) {
+    res.status(400).json({ error: 'Corpo JSON ausente ou inválido.' });
+    return;
+  }
+
+  const { runSuggestConfig } = await import('../../server/suggestConfig.ts');
 
   try {
-    const result = await runSuggestConfig(req.body, apiKey, model);
+    const result = await runSuggestConfig(body, apiKey, model);
     res.status(200).json(result);
   } catch (e) {
-    if (e instanceof ZodError) {
+    if (isZodLike(e)) {
       res.status(400).json({ error: 'Corpo da requisição inválido.' });
       return;
     }
@@ -51,7 +81,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.status(502).json({ error: 'O modelo não retornou conteúdo. Tente novamente.' });
       return;
     }
-    console.error('[suggest-config]', msg);
+    console.error('[suggest-config]', msg, e);
     res.status(502).json({ error: 'Falha ao consultar o modelo. Tente novamente mais tarde.' });
+  }
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
+  try {
+    await handleSuggest(req, res);
+  } catch (top: unknown) {
+    console.error('[suggest-config] fatal', top);
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: 'Erro interno na função. Consulte os logs em Vercel → Functions.',
+      });
+    }
   }
 }
