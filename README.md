@@ -33,7 +33,9 @@ O repositório inclui [vercel.json](vercel.json) e funções em [api/](api/):
 - **Assistente IA:** `POST /api/ai/suggest-config` está todo em [api/ai/suggest-config.ts](api/ai/suggest-config.ts) (lógica + handler no mesmo ficheiro, para a Vercel não depender de imports relativos entre módulos em `api/`). O Express local importa `runSuggestConfig` desse mesmo ficheiro. Chamada ao Gemini via **HTTP (`fetch`)**, sem SDK `@google/genai`.
 - **Health:** `GET /api/health` ([api/health.ts](api/health.ts)).
 
-No painel da Vercel (**Settings → Environment Variables**), defina pelo menos **`GEMINI_API_KEY`**. Opcional: **`GEMINI_MODEL`**. Não é necessário `VITE_API_ORIGIN` quando front e API estão no mesmo deploy.
+No painel da Vercel (**Settings → Environment Variables**), defina pelo menos **`GEMINI_API_KEY`**. Opcional: **`GEMINI_MODEL`** (se não existir, o código usa **`gemini-2.5-flash`**). Não é necessário `VITE_API_ORIGIN` quando front e API estão no mesmo deploy.
+
+**429 / cota:** mensagens como `free_tier` e `limit: 0` vêm do Google (plano gratuito esgotado ou RPM). Ative faturação no projeto da chave ou aguarde o retry. Se nos **logs** o campo `model` for `gemini-2.0-flash` mas esperas 2.5, apaga **`GEMINI_MODEL`** na Vercel ou define `gemini-2.5-flash` e faz **Redeploy** — um valor antigo na env sobrescreve o default do repositório.
 
 **Limites:** `maxDuration` das funções está em 60s em [vercel.json](vercel.json); no plano Hobby da Vercel o máximo pode ser menor — ajuste se o deploy falhar na validação.
 
