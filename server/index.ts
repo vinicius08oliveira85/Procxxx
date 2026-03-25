@@ -2,7 +2,7 @@
  * API Express: proxy seguro para Gemini (chave só no servidor).
  * Em produção (NODE_ENV=production), também serve o build estático do Vite.
  */
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
@@ -13,6 +13,8 @@ import { runSuggestConfig } from './suggestConfig.ts';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.join(__dirname, '..');
+dotenv.config({ path: path.join(rootDir, '.env.local') });
+dotenv.config({ path: path.join(rootDir, '.env') });
 const distDir = path.join(rootDir, 'dist');
 
 const app = express();
