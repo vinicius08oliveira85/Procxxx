@@ -41,4 +41,6 @@ Fluxo: importe o repo na Vercel, confirme Framework **Vite**, faça deploy e tes
 
 Se os logs citarem módulos em falta (`server/...`, `api/lib/...`) após atualizar o código, faça **Redeploy** com **Clear build cache**.
 
+Em falhas do assistente IA (502), nos **logs da função** procure o prefixo **`[suggest-config][gemini]`** — lá aparecem `httpStatus`, `googleMessage`, `model`, etc., sem expor `GEMINI_API_KEY`.
+
 Se o **manifest** ou outros assets retornarem **401** em URLs `*.vercel.app`, revise **Settings → Deployment Protection** (previews protegidos exigem login e podem bloquear o `fetch` do manifest pelo navegador).
