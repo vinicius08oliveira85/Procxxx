@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
+import { ConfigureAiAssistant } from './components/ConfigureAiAssistant';
 
 interface ExcelData {
   name: string;
@@ -723,7 +724,9 @@ export default function App() {
       pairMeta[p.colLookup] = { pairIndex: i, side: 'lookup' };
     });
 
-    const byId = new Map(displayColumns.map(c => [c.id, c]));
+    const byId = new Map<string, ColumnSetting>(
+      displayColumns.map((c): [string, ColumnSetting] => [c.id, c])
+    );
     const out: ColumnSetting[] = [];
     for (const col of displayColumns) {
       if (lookupSkip.has(col.id)) continue;
@@ -1211,6 +1214,16 @@ export default function App() {
                   </div>
                 </div>
               </div>
+
+              <ConfigureAiAssistant
+                fileA={activeTask.fileA}
+                fileB={activeTask.fileB}
+                fileC={activeTask.fileC}
+                headersA={headersA}
+                headersB={headersB}
+                headersC={headersC}
+                onApply={(patch) => updateActiveTask(patch)}
+              />
 
               <div>
                 <AnimatePresence mode="wait">
