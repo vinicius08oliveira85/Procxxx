@@ -30,7 +30,7 @@ View your app in AI Studio: https://ai.studio/apps/3a39bb1b-adca-416d-a6f0-c648f
 O repositório inclui [vercel.json](vercel.json) e funções em [api/](api/):
 
 - **Build:** `npm run build` (preset Vite / `outputDirectory`: `dist`).
-- **Assistente IA:** `POST /api/ai/suggest-config` é uma Serverless Function ([api/ai/suggest-config.ts](api/ai/suggest-config.ts)) que reutiliza [api/ai/suggestConfig.ts](api/ai/suggestConfig.ts) (mesmo diretório do handler + `includeFiles` no `vercel.json`). A chamada ao Gemini usa **HTTP (`fetch`)** à API oficial, sem o SDK `@google/genai`, para evitar falhas no bundle serverless.
+- **Assistente IA:** `POST /api/ai/suggest-config` está todo em [api/ai/suggest-config.ts](api/ai/suggest-config.ts) (lógica + handler no mesmo ficheiro, para a Vercel não depender de imports relativos entre módulos em `api/`). O Express local importa `runSuggestConfig` desse mesmo ficheiro. Chamada ao Gemini via **HTTP (`fetch`)**, sem SDK `@google/genai`.
 - **Health:** `GET /api/health` ([api/health.ts](api/health.ts)).
 
 No painel da Vercel (**Settings → Environment Variables**), defina pelo menos **`GEMINI_API_KEY`**. Opcional: **`GEMINI_MODEL`**. Não é necessário `VITE_API_ORIGIN` quando front e API estão no mesmo deploy.
@@ -39,6 +39,6 @@ No painel da Vercel (**Settings → Environment Variables**), defina pelo menos 
 
 Fluxo: importe o repo na Vercel, confirme Framework **Vite**, faça deploy e teste **Sugerir com IA** na etapa de configuração.
 
-Se os logs da função ainda citarem `server/suggestConfig` após um pull novo, o deploy pode estar com **cache antigo**: em **Deployments** use **⋯ → Redeploy** e marque **Clear build cache**.
+Se os logs citarem módulos em falta (`server/...`, `api/lib/...`) após atualizar o código, faça **Redeploy** com **Clear build cache**.
 
 Se o **manifest** ou outros assets retornarem **401** em URLs `*.vercel.app`, revise **Settings → Deployment Protection** (previews protegidos exigem login e podem bloquear o `fetch` do manifest pelo navegador).
