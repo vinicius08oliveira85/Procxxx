@@ -12,7 +12,7 @@ Analise os cabeçalhos e, se fornecidas, linhas de amostra. Responda APENAS com 
 Use exatamente os nomes de colunas que aparecem nos cabeçalhos fornecidos — não invente nomes.
 Regras:
 - keyA e keyB devem ser colunas que representem o mesmo identificador nas duas tabelas (ex.: código, CPF, e-mail).
-- selectedColsB: colunas da tabela B que o usuário provavelmente quer trazer para a tabela principal (exclua a chave B se for redundante copiar).
+- selectedColsB: colunas da tabela B que o usuário provavelmente quer trazer para a tabela principal (exclua a chave B se for redundante copiar). Se houver muitas colunas em B, inclua só as mais relevantes (até ~40) para manter o JSON compacto.
 - selectedColsA: opcional; se omitir ou vazio, o front pode manter a seleção atual. Se sugerir, use apenas nomes de headersA.
 - Se houver Tabela C (terceira): preencha keyA_C (coluna em A), keyC (coluna em C) e selectedColsC quando fizer sentido.
 - Se não houver Tabela C, omita keyA_C, keyC e selectedColsC ou use strings vazias e arrays vazios.
@@ -47,6 +47,11 @@ function buildSuggestConfigUserMessage(input: SuggestConfigPromptInput): string 
   if (hasC && input.sampleRowsC?.length) {
     parts.push('\nAmostra de linhas (C):', JSON.stringify(input.sampleRowsC));
   }
+  if (input.headersB.length > 35) {
+    parts.push(
+      '\n(A tabela B tem muitas colunas: em selectedColsB inclua só as mais relevantes para cruzar com A, idealmente até ~40 nomes.)'
+    );
+  }
   parts.push(`
 Retorne JSON com o formato:
 {
@@ -72,12 +77,17 @@ function clipForLog(s: string, max = MAX_LOG_SNIPPET): string {
   return t.length <= max ? t : `${t.slice(0, max)}…`;
 }
 
+type GeminiTextResult = {
+  text: string;
+  finishReason: string | undefined;
+};
+
 async function geminiGenerateJsonText(
   apiKey: string,
   model: string,
   systemInstruction: string,
   userText: string
-): Promise<string> {
+): Promise<GeminiTextResult> {
   const modelId = model.replace(/^models\//, '');
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId)}:generateContent`;
 
@@ -94,7 +104,7 @@ async function geminiGenerateJsonText(
         contents: [{ role: 'user', parts: [{ text: userText }] }],
         generationConfig: {
           responseMimeType: 'application/json',
-          maxOutputTokens: 2048,
+          maxOutputTokens: 8192,
           temperature: 0.2,
         },
       }),
@@ -140,19 +150,26 @@ async function geminiGenerateJsonText(
   const candidates = data.candidates as
     | Array<{ content?: { parts?: Array<{ text?: string }> }; finishReason?: string }>
     | undefined;
-  const text = candidates?.[0]?.content?.parts?.[0]?.text;
+  const c0 = candidates?.[0];
+  const text = c0?.content?.parts?.[0]?.text;
+  const finishReason = c0?.finishReason;
   if (!text || typeof text !== 'string') {
-    const c0 = candidates?.[0];
     console.error('[suggest-config][gemini] empty or missing text', {
       model: modelId,
       responseKeys: Object.keys(data),
       promptFeedback: data.promptFeedback ?? null,
-      finishReason: c0?.finishReason ?? null,
+      finishReason: finishReason ?? null,
       candidatesLength: candidates?.length ?? 0,
     });
     throw new Error('EMPTY_MODEL_RESPONSE');
   }
-  return text;
+  if (finishReason === 'MAX_TOKENS') {
+    console.warn('[suggest-config][gemini] candidate finished with MAX_TOKENS (saída pode estar truncada)', {
+      model: modelId,
+      textLength: text.length,
+    });
+  }
+  return { text, finishReason };
 }
 
 const rowSampleSchema = z.record(z.string(), z.string());
@@ -267,7 +284,7 @@ export async function runSuggestConfig(
   };
 
   const userMessage = buildSuggestConfigUserMessage(promptInput);
-  const text = await geminiGenerateJsonText(
+  const { text, finishReason } = await geminiGenerateJsonText(
     apiKey,
     model,
     SUGGEST_CONFIG_SYSTEM_INSTRUCTION,
@@ -280,8 +297,13 @@ export async function runSuggestConfig(
   } catch {
     console.error('[suggest-config][gemini] model output is not valid JSON', {
       model,
+      finishReason: finishReason ?? null,
+      textLength: text.length,
       textPreview: clipForLog(text, 800),
     });
+    if (finishReason === 'MAX_TOKENS') {
+      throw new Error('MODEL_OUTPUT_TRUNCATED');
+    }
     throw new Error('MODEL_JSON_PARSE');
   }
 
@@ -404,6 +426,13 @@ async function handleSuggest(req: VercelRequest, res: VercelResponse): Promise<v
       sendJson(res, 502, {
         error:
           'A API do Gemini recusou a requisição. Verifique cota, modelo (GEMINI_MODEL) e os logs da função.',
+      });
+      return;
+    }
+    if (msg === 'MODEL_OUTPUT_TRUNCATED') {
+      sendJson(res, 502, {
+        error:
+          'A resposta do modelo foi cortada pelo limite de tamanho. Tente de novo ou reduza o número de colunas na tabela B.',
       });
       return;
     }

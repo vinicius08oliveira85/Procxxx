@@ -97,6 +97,14 @@ app.post('/api/ai/suggest-config', async (req, res) => {
       });
       return;
     }
+    if (msg === 'MODEL_OUTPUT_TRUNCATED') {
+      console.error('[suggest-config][gemini] output truncated (MAX_TOKENS + JSON inválido)');
+      res.status(502).json({
+        error:
+          'A resposta do modelo foi cortada pelo limite de tamanho. Tente de novo ou reduza o número de colunas na tabela B.',
+      });
+      return;
+    }
     if (msg === 'MODEL_SCHEMA_MISMATCH' || msg === 'MODEL_JSON_PARSE') {
       console.error('[suggest-config][gemini] parse/schema (detalhe já logado em api/ai/suggest-config)', msg);
       res.status(502).json({ error: 'A resposta do modelo não pôde ser interpretada. Tente novamente.' });
