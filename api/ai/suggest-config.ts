@@ -356,7 +356,7 @@ async function handleSuggest(req: VercelRequest, res: VercelResponse): Promise<v
     return;
   }
 
-  const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
   const body = parseBody(req);
   if (body === undefined) {
     sendJson(res, 400, { error: 'Corpo JSON ausente ou inválido.' });

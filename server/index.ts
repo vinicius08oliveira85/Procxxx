@@ -42,7 +42,7 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true, geminiConfigured: Boolean(process.env.GEMINI_API_KEY) });
 });
 const port = Number(process.env.PORT) || 3001;
-const defaultModel = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+const defaultModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
 app.post('/api/ai/suggest-config', async (req, res) => {
   const apiKey = process.env.GEMINI_API_KEY;
