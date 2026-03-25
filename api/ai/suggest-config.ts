@@ -126,6 +126,8 @@ async function geminiGenerateJsonText(
     console.error('[suggest-config][gemini] API HTTP error', {
       httpStatus: res.status,
       model: modelId,
+      /** Se preenchido, sobrescreve o default do código (ver Vercel → Environment Variables). */
+      GEMINI_MODEL_env: process.env.GEMINI_MODEL ?? null,
       googleMessage: detail,
       googleStatus: errObj?.status ?? null,
     });
