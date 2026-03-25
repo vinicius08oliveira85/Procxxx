@@ -52,4 +52,13 @@ export default defineConfig({
         },
       },
     },
+    /** Mesmo proxy do `npm run preview` (sem isso, /api retorna 404). */
+    preview: {
+      proxy: {
+        '/api': {
+          target: 'http://localhost:3001',
+          changeOrigin: true,
+        },
+      },
+    },
 });

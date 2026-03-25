@@ -37,10 +37,35 @@ export class AiSuggestError extends Error {
   }
 }
 
+function suggestConfigUrl(): string {
+  const path = '/api/ai/suggest-config';
+  const raw =
+    typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_ORIGIN
+      ? String(import.meta.env.VITE_API_ORIGIN).trim()
+      : '';
+  if (!raw) return path;
+  const base = raw.replace(/\/$/, '');
+  return `${base}${path}`;
+}
+
+function httpErrorMessage(status: number): string {
+  if (status === 404) {
+    return (
+      'API não encontrada (404). Rode `npm run dev` (API + front) ou em outro terminal `npm run dev:api` com a API na porta 3001. ' +
+      'Se usar só o front (`npm run dev:web`), defina no .env.local: VITE_API_ORIGIN=http://localhost:3001 e mantenha a API rodando. ' +
+      'Com `npm run preview`, inicie também a API antes.'
+    );
+  }
+  if (status === 502 || status === 504) {
+    return 'Não foi possível contatar a API (proxy/servidor). Verifique se o servidor na porta 3001 está ativo.';
+  }
+  return `Erro HTTP ${status}`;
+}
+
 export async function fetchSuggestConfig(
   payload: SuggestConfigPayload
 ): Promise<SuggestConfigApiResponse> {
-  const res = await fetch('/api/ai/suggest-config', {
+  const res = await fetch(suggestConfigUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -54,7 +79,10 @@ export async function fetchSuggestConfig(
   };
 
   if (!res.ok) {
-    throw new AiSuggestError(data.error || `Erro HTTP ${res.status}`, res.status);
+    throw new AiSuggestError(
+      data.error || httpErrorMessage(res.status),
+      res.status
+    );
   }
 
   if (!data.suggestion || !Array.isArray(data.warnings)) {

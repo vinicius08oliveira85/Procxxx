@@ -18,9 +18,29 @@ dotenv.config({ path: path.join(rootDir, '.env') });
 const distDir = path.join(rootDir, 'dist');
 
 const app = express();
-app.use(express.json({ limit: '512kb' }));
 
 const isProd = process.env.NODE_ENV === 'production';
+
+/** Em dev, permite chamar a API direto de outra origem (ex.: só Vite na 3000 + API na 3001). */
+if (!isProd) {
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    res.header('Access-Control-Allow-Origin', origin || '*');
+    res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(204);
+      return;
+    }
+    next();
+  });
+}
+
+app.use(express.json({ limit: '512kb' }));
+
+app.get('/api/health', (_req, res) => {
+  res.json({ ok: true, geminiConfigured: Boolean(process.env.GEMINI_API_KEY) });
+});
 const port = Number(process.env.PORT) || 3001;
 const defaultModel = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
 
