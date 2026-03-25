@@ -76,6 +76,20 @@ app.post('/api/ai/suggest-config', async (req, res) => {
       });
       return;
     }
+    if (msg.startsWith('GEMINI_HTTP_429')) {
+      const retryM = /Please retry in ([\d.]+)s/i.exec(msg);
+      const sec = retryM ? Math.ceil(parseFloat(retryM[1])) : undefined;
+      const waitHint =
+        sec != null && sec > 0 ? ` Tente de novo daqui a cerca de ${sec}s.` : ' Aguarde um minuto e tente de novo.';
+      console.error('[suggest-config][gemini] quota / rate limit (429)', msg);
+      res.status(429).json({
+        error:
+          'Limite de uso do Gemini atingido (cota do plano gratuito ou pedidos por minuto).' +
+          waitHint +
+          ' Consulte limites e faturação: https://ai.google.dev/gemini-api/docs/rate-limits',
+      });
+      return;
+    }
     if (msg.startsWith('GEMINI_HTTP_')) {
       console.error('[suggest-config][gemini] upstream HTTP (detalhe já logado em api/ai/suggest-config)', msg);
       res.status(502).json({

@@ -385,6 +385,19 @@ async function handleSuggest(req: VercelRequest, res: VercelResponse): Promise<v
       });
       return;
     }
+    if (msg.startsWith('GEMINI_HTTP_429')) {
+      const retryM = /Please retry in ([\d.]+)s/i.exec(msg);
+      const sec = retryM ? Math.ceil(parseFloat(retryM[1])) : undefined;
+      const waitHint =
+        sec != null && sec > 0 ? ` Tente de novo daqui a cerca de ${sec}s.` : ' Aguarde um minuto e tente de novo.';
+      sendJson(res, 429, {
+        error:
+          'Limite de uso do Gemini atingido (cota do plano gratuito ou pedidos por minuto).' +
+          waitHint +
+          ' Consulte limites e faturação: https://ai.google.dev/gemini-api/docs/rate-limits',
+      });
+      return;
+    }
     if (msg.startsWith('GEMINI_HTTP_')) {
       sendJson(res, 502, {
         error:

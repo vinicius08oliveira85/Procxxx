@@ -56,6 +56,9 @@ function httpErrorMessage(status: number): string {
       'Com `npm run preview`, inicie também a API antes.'
     );
   }
+  if (status === 429) {
+    return 'Limite de pedidos ao Gemini (429). Aguarde e tente de novo; em produção verifique cota no Google AI Studio.';
+  }
   if (status === 502 || status === 504) {
     return 'Não foi possível contatar a API (proxy/servidor). Verifique se o servidor na porta 3001 está ativo.';
   }
