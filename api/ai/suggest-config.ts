@@ -1,10 +1,10 @@
 /**
  * Vercel Serverless: mesma rota que o Express em desenvolvimento.
- * Lógica compartilhada em api/lib/ (a Vercel não empacota corretamente imports para server/ no Lambda).
+ * Imports relativos em api/ai/ (mesma pasta) + includeFiles no vercel.json para o Lambda receber todos os .ts.
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { ZodError } from 'zod';
-import { runSuggestConfig } from '../lib/suggestConfig';
+import { runSuggestConfig } from './suggestConfig';
 
 export const config = {
   api: {
