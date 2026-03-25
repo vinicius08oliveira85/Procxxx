@@ -1,10 +1,59 @@
-import { GoogleGenAI } from '@google/genai/node';
 import { z } from 'zod';
 import {
   SUGGEST_CONFIG_SYSTEM_INSTRUCTION,
   buildSuggestConfigUserMessage,
   type SuggestConfigPromptInput,
 } from '../src/ai/prompts.ts';
+
+/**
+ * Chamada HTTP direta à API Gemini (compatível com Vercel Serverless; evita @google/genai/node no bundle).
+ */
+async function geminiGenerateJsonText(
+  apiKey: string,
+  model: string,
+  systemInstruction: string,
+  userText: string
+): Promise<string> {
+  const modelId = model.replace(/^models\//, '');
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId)}:generateContent`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey,
+    },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: systemInstruction }] },
+      contents: [{ role: 'user', parts: [{ text: userText }] }],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        maxOutputTokens: 2048,
+        temperature: 0.2,
+      },
+    }),
+  });
+
+  const data = (await res.json()) as Record<string, unknown>;
+
+  if (!res.ok) {
+    const errObj = data.error as { message?: string; status?: string } | undefined;
+    const detail = errObj?.message ?? res.statusText;
+    if (res.status === 401 || res.status === 403) {
+      throw new Error('GEMINI_AUTH');
+    }
+    throw new Error(`GEMINI_HTTP_${res.status}: ${detail}`);
+  }
+
+  const candidates = data.candidates as
+    | Array<{ content?: { parts?: Array<{ text?: string }> } }>
+    | undefined;
+  const text = candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text || typeof text !== 'string') {
+    throw new Error('EMPTY_MODEL_RESPONSE');
+  }
+  return text;
+}
 
 const rowSampleSchema = z.record(z.string(), z.string());
 
@@ -117,23 +166,12 @@ export async function runSuggestConfig(
   };
 
   const userMessage = buildSuggestConfigUserMessage(promptInput);
-  const ai = new GoogleGenAI({ apiKey });
-
-  const response = await ai.models.generateContent({
+  const text = await geminiGenerateJsonText(
+    apiKey,
     model,
-    contents: userMessage,
-    config: {
-      systemInstruction: SUGGEST_CONFIG_SYSTEM_INSTRUCTION,
-      responseMimeType: 'application/json',
-      maxOutputTokens: 2048,
-      temperature: 0.2,
-    },
-  });
-
-  const text = response.text;
-  if (!text) {
-    throw new Error('EMPTY_MODEL_RESPONSE');
-  }
+    SUGGEST_CONFIG_SYSTEM_INSTRUCTION,
+    userMessage
+  );
 
   let json: unknown;
   try {
