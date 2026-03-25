@@ -10,6 +10,10 @@
     }
   ],
   "functions": {
+    "api/ai/suggest-config.ts": {
+      "maxDuration": 60,
+      "includeFiles": "api/ai/**"
+    },
     "api/**/*.ts": {
       "maxDuration": 60
     }
