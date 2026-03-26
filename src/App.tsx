@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
+import { computeAutoDetectLookup } from './lib/autoDetectLookupConfig';
 import { ConfigureAiAssistant } from './components/ConfigureAiAssistant';
 
 interface ExcelData {
@@ -847,51 +848,17 @@ export default function App() {
    */
   const autoDetectConfig = () => {
     if (!headersA.length || !headersB.length) return;
-
-    // 1. Detect Key Columns (Exact or fuzzy match)
-    const commonKeys = ["id", "cpf", "cnpj", "email", "e-mail", "codigo", "código", "sku", "nome", "name"];
-    let bestKeyA = "";
-    let bestKeyB = "";
-
-    // Try exact matches first
-    for (const hA of headersA) {
-      const normalizedA = hA.toLowerCase().trim();
-      if (headersB.some(hB => hB.toLowerCase().trim() === normalizedA)) {
-        bestKeyA = hA;
-        bestKeyB = headersB.find(hB => hB.toLowerCase().trim() === normalizedA) || "";
-        break;
-      }
+    const { keyA, keyB, selectedColsB } = computeAutoDetectLookup(headersA, headersB);
+    const updates: Partial<LookupTask> = {};
+    if (keyA && keyB) {
+      updates.keyA = keyA;
+      updates.keyB = keyB;
     }
-
-    // If no exact match, try common keys
-    if (!bestKeyA) {
-      for (const key of commonKeys) {
-        const foundA = headersA.find(h => h.toLowerCase().includes(key));
-        const foundB = headersB.find(h => h.toLowerCase().includes(key));
-        if (foundA && foundB) {
-          bestKeyA = foundA;
-          bestKeyB = foundB;
-          break;
-        }
-      }
+    if (selectedColsB.length > 0) {
+      updates.selectedColsB = selectedColsB;
     }
-
-    if (bestKeyA && bestKeyB) {
-      updateActiveTask({ keyA: bestKeyA, keyB: bestKeyB });
-    }
-
-    // 2. Detect Return Columns (Columns in B that are NOT the key and NOT in A)
-    const suggestedCols = headersB.filter(hB => 
-      hB !== bestKeyB && 
-      !headersA.some(hA => hA.toLowerCase().trim() === hB.toLowerCase().trim())
-    );
-
-    if (suggestedCols.length > 0) {
-      updateActiveTask({ selectedColsB: suggestedCols });
-    } else if (headersB.length > 1) {
-      // If no "new" columns, just suggest the first non-key column
-      const firstOther = headersB.find(h => h !== bestKeyB);
-      if (firstOther) updateActiveTask({ selectedColsB: [firstOther] });
+    if (Object.keys(updates).length > 0) {
+      updateActiveTask(updates);
     }
   };
 
