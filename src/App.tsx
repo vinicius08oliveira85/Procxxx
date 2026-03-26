@@ -987,11 +987,11 @@ export default function App() {
       </div>
 
       {/* Main Window Container */}
-      <div className="relative z-10 min-h-screen flex flex-col p-2 sm:p-4 md:p-6 lg:p-8 pb-safe">
+      <div className="relative z-10 min-h-dvh flex flex-col p-2 sm:p-3 md:p-4 lg:p-5 xl:p-6 pb-safe">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="windows-window flex flex-col max-w-7xl mx-auto w-full"
+          className="windows-window flex flex-col w-full max-w-[1920px] mx-auto flex-1 min-h-0"
         >
           {/* App Header (Inside Window) */}
           <header className="bg-white/5 dark:bg-zinc-900/5 border-b border-white/10 dark:border-white/5">
@@ -1039,8 +1039,9 @@ export default function App() {
             </div>
           </header>
 
-          {/* Main Content Area */}
-          <div className="p-3 sm:p-4 md:p-6 pb-safe">
+          {/* Main Content Area — flex-1 para o passo Resultado preencher altura útil */}
+          <div className="flex flex-1 flex-col min-h-0 p-3 sm:p-4 md:p-5 lg:px-6 xl:px-8 pb-safe">
+            <div className="flex flex-1 flex-col min-h-0">
             <AnimatePresence mode="wait">
               {step === 'upload' && (
                 <motion.div 
@@ -1049,7 +1050,7 @@ export default function App() {
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 1.02, y: -10 }}
                   transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                  className="max-w-5xl mx-auto space-y-4"
+                  className="w-full max-w-none space-y-4"
                 >
               <UploadHowItWorksCollapsible />
               <div className="grid md:grid-cols-2 gap-4 md:gap-6">
@@ -1112,7 +1113,7 @@ export default function App() {
                   <motion.div 
                     initial={{ opacity: 0, y: 20, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    className="w-full max-w-md"
+                    className="w-full max-w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto"
                   >
                     <UploadCard 
                       title="3. Tabela de Busca Extra" 
@@ -1151,7 +1152,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.05 }}
-              className="max-w-5xl mx-auto space-y-4"
+              className="w-full max-w-none space-y-4"
             >
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="flex gap-1 sm:gap-2 p-1 sm:p-1.5 mica rounded-xl sm:rounded-2xl border border-white/20 dark:border-white/10 w-full lg:w-fit overflow-x-auto scrollbar-none" style={{ scrollbarWidth: 'none' }}>
@@ -1176,7 +1177,7 @@ export default function App() {
                   ))}
                 </div>
 
-                <div className="flex flex-col gap-2 w-full lg:max-w-md lg:items-end shrink-0">
+                <div className="flex flex-col gap-2 w-full lg:max-w-2xl xl:max-w-3xl lg:items-end shrink-0">
                   <button
                     type="button"
                     onClick={autoDetectConfig}
@@ -1340,7 +1341,7 @@ export default function App() {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-[min(13.75rem,42dvh)] sm:max-h-[min(17rem,48dvh)] lg:max-h-[min(22rem,55dvh)] overflow-y-auto pr-1 custom-scrollbar">
                           {headersA
                             .filter(h => h.toLowerCase().includes(searchTermA))
                             .map(h => (
@@ -1425,7 +1426,7 @@ export default function App() {
                           </div>
                         </div>
                         
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-[min(13.75rem,42dvh)] sm:max-h-[min(17rem,48dvh)] lg:max-h-[min(22rem,55dvh)] overflow-y-auto pr-1 custom-scrollbar">
                           {headersB
                             .filter(h => h.toLowerCase().includes(searchTermB))
                             .map(h => (
@@ -1516,7 +1517,7 @@ export default function App() {
                             </div>
                           </div>
                           
-                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-[min(13.75rem,42dvh)] sm:max-h-[min(17rem,48dvh)] lg:max-h-[min(22rem,55dvh)] overflow-y-auto pr-1 custom-scrollbar">
                             {headersC
                               .filter(h => h.toLowerCase().includes(searchTermC))
                               .map(h => (
@@ -1890,10 +1891,10 @@ export default function App() {
               key="result"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="max-w-6xl mx-auto space-y-4"
+              className="w-full max-w-none flex flex-col flex-1 min-h-0 gap-3 sm:gap-4"
             >
               {/* Dashboard Stats */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0">
                 {[
                   { label: "Total Processado", value: stats.total, icon: Database, color: "text-blue-400", bg: "bg-blue-500/10" },
                   { label: "Correspondências", value: stats.matched, icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10" },
@@ -1920,8 +1921,8 @@ export default function App() {
                 ))}
               </div>
 
-              <div className="fluent-card overflow-hidden">
-                <div className="p-3 sm:p-4 border-b dark:border-white/5 border-black/10 space-y-2">
+              <div className="fluent-card overflow-hidden flex flex-col flex-1 min-h-0">
+                <div className="p-3 sm:p-4 border-b dark:border-white/5 border-black/10 space-y-2 shrink-0">
                   {/* Linha principal: filtros + ações */}
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     {/* Título + tabs de filtro com scroll horizontal em mobile */}
@@ -2089,13 +2090,13 @@ export default function App() {
                 </div>
 
                 {/* Dica de scroll horizontal — visível apenas em mobile */}
-                <div className="sm:hidden flex items-center justify-center gap-2 py-2 px-2 text-xs text-zinc-500 dark:text-zinc-400 font-medium text-center">
+                <div className="sm:hidden flex items-center justify-center gap-2 py-2 px-2 text-xs text-zinc-500 dark:text-zinc-400 font-medium text-center shrink-0">
                   <ChevronRight size={14} className="rotate-180 opacity-60 shrink-0" aria-hidden />
                   <span>Deslize para os lados para ver mais colunas</span>
                   <ChevronRight size={14} className="opacity-60 shrink-0" aria-hidden />
                 </div>
 
-                <div className="flex-1 overflow-auto rounded-[32px] border dark:border-white/10 border-black/10 dark:bg-black/40 bg-white/60 shadow-inner backdrop-blur-xl custom-scrollbar">
+                <div className="flex-1 min-h-0 overflow-auto rounded-[32px] border dark:border-white/10 border-black/10 dark:bg-black/40 bg-white/60 shadow-inner backdrop-blur-xl custom-scrollbar">
                   <table className="w-full min-w-[600px] text-left border-collapse">
                     <thead className="sticky top-0 z-20">
                       <tr className="dark:bg-zinc-900/90 bg-zinc-50/95 backdrop-blur-2xl">
@@ -2112,7 +2113,7 @@ export default function App() {
                             pairHighlightClasses(col.id, pairColumnMeta)
                           )}>
                             <div className="flex items-center gap-2">
-                              <span className="truncate max-w-[150px]" title={col.id}>
+                              <span className="truncate max-w-[min(9rem,42vw)] sm:max-w-[min(11rem,28vw)] lg:max-w-[min(14rem,20vw)] xl:max-w-xs" title={col.id}>
                                 {col.id.startsWith('Lookup_') ? col.id.replace('Lookup_', '') : 
                                  col.id.startsWith('LookupC_') ? col.id.replace('LookupC_', '') : 
                                  col.id.startsWith('Status_') ? (col.id === 'Status_B' ? 'Enc. em B' : col.id === 'Status_C' ? 'Enc. em C' : 'Enc. em Ambos') :
@@ -2237,6 +2238,7 @@ export default function App() {
             </motion.div>
           )}
         </AnimatePresence>
+            </div>
       </div>
 
         </motion.div>
