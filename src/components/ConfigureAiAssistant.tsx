@@ -139,7 +139,7 @@ export function ConfigureAiAssistant({
           </div>
           <div>
             <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Assistente IA (Gemini)</h3>
-            <p className="text-[11px] text-zinc-500 leading-relaxed mt-0.5">
+            <p className="text-xs text-zinc-500 leading-relaxed mt-0.5">
               Útil quando os <strong className="text-zinc-600 dark:text-zinc-400">nomes das colunas diferem</strong>, há{' '}
               <strong className="text-zinc-600 dark:text-zinc-400">muitas colunas</strong> ou o botão{' '}
               <strong className="text-zinc-600 dark:text-zinc-400">Configuração Automática</strong> não acerta. A chave da
@@ -152,7 +152,7 @@ export function ConfigureAiAssistant({
           onClick={handleRequest}
           disabled={!canRun || loading}
           className={cn(
-            'shrink-0 flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border',
+            'shrink-0 flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 rounded-xl text-sm font-bold transition-all border w-full sm:w-auto',
             canRun && !loading
               ? 'bg-violet-600 text-white border-violet-500 hover:bg-violet-500 shadow-lg shadow-violet-500/20'
               : 'opacity-50 cursor-not-allowed border-zinc-200 dark:border-zinc-700 text-zinc-500'
@@ -165,7 +165,7 @@ export function ConfigureAiAssistant({
 
       {canRun && (
         <div className="mt-3 space-y-1.5">
-          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-0.5">
+          <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-0.5">
             O que queres cruzar? (opcional)
           </label>
           <textarea
@@ -175,12 +175,12 @@ export function ConfigureAiAssistant({
             rows={2}
             className="w-full text-xs rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/80 text-zinc-800 dark:text-zinc-200 px-3 py-2 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
           />
-          <p className="text-[10px] text-zinc-500">{userIntent.length}/{MAX_USER_INTENT_LEN}</p>
+          <p className="text-xs text-zinc-500">{userIntent.length}/{MAX_USER_INTENT_LEN}</p>
         </div>
       )}
 
       {!canRun && (
-        <p className="text-[10px] text-zinc-500 mt-3 font-medium">Carregue as tabelas A e B para habilitar a sugestão.</p>
+        <p className="text-xs text-zinc-500 mt-3 font-medium">Carregue as tabelas A e B para habilitar a sugestão.</p>
       )}
 
       {error && (
@@ -193,8 +193,8 @@ export function ConfigureAiAssistant({
         <div className="mt-4 space-y-3 border-t border-zinc-200/50 dark:border-white/10 pt-4">
           {autoSuggestion && ia && (
             <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Automático (local) vs IA</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px]">
+              <p className="text-xs font-bold uppercase tracking-wider text-zinc-400">Automático (local) vs IA</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                 <div className="rounded-lg border border-zinc-200/80 dark:border-white/10 px-2 py-2 bg-black/[0.02] dark:bg-white/[0.03]">
                   <span className="font-bold text-zinc-500 block mb-1">Chaves</span>
                   <p className="text-zinc-700 dark:text-zinc-300">
@@ -239,7 +239,7 @@ export function ConfigureAiAssistant({
             {JSON.stringify(preview.suggestion, null, 2)}
           </pre>
           {preview.warnings.length > 0 && (
-            <ul className="text-[10px] text-amber-700 dark:text-amber-400/90 space-y-1 list-disc pl-4">
+            <ul className="text-xs text-amber-700 dark:text-amber-400/90 space-y-1 list-disc pl-4">
               {preview.warnings.map((w, i) => (
                 <li key={i}>{w}</li>
               ))}
@@ -249,7 +249,7 @@ export function ConfigureAiAssistant({
             <button
               type="button"
               onClick={handleConfirmApply}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors"
+              className="flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition-colors"
             >
               <Check className="w-3.5 h-3.5" />
               Aplicar sugestão da IA
@@ -258,7 +258,7 @@ export function ConfigureAiAssistant({
               <button
                 type="button"
                 onClick={handleApplyAutoOnly}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600/90 hover:bg-blue-500 text-white text-xs font-bold transition-colors"
+                className="flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2 rounded-xl bg-blue-600/90 hover:bg-blue-500 text-white text-sm font-bold transition-colors"
               >
                 <Wand2 className="w-3.5 h-3.5" />
                 Aplicar configuração automática (local)
@@ -267,7 +267,7 @@ export function ConfigureAiAssistant({
             <button
               type="button"
               onClick={() => setPreview(null)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl dark:bg-white/5 bg-black/5 border dark:border-white/10 border-black/10 text-xs font-bold text-zinc-600 dark:text-zinc-300"
+              className="flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2 rounded-xl dark:bg-white/5 bg-black/5 border dark:border-white/10 border-black/10 text-sm font-bold text-zinc-600 dark:text-zinc-300"
             >
               <X className="w-3.5 h-3.5" />
               Descartar
