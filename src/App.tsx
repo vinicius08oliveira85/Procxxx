@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { 
   FileUp, 
@@ -52,10 +52,22 @@ interface ExcelData {
 
 type Step = 'upload' | 'configure' | 'result';
 
+/** Largura da coluna # na tabela de resultados (px). */
+const RESULT_INDEX_COL_WIDTH_PX = 48;
+const DEFAULT_RESULT_COL_WIDTH_PX = 140;
+const MIN_RESULT_COL_WIDTH_PX = 64;
+const MAX_RESULT_COL_WIDTH_PX = 600;
+
 interface ColumnSetting {
   id: string;
   visible: boolean;
   pinned: boolean;
+  /** Largura em px na grelha de resultados; omitido = default. */
+  widthPx?: number;
+}
+
+function getResultColWidthPx(c: ColumnSetting): number {
+  return c.widthPx ?? DEFAULT_RESULT_COL_WIDTH_PX;
 }
 
 type PairColumnSide = 'a' | 'lookup';
@@ -393,6 +405,16 @@ export default function App() {
   const [openFilterCol, setOpenFilterCol] = useState<string | null>(null);
   const [showDivergentConfig, setShowDivergentConfig] = useState(false);
   const [visibleRows, setVisibleRows] = useState(50);
+  /** Durante arraste de redimensionar coluna (só repintura; commit no pointerup). */
+  const [columnResizePreview, setColumnResizePreview] = useState<{ colId: string; widthPx: number } | null>(null);
+  const columnResizeSessionRef = useRef<{
+    colId: string;
+    startX: number;
+    startWidth: number;
+    currentWidth: number;
+    pointerId: number;
+    handle: HTMLElement | null;
+  } | null>(null);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -411,6 +433,77 @@ export default function App() {
   const updateActiveTask = useCallback((updates: Partial<LookupTask>) => {
     setTasks(prev => prev.map(t => t.id === activeTaskId ? { ...t, ...updates } : t));
   }, [activeTaskId]);
+
+  const onColumnResizePointerMove = useCallback((e: PointerEvent) => {
+    const s = columnResizeSessionRef.current;
+    if (!s) return;
+    const nw = Math.round(
+      Math.min(
+        MAX_RESULT_COL_WIDTH_PX,
+        Math.max(MIN_RESULT_COL_WIDTH_PX, s.startWidth + (e.clientX - s.startX))
+      )
+    );
+    s.currentWidth = nw;
+    setColumnResizePreview({ colId: s.colId, widthPx: nw });
+  }, []);
+
+  const endColumnResize = useCallback(() => {
+    const s = columnResizeSessionRef.current;
+    if (!s) return;
+    window.removeEventListener('pointermove', onColumnResizePointerMove);
+    window.removeEventListener('pointerup', endColumnResize);
+    window.removeEventListener('pointercancel', endColumnResize);
+    columnResizeSessionRef.current = null;
+    const finalW = s.currentWidth;
+    setColumnResizePreview(null);
+    setTasks(prev =>
+      prev.map(t => {
+        if (t.id !== activeTaskId) return t;
+        return {
+          ...t,
+          columnSettings: t.columnSettings.map(c =>
+            c.id === s.colId ? { ...c, widthPx: finalW } : c
+          ),
+        };
+      })
+    );
+    if (s.handle) {
+      try {
+        s.handle.releasePointerCapture(s.pointerId);
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [activeTaskId, onColumnResizePointerMove]);
+
+  const beginColumnResize = useCallback(
+    (e: React.PointerEvent, col: ColumnSetting) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const startW = getResultColWidthPx(col);
+      const handle = e.currentTarget as HTMLElement;
+      columnResizeSessionRef.current = {
+        colId: col.id,
+        startX: e.clientX,
+        startWidth: startW,
+        currentWidth: startW,
+        pointerId: e.pointerId,
+        handle,
+      };
+      setColumnResizePreview({ colId: col.id, widthPx: startW });
+      handle.setPointerCapture(e.pointerId);
+      window.addEventListener('pointermove', onColumnResizePointerMove);
+      window.addEventListener('pointerup', endColumnResize);
+      window.addEventListener('pointercancel', endColumnResize);
+    },
+    [endColumnResize, onColumnResizePointerMove]
+  );
+
+  const getResultColDisplayWidthPx = useCallback(
+    (col: ColumnSetting) =>
+      columnResizePreview?.colId === col.id ? columnResizePreview.widthPx : getResultColWidthPx(col),
+    [columnResizePreview]
+  );
 
   /**
    * Adiciona uma nova operação (task) à lista de tarefas.
@@ -880,6 +973,14 @@ export default function App() {
     });
 
     const ws = XLSX.utils.json_to_sheet(exportData);
+    const widthById = new Map<string, number>(
+      activeTask.columnSettings.map((c): [string, number] => [c.id, getResultColWidthPx(c)])
+    );
+    const sheet = ws as import('xlsx').WorkSheet;
+    sheet['!cols'] = visibleCols.map(colId => {
+      const px = widthById.get(colId) ?? DEFAULT_RESULT_COL_WIDTH_PX;
+      return { wch: Math.max(8, Math.min(60, Math.round(px / 7))) };
+    });
     const wb = XLSX.utils.book_new();
     const fileName = activeTask.resultFilter === 'all'
       ? `resultado_${activeTask.name}.xlsx`
@@ -2096,15 +2197,36 @@ export default function App() {
                   <ChevronRight size={14} className="opacity-60 shrink-0" aria-hidden />
                 </div>
 
-                <div className="flex-1 min-h-0 overflow-auto rounded-[32px] border dark:border-white/10 border-black/10 dark:bg-black/40 bg-white/60 shadow-inner backdrop-blur-xl custom-scrollbar">
-                  <table className="w-full min-w-[600px] text-left border-collapse">
+                <div
+                  className={cn(
+                    'flex-1 min-h-0 overflow-auto rounded-[32px] border dark:border-white/10 border-black/10 dark:bg-black/40 bg-white/60 shadow-inner backdrop-blur-xl custom-scrollbar',
+                    columnResizePreview && 'select-none'
+                  )}
+                >
+                  <table className="w-full min-w-[600px] table-fixed text-left border-collapse">
+                    <colgroup>
+                      <col style={{ width: RESULT_INDEX_COL_WIDTH_PX, minWidth: RESULT_INDEX_COL_WIDTH_PX }} />
+                      {tableDisplayColumns.map(col => {
+                        const w = getResultColDisplayWidthPx(col);
+                        return <col key={col.id} style={{ width: w, minWidth: w }} />;
+                      })}
+                    </colgroup>
                     <thead className="sticky top-0 z-20">
                       <tr className="dark:bg-zinc-900/90 bg-zinc-50/95 backdrop-blur-2xl">
-                        <th className="px-3 py-4 text-xs font-black uppercase tracking-wider text-zinc-400 w-12 text-center sticky left-0 z-30 dark:bg-zinc-900/95 bg-zinc-50/95 backdrop-blur-xl shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]">
+                        <th
+                          className="px-3 py-4 text-xs font-black uppercase tracking-wider text-zinc-400 text-center sticky left-0 z-30 dark:bg-zinc-900/95 bg-zinc-50/95 backdrop-blur-xl shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]"
+                          style={{ width: RESULT_INDEX_COL_WIDTH_PX, minWidth: RESULT_INDEX_COL_WIDTH_PX }}
+                        >
                           #
                         </th>
                         {tableDisplayColumns.map(col => (
-                          <th key={col.id} className={cn(
+                          <th
+                            key={col.id}
+                            style={{
+                              width: getResultColDisplayWidthPx(col),
+                              minWidth: getResultColDisplayWidthPx(col),
+                            }}
+                            className={cn(
                             "px-4 sm:px-6 py-4 text-xs font-black uppercase tracking-[0.15em] sm:tracking-[0.2em]",
                             col.id.startsWith('Lookup_') ? "text-blue-500 bg-blue-400/5" : 
                             col.id.startsWith('LookupC_') ? "text-purple-500 bg-purple-400/5" :
@@ -2128,9 +2250,18 @@ export default function App() {
                         ))}
                       </tr>
                       <tr className="dark:bg-zinc-900/80 bg-zinc-50/80 border-b dark:border-white/10 border-black/10">
-                        <th className="sticky left-0 z-30 dark:bg-zinc-900/90 bg-zinc-50/90 backdrop-blur-xl shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]"></th>
+                        <th
+                          className="sticky left-0 z-30 dark:bg-zinc-900/90 bg-zinc-50/90 backdrop-blur-xl shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]"
+                          style={{ width: RESULT_INDEX_COL_WIDTH_PX, minWidth: RESULT_INDEX_COL_WIDTH_PX }}
+                        />
                         {tableDisplayColumns.map(col => (
-                          <th key={col.id} className={cn(
+                          <th
+                            key={col.id}
+                            style={{
+                              width: getResultColDisplayWidthPx(col),
+                              minWidth: getResultColDisplayWidthPx(col),
+                            }}
+                            className={cn(
                             "px-2 sm:px-3 py-2 relative",
                             col.id.startsWith('Lookup_') ? "bg-blue-400/5" :
                             col.id.startsWith('LookupC_') ? "bg-purple-400/5" :
@@ -2138,9 +2269,10 @@ export default function App() {
                             pairHighlightClasses(col.id, pairColumnMeta)
                           )}>
                             <button
+                              type="button"
                               onClick={() => setOpenFilterCol(openFilterCol === col.id ? null : col.id)}
                               className={cn(
-                                "w-full min-h-[36px] flex items-center justify-between gap-1 px-2 py-2 rounded-lg text-xs font-bold transition-all",
+                                "w-full min-h-[36px] flex items-center justify-between gap-1 px-2 py-2 pr-3 rounded-lg text-xs font-bold transition-all",
                                 columnFilters[col.id]?.size > 0
                                   ? "bg-blue-500/15 border border-blue-500/40 text-blue-400"
                                   : "dark:bg-white/5 bg-black/5 border dark:border-white/10 border-black/10 text-zinc-500 dark:hover:border-white/20 hover:border-black/20 dark:hover:text-zinc-300 hover:text-zinc-700"
@@ -2153,6 +2285,14 @@ export default function App() {
                               </span>
                               <Filter size={12} className="shrink-0" aria-hidden />
                             </button>
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              aria-label={`Redimensionar coluna ${col.id}`}
+                              title="Arrastar para ajustar largura"
+                              className="absolute right-0 top-0 bottom-0 w-2 sm:w-2.5 cursor-col-resize z-20 touch-none border-0 p-0 m-0 bg-transparent hover:bg-blue-500/25 active:bg-blue-500/40"
+                              onPointerDown={e => beginColumnResize(e, col)}
+                            />
 
                             {openFilterCol === col.id && (
                               <ColumnFilterDropdown
@@ -2183,14 +2323,21 @@ export default function App() {
                           "transition-all group dark:hover:bg-white/5 hover:bg-black/5",
                           i % 2 === 0 ? "dark:bg-white/[0.02] bg-black/[0.02]" : ""
                         )}>
-                          <td className="px-3 py-3 text-xs font-bold text-zinc-400 text-center sticky left-0 z-10 dark:bg-[#0f0f10] bg-[#fcfcfc] group-hover:bg-inherit shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)] border-r dark:border-white/5 border-black/5">
+                          <td
+                            className="px-3 py-3 text-xs font-bold text-zinc-400 text-center sticky left-0 z-10 dark:bg-[#0f0f10] bg-[#fcfcfc] group-hover:bg-inherit shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)] border-r dark:border-white/5 border-black/5"
+                            style={{ width: RESULT_INDEX_COL_WIDTH_PX, minWidth: RESULT_INDEX_COL_WIDTH_PX }}
+                          >
                             {i + 1}
                           </td>
                           {tableDisplayColumns.map(col => {
                             const val = row[col.id];
+                            const cw = getResultColDisplayWidthPx(col);
                             return (
-                              <td key={col.id} className={cn(
-                                "px-4 sm:px-6 py-3 text-xs font-medium whitespace-nowrap transition-colors",
+                              <td
+                                key={col.id}
+                                style={{ width: cw, minWidth: cw }}
+                                className={cn(
+                                "px-4 sm:px-6 py-3 text-xs font-medium whitespace-nowrap transition-colors overflow-hidden text-ellipsis",
                                 col.id.startsWith('Lookup_') ? "bg-blue-400/5 dark:text-blue-300 text-blue-600 dark:group-hover:text-blue-200 group-hover:text-blue-700" : 
                                 col.id.startsWith('LookupC_') ? "bg-purple-400/5 dark:text-purple-300 text-purple-600 dark:group-hover:text-purple-200 group-hover:text-purple-700" : 
                                 col.id.startsWith('Status_') ? "bg-emerald-400/5 font-black " + (val === 'VERDADEIRO' ? 'text-emerald-400' : 'text-red-400') : "dark:text-zinc-400 text-zinc-600 dark:group-hover:text-zinc-100 group-hover:text-zinc-900",
