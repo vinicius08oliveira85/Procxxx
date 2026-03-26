@@ -132,6 +132,11 @@
   .custom-scrollbar::-webkit-scrollbar-thumb {
     @apply bg-zinc-400/30 dark:bg-white/15 rounded-full border-[3px] border-transparent bg-clip-content hover:bg-zinc-400/50 dark:hover:bg-white/30 transition-colors;
   }
+
+  /** Espaço extra no fundo em iPhones com barra home / notch */
+  .pb-safe {
+    padding-bottom: max(2rem, env(safe-area-inset-bottom, 0px));
+  }
 }
 
 @keyframes float {
