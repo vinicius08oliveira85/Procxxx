@@ -16,7 +16,7 @@ Regras:
 - selectedColsA: opcional; se omitir ou vazio, o front pode manter a seleção atual. Se sugerir, use apenas nomes de headersA.
 - Se houver Tabela C (terceira): preencha keyA_C (coluna em A), keyC (coluna em C) e selectedColsC quando fizer sentido.
 - Se não houver Tabela C, omita keyA_C, keyC e selectedColsC ou use strings vazias e arrays vazios.
-Campo opcional "notes": breve explicação em português para o usuário (uma ou duas frases).`;
+Campo opcional "notes": 1–2 frases em português explicando **quais cabeçalhos** escolheu como chave (keyA/keyB) e **porquê** (ex.: nomes coincidentes, intenção do utilizador, desalinhamento nos dados da amostra).`;
 
 type SuggestConfigPromptInput = {
   headersA: string[];
@@ -25,6 +25,22 @@ type SuggestConfigPromptInput = {
   sampleRowsA?: Record<string, string>[];
   sampleRowsB?: Record<string, string>[];
   sampleRowsC?: Record<string, string>[];
+  userIntent?: string;
+  context?: {
+    rowCountA: number;
+    rowCountB: number;
+    columnStats?: Array<{
+      table: 'A' | 'B';
+      name: string;
+      nonEmptyRatio: number;
+      approxUniqueCount: number;
+    }>;
+    keyAlignmentHints?: Array<{
+      columnInA: string;
+      columnInB: string;
+      examplesInANotInB: string[];
+    }>;
+  };
 };
 
 function buildSuggestConfigUserMessage(input: SuggestConfigPromptInput): string {
@@ -37,6 +53,26 @@ function buildSuggestConfigUserMessage(input: SuggestConfigPromptInput): string 
   ];
   if (hasC && input.headersC) {
     parts.push('\nTabela extra (C) — cabeçalhos:', JSON.stringify(input.headersC));
+  }
+  if (input.userIntent?.trim()) {
+    parts.push('\nIntenção declarada pelo utilizador (use para desambiguar chaves e colunas):', input.userIntent.trim());
+  }
+  if (input.context) {
+    const ctx = input.context;
+    parts.push(
+      '\nEstatísticas (totais de linhas nas folhas; ratios/uniques calculados só numa amostra inicial):',
+      JSON.stringify({
+        rowCountA: ctx.rowCountA,
+        rowCountB: ctx.rowCountB,
+        columnStats: ctx.columnStats,
+      })
+    );
+    if (input.context.keyAlignmentHints?.length) {
+      parts.push(
+        '\nPossíveis desalinhamentos (valores na amostra de A, coluna homónima, não encontrados na amostra de B — podem indicar chave errada ou dados sujos):',
+        JSON.stringify(input.context.keyAlignmentHints)
+      );
+    }
   }
   if (input.sampleRowsA?.length) {
     parts.push('\nAmostra de linhas (A), até 12 linhas, valores como string:', JSON.stringify(input.sampleRowsA));
@@ -77,6 +113,22 @@ function clipForLog(s: string, max = MAX_LOG_SNIPPET): string {
   return t.length <= max ? t : `${t.slice(0, max)}…`;
 }
 
+/** Subset JSON Schema (formato REST Gemini v1beta). Se a API rejeitar, há retry sem schema. */
+const GEMINI_SUGGEST_RESPONSE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    keyA: { type: 'STRING' },
+    keyB: { type: 'STRING' },
+    selectedColsB: { type: 'ARRAY', items: { type: 'STRING' } },
+    selectedColsA: { type: 'ARRAY', items: { type: 'STRING' } },
+    keyA_C: { type: 'STRING' },
+    keyC: { type: 'STRING' },
+    selectedColsC: { type: 'ARRAY', items: { type: 'STRING' } },
+    notes: { type: 'STRING' },
+  },
+  required: ['keyA', 'keyB', 'selectedColsB'],
+} as const;
+
 type GeminiTextResult = {
   text: string;
   finishReason: string | undefined;
@@ -91,88 +143,133 @@ async function geminiGenerateJsonText(
   const modelId = model.replace(/^models\//, '');
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId)}:generateContent`;
 
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey,
-      },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemInstruction }] },
-        contents: [{ role: 'user', parts: [{ text: userText }] }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          maxOutputTokens: 8192,
-          temperature: 0.2,
+  const baseGenerationConfig: Record<string, unknown> = {
+    responseMimeType: 'application/json',
+    maxOutputTokens: 8192,
+    temperature: 0.2,
+  };
+
+  let useResponseSchema = true;
+  let lastRawBody = '';
+  let lastStatus = 0;
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const generationConfig = useResponseSchema
+      ? { ...baseGenerationConfig, responseSchema: GEMINI_SUGGEST_RESPONSE_SCHEMA }
+      : { ...baseGenerationConfig };
+
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
         },
-      }),
-    });
-  } catch (netErr) {
-    console.error('[suggest-config][gemini] fetch failed', {
-      model: modelId,
-      message: netErr instanceof Error ? netErr.message : String(netErr),
-    });
-    throw new Error('GEMINI_NETWORK');
-  }
-
-  const rawBody = await res.text();
-  let data: Record<string, unknown> = {};
-  try {
-    if (rawBody) data = JSON.parse(rawBody) as Record<string, unknown>;
-  } catch {
-    console.error('[suggest-config][gemini] response body is not JSON', {
-      httpStatus: res.status,
-      model: modelId,
-      bodyPreview: clipForLog(rawBody),
-    });
-    throw new Error(`GEMINI_HTTP_${res.status}: corpo da resposta não é JSON válido`);
-  }
-
-  if (!res.ok) {
-    const errObj = data.error as { message?: string; status?: string } | undefined;
-    const detail = errObj?.message ?? res.statusText;
-    console.error('[suggest-config][gemini] API HTTP error', {
-      httpStatus: res.status,
-      model: modelId,
-      /** Se preenchido, sobrescreve o default do código (ver Vercel → Environment Variables). */
-      GEMINI_MODEL_env: process.env.GEMINI_MODEL ?? null,
-      googleMessage: detail,
-      googleStatus: errObj?.status ?? null,
-    });
-    if (res.status === 401 || res.status === 403) {
-      throw new Error('GEMINI_AUTH');
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemInstruction }] },
+          contents: [{ role: 'user', parts: [{ text: userText }] }],
+          generationConfig,
+        }),
+      });
+    } catch (netErr) {
+      console.error('[suggest-config][gemini] fetch failed', {
+        model: modelId,
+        message: netErr instanceof Error ? netErr.message : String(netErr),
+      });
+      throw new Error('GEMINI_NETWORK');
     }
-    throw new Error(`GEMINI_HTTP_${res.status}: ${detail}`);
+
+    lastRawBody = await res.text();
+    lastStatus = res.status;
+    let data: Record<string, unknown> = {};
+    try {
+      if (lastRawBody) data = JSON.parse(lastRawBody) as Record<string, unknown>;
+    } catch {
+      console.error('[suggest-config][gemini] response body is not JSON', {
+        httpStatus: res.status,
+        model: modelId,
+        bodyPreview: clipForLog(lastRawBody),
+      });
+      throw new Error(`GEMINI_HTTP_${res.status}: corpo da resposta não é JSON válido`);
+    }
+
+    if (!res.ok) {
+      if (res.status === 400 && useResponseSchema && attempt === 0) {
+        const errObj = data.error as { message?: string } | undefined;
+        const msg = errObj?.message ?? '';
+        if (/responseSchema|ResponseSchema|schema|Schema/i.test(msg)) {
+          console.warn('[suggest-config][gemini] retrying without responseSchema (API rejected schema)');
+          useResponseSchema = false;
+          continue;
+        }
+      }
+
+      const errObj = data.error as { message?: string; status?: string } | undefined;
+      const detail = errObj?.message ?? res.statusText;
+      console.error('[suggest-config][gemini] API HTTP error', {
+        httpStatus: res.status,
+        model: modelId,
+        GEMINI_MODEL_env: process.env.GEMINI_MODEL ?? null,
+        googleMessage: detail,
+        googleStatus: errObj?.status ?? null,
+      });
+      if (res.status === 401 || res.status === 403) {
+        throw new Error('GEMINI_AUTH');
+      }
+      throw new Error(`GEMINI_HTTP_${res.status}: ${detail}`);
+    }
+
+    const candidates = data.candidates as
+      | Array<{ content?: { parts?: Array<{ text?: string }> }; finishReason?: string }>
+      | undefined;
+    const c0 = candidates?.[0];
+    const text = c0?.content?.parts?.[0]?.text;
+    const finishReason = c0?.finishReason;
+    if (!text || typeof text !== 'string') {
+      console.error('[suggest-config][gemini] empty or missing text', {
+        model: modelId,
+        responseKeys: Object.keys(data),
+        promptFeedback: data.promptFeedback ?? null,
+        finishReason: finishReason ?? null,
+        candidatesLength: candidates?.length ?? 0,
+      });
+      throw new Error('EMPTY_MODEL_RESPONSE');
+    }
+    if (finishReason === 'MAX_TOKENS') {
+      console.warn('[suggest-config][gemini] candidate finished with MAX_TOKENS (saída pode estar truncada)', {
+        model: modelId,
+        textLength: text.length,
+      });
+    }
+    return { text, finishReason };
   }
 
-  const candidates = data.candidates as
-    | Array<{ content?: { parts?: Array<{ text?: string }> }; finishReason?: string }>
-    | undefined;
-  const c0 = candidates?.[0];
-  const text = c0?.content?.parts?.[0]?.text;
-  const finishReason = c0?.finishReason;
-  if (!text || typeof text !== 'string') {
-    console.error('[suggest-config][gemini] empty or missing text', {
-      model: modelId,
-      responseKeys: Object.keys(data),
-      promptFeedback: data.promptFeedback ?? null,
-      finishReason: finishReason ?? null,
-      candidatesLength: candidates?.length ?? 0,
-    });
-    throw new Error('EMPTY_MODEL_RESPONSE');
-  }
-  if (finishReason === 'MAX_TOKENS') {
-    console.warn('[suggest-config][gemini] candidate finished with MAX_TOKENS (saída pode estar truncada)', {
-      model: modelId,
-      textLength: text.length,
-    });
-  }
-  return { text, finishReason };
+  console.error('[suggest-config][gemini] exhausted retries', { model: modelId, lastStatus, bodyPreview: clipForLog(lastRawBody) });
+  throw new Error(`GEMINI_HTTP_${lastStatus}: falha após retry`);
 }
 
 const rowSampleSchema = z.record(z.string(), z.string());
+
+const columnStatSchema = z.object({
+  table: z.enum(['A', 'B']),
+  name: z.string().max(200),
+  nonEmptyRatio: z.number().min(0).max(1),
+  approxUniqueCount: z.number().int().min(0).max(10_000_000),
+});
+
+const keyAlignmentHintSchema = z.object({
+  columnInA: z.string().max(200),
+  columnInB: z.string().max(200),
+  examplesInANotInB: z.array(z.string().max(200)).max(5),
+});
+
+const suggestContextSchema = z.object({
+  rowCountA: z.number().int().min(0).max(50_000_000),
+  rowCountB: z.number().int().min(0).max(50_000_000),
+  columnStats: z.array(columnStatSchema).max(40).optional(),
+  keyAlignmentHints: z.array(keyAlignmentHintSchema).max(10).optional(),
+});
 
 const suggestConfigRequestSchema = z.object({
   headersA: z.array(z.string()).max(400),
@@ -181,6 +278,8 @@ const suggestConfigRequestSchema = z.object({
   sampleRowsA: z.array(rowSampleSchema).max(12).optional(),
   sampleRowsB: z.array(rowSampleSchema).max(12).optional(),
   sampleRowsC: z.array(rowSampleSchema).max(12).optional(),
+  userIntent: z.string().max(500).optional(),
+  context: suggestContextSchema.optional(),
 });
 
 const aiRawSchema = z.object({
@@ -281,6 +380,8 @@ export async function runSuggestConfig(
     sampleRowsA: parsed.sampleRowsA,
     sampleRowsB: parsed.sampleRowsB,
     sampleRowsC: headersC ? parsed.sampleRowsC : undefined,
+    userIntent: parsed.userIntent,
+    context: parsed.context,
   };
 
   const userMessage = buildSuggestConfigUserMessage(promptInput);

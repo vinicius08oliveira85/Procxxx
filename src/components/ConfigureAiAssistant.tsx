@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
-import { Sparkles, Loader2, Check, X } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Sparkles, Loader2, Check, X, Wand2 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { computeAutoDetectLookup } from '../lib/autoDetectLookupConfig';
+import { buildAiSuggestContext } from '../lib/buildAiSuggestContext';
 import {
   fetchSuggestConfig,
   buildSampleRowsForAi,
   AiSuggestError,
+  MAX_USER_INTENT_LEN,
   type SuggestConfigApiResponse,
 } from '../services/aiSuggest';
 
@@ -34,6 +37,11 @@ interface ConfigureAiAssistantProps {
   onApply: (patch: ApplyPatch) => void;
 }
 
+function formatKeyPair(keyA: string, keyB: string): string {
+  if (!keyA && !keyB) return '—';
+  return `${keyA || '—'} ↔ ${keyB || '—'}`;
+}
+
 export function ConfigureAiAssistant({
   fileA,
   fileB,
@@ -46,8 +54,14 @@ export function ConfigureAiAssistant({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<SuggestConfigApiResponse | null>(null);
+  const [userIntent, setUserIntent] = useState('');
 
   const canRun = Boolean(fileA && fileB && headersA.length && headersB.length);
+
+  const autoSuggestion = useMemo(
+    () => (headersA.length && headersB.length ? computeAutoDetectLookup(headersA, headersB) : null),
+    [headersA, headersB]
+  );
 
   const handleRequest = async () => {
     if (!canRun || !fileA || !fileB) return;
@@ -59,6 +73,8 @@ export function ConfigureAiAssistant({
       const sheetB = fileB.sheets[fileB.selectedSheet] ?? [];
       const sheetC = fileC ? (fileC.sheets[fileC.selectedSheet] ?? []) : [];
 
+      const intent = userIntent.trim().slice(0, MAX_USER_INTENT_LEN);
+
       const payload = {
         headersA,
         headersB,
@@ -68,6 +84,8 @@ export function ConfigureAiAssistant({
         ...(headersC.length > 0 && sheetC.length > 0
           ? { sampleRowsC: buildSampleRowsForAi(sheetC) }
           : {}),
+        ...(intent ? { userIntent: intent } : {}),
+        context: buildAiSuggestContext(sheetA, sheetB, headersA, headersB),
       };
 
       const result = await fetchSuggestConfig(payload);
@@ -100,6 +118,18 @@ export function ConfigureAiAssistant({
     setPreview(null);
   };
 
+  const handleApplyAutoOnly = () => {
+    if (!autoSuggestion) return;
+    const patch: ApplyPatch = {};
+    if (autoSuggestion.keyA) patch.keyA = autoSuggestion.keyA;
+    if (autoSuggestion.keyB) patch.keyB = autoSuggestion.keyB;
+    if (autoSuggestion.selectedColsB.length) patch.selectedColsB = autoSuggestion.selectedColsB;
+    onApply(patch);
+    setPreview(null);
+  };
+
+  const ia = preview?.suggestion;
+
   return (
     <div className="fluent-card p-4 border border-violet-500/20 dark:border-violet-400/15 bg-violet-500/[0.04] dark:bg-violet-500/[0.06]">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
@@ -110,8 +140,10 @@ export function ConfigureAiAssistant({
           <div>
             <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Assistente IA (Gemini)</h3>
             <p className="text-[11px] text-zinc-500 leading-relaxed mt-0.5">
-              Analisa cabeçalhos e uma amostra das linhas e sugere chaves e colunas de retorno. A chave da API fica
-              apenas no servidor.
+              Útil quando os <strong className="text-zinc-600 dark:text-zinc-400">nomes das colunas diferem</strong>, há{' '}
+              <strong className="text-zinc-600 dark:text-zinc-400">muitas colunas</strong> ou o botão{' '}
+              <strong className="text-zinc-600 dark:text-zinc-400">Configuração Automática</strong> não acerta. A chave da
+              API fica só no servidor. Enviamos estatísticas leves e uma amostra de linhas.
             </p>
           </div>
         </div>
@@ -131,6 +163,22 @@ export function ConfigureAiAssistant({
         </button>
       </div>
 
+      {canRun && (
+        <div className="mt-3 space-y-1.5">
+          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-0.5">
+            O que queres cruzar? (opcional)
+          </label>
+          <textarea
+            value={userIntent}
+            onChange={(e) => setUserIntent(e.target.value.slice(0, MAX_USER_INTENT_LEN))}
+            placeholder="Ex.: cruzar alunos pela matrícula; trazer notas e turma da planilha B…"
+            rows={2}
+            className="w-full text-xs rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/80 text-zinc-800 dark:text-zinc-200 px-3 py-2 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+          />
+          <p className="text-[10px] text-zinc-500">{userIntent.length}/{MAX_USER_INTENT_LEN}</p>
+        </div>
+      )}
+
       {!canRun && (
         <p className="text-[10px] text-zinc-500 mt-3 font-medium">Carregue as tabelas A e B para habilitar a sugestão.</p>
       )}
@@ -143,6 +191,47 @@ export function ConfigureAiAssistant({
 
       {preview && (
         <div className="mt-4 space-y-3 border-t border-zinc-200/50 dark:border-white/10 pt-4">
+          {autoSuggestion && ia && (
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Automático (local) vs IA</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px]">
+                <div className="rounded-lg border border-zinc-200/80 dark:border-white/10 px-2 py-2 bg-black/[0.02] dark:bg-white/[0.03]">
+                  <span className="font-bold text-zinc-500 block mb-1">Chaves</span>
+                  <p className="text-zinc-700 dark:text-zinc-300">
+                    {formatKeyPair(autoSuggestion.keyA, autoSuggestion.keyB)}
+                  </p>
+                  <p
+                    className={cn(
+                      'mt-1 text-zinc-600 dark:text-zinc-400',
+                      (autoSuggestion.keyA !== ia.keyA || autoSuggestion.keyB !== ia.keyB) &&
+                        'text-amber-700 dark:text-amber-400 font-semibold'
+                    )}
+                  >
+                    IA: {formatKeyPair(ia.keyA ?? '', ia.keyB ?? '')}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-zinc-200/80 dark:border-white/10 px-2 py-2 bg-black/[0.02] dark:bg-white/[0.03]">
+                  <span className="font-bold text-zinc-500 block mb-1">Colunas B sugeridas</span>
+                  <p className="text-zinc-700 dark:text-zinc-300">{autoSuggestion.selectedColsB.length} (automático)</p>
+                  <p
+                    className={cn(
+                      'mt-1 text-zinc-600 dark:text-zinc-400',
+                      autoSuggestion.selectedColsB.length !== (ia.selectedColsB?.length ?? 0) &&
+                        'text-amber-700 dark:text-amber-400 font-semibold'
+                    )}
+                  >
+                    {ia.selectedColsB?.length ?? 0} (IA)
+                  </p>
+                </div>
+                <div className="rounded-lg border border-zinc-200/80 dark:border-white/10 px-2 py-2 bg-black/[0.02] dark:bg-white/[0.03] sm:col-span-1">
+                  <span className="font-bold text-zinc-500 block mb-1">Tabela C</span>
+                  <p className="text-zinc-600 dark:text-zinc-400">
+                    IA: {ia.keyA_C || ia.keyC ? `${ia.keyA_C ?? '—'} / ${ia.keyC ?? '—'}` : '—'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           {preview.notes && (
             <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">{preview.notes}</p>
           )}
@@ -163,8 +252,18 @@ export function ConfigureAiAssistant({
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors"
             >
               <Check className="w-3.5 h-3.5" />
-              Aplicar sugestão
+              Aplicar sugestão da IA
             </button>
+            {autoSuggestion && (autoSuggestion.keyA || autoSuggestion.selectedColsB.length > 0) && (
+              <button
+                type="button"
+                onClick={handleApplyAutoOnly}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600/90 hover:bg-blue-500 text-white text-xs font-bold transition-colors"
+              >
+                <Wand2 className="w-3.5 h-3.5" />
+                Aplicar configuração automática (local)
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setPreview(null)}

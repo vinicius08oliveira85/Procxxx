@@ -2,6 +2,10 @@
  * Cliente HTTP para sugestões de configuração via API no servidor (Gemini).
  */
 
+import type { AiSuggestContextPayload } from '../lib/buildAiSuggestContext';
+
+export type { AiSuggestContextPayload } from '../lib/buildAiSuggestContext';
+
 export type SuggestConfigPayload = {
   headersA: string[];
   headersB: string[];
@@ -9,6 +13,8 @@ export type SuggestConfigPayload = {
   sampleRowsA?: Record<string, string>[];
   sampleRowsB?: Record<string, string>[];
   sampleRowsC?: Record<string, string>[];
+  userIntent?: string;
+  context?: AiSuggestContextPayload;
 };
 
 export type SuggestConfigSuggestion = {
@@ -36,6 +42,8 @@ export class AiSuggestError extends Error {
     this.name = 'AiSuggestError';
   }
 }
+
+export const MAX_USER_INTENT_LEN = 500;
 
 function suggestConfigUrl(): string {
   const path = '/api/ai/suggest-config';
