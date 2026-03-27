@@ -34,12 +34,21 @@ import {
   Plus,
   ChevronRight,
   ChevronDown,
+  ArrowUpAZ,
+  ArrowDownZA,
+  SortAsc,
+  SortDesc,
   Pencil,
   type LucideIcon,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { computeAutoDetectLookup } from './lib/autoDetectLookupConfig';
+import {
+  type SortConfig,
+  compareResultCellAsc,
+  columnStringSamplesLookLikeDates,
+} from './lib/resultTableSort';
 import { ConfigureAiAssistant } from './components/ConfigureAiAssistant';
 
 interface ExcelData {
@@ -405,6 +414,7 @@ export default function App() {
   const [openFilterCol, setOpenFilterCol] = useState<string | null>(null);
   const [showDivergentConfig, setShowDivergentConfig] = useState(false);
   const [visibleRows, setVisibleRows] = useState(50);
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
   /** Durante arraste de redimensionar coluna (só repintura; commit no pointerup). */
   const [columnResizePreview, setColumnResizePreview] = useState<{ colId: string; widthPx: number } | null>(null);
   const columnResizeSessionRef = useRef<{
@@ -766,8 +776,19 @@ export default function App() {
       );
     }
 
+    if (sortConfig) {
+      const { colId, direction } = sortConfig;
+      return [...data].sort((a, b) => {
+        const va = a[colId];
+        const vb = b[colId];
+        return direction === 'asc'
+          ? compareResultCellAsc(va, vb)
+          : compareResultCellAsc(vb, va);
+      });
+    }
+
     return data;
-  }, [activeTask.resultData, activeTask.resultFilter, activeTask.fileC, activeTask.divergentPairs, columnFilters]);
+  }, [activeTask.resultData, activeTask.resultFilter, activeTask.fileC, activeTask.divergentPairs, columnFilters, sortConfig]);
 
   /**
    * Calcula estatísticas básicas sobre o resultado do cruzamento.
@@ -2241,6 +2262,9 @@ export default function App() {
                                  col.id.startsWith('Status_') ? (col.id === 'Status_B' ? 'Enc. em B' : col.id === 'Status_C' ? 'Enc. em C' : 'Enc. em Ambos') :
                                  col.id}
                               </span>
+                              {sortConfig?.colId === col.id && (
+                                sortConfig.direction === 'asc' ? <SortAsc size={12} className="text-blue-500" /> : <SortDesc size={12} className="text-blue-500" />
+                              )}
                               {col.id.startsWith('Lookup_') && <span className="px-1.5 py-0.5 rounded text-[10px] leading-tight bg-blue-500/10 text-blue-500 border border-blue-500/20 font-bold">FONTE B</span>}
                               {col.id.startsWith('LookupC_') && <span className="px-1.5 py-0.5 rounded text-[10px] leading-tight bg-purple-500/10 text-purple-500 border border-purple-500/20 font-bold">FONTE C</span>}
                               {col.id.startsWith('Status_') && <span className="px-1.5 py-0.5 rounded text-[10px] leading-tight bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-bold">STATUS</span>}
@@ -2299,6 +2323,11 @@ export default function App() {
                                 colId={col.id}
                                 allData={activeTask.resultData ?? []}
                                 selectedSet={columnFilters[col.id] ?? null}
+                                sortConfig={sortConfig}
+                                onSort={(direction) => setSortConfig({ colId: col.id, direction })}
+                                onClearSort={() => {
+                                  if (sortConfig?.colId === col.id) setSortConfig(null);
+                                }}
                                 onApply={(set) => {
                                   setColumnFilters(prev => {
                                     const next = { ...prev };
@@ -2579,12 +2608,18 @@ function ColumnFilterDropdown({
   colId,
   allData,
   selectedSet,
+  sortConfig,
+  onSort,
+  onClearSort,
   onApply,
   onClose,
 }: {
   colId: string;
   allData: any[];
   selectedSet: Set<string> | null;
+  sortConfig: SortConfig | null;
+  onSort: (dir: 'asc' | 'desc') => void;
+  onClearSort: () => void;
   onApply: (set: Set<string> | null) => void;
   onClose: () => void;
 }) {
@@ -2595,6 +2630,11 @@ function ColumnFilterDropdown({
     const vals = new Set(allData.map(row => String(row[colId] ?? '')));
     return [...vals].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
   }, [allData, colId]);
+
+  const isDateLikeColumn = React.useMemo(
+    () => columnStringSamplesLookLikeDates(uniqueValues),
+    [uniqueValues]
+  );
 
   const displayed = uniqueValues.filter(v =>
     v.toLowerCase().includes(search.toLowerCase())
@@ -2625,6 +2665,41 @@ function ColumnFilterDropdown({
       className="absolute z-50 top-full left-0 mt-1 w-56 dark:bg-zinc-900/95 bg-white/95 backdrop-blur-xl border dark:border-white/10 border-black/10 rounded-2xl shadow-2xl overflow-hidden"
       onClick={e => e.stopPropagation()}
     >
+      <div className="p-1 border-b dark:border-white/5 border-black/10">
+        <button
+          type="button"
+          onClick={() => { onSort('asc'); onClose(); }}
+          className={cn(
+            "w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold rounded-xl transition-all hover:bg-blue-500/10",
+            sortConfig?.colId === colId && sortConfig.direction === 'asc' ? "text-blue-500 bg-blue-500/10" : "dark:text-zinc-300 text-zinc-700"
+          )}
+        >
+          <ArrowUpAZ size={14} className="shrink-0" aria-hidden />
+          {isDateLikeColumn ? 'Mais antigo para o mais novo' : 'Classificar de A a Z'}
+        </button>
+        <button
+          type="button"
+          onClick={() => { onSort('desc'); onClose(); }}
+          className={cn(
+            "w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold rounded-xl transition-all hover:bg-blue-500/10",
+            sortConfig?.colId === colId && sortConfig.direction === 'desc' ? "text-blue-500 bg-blue-500/10" : "dark:text-zinc-300 text-zinc-700"
+          )}
+        >
+          <ArrowDownZA size={14} className="shrink-0" aria-hidden />
+          {isDateLikeColumn ? 'Mais novo para o mais antigo' : 'Classificar de Z a A'}
+        </button>
+        {sortConfig?.colId === colId && (
+          <button
+            type="button"
+            onClick={() => { onClearSort(); onClose(); }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-[10px] font-bold text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
+          >
+            <X size={12} className="shrink-0" />
+            Limpar Classificação
+          </button>
+        )}
+      </div>
+
       <div className="p-2 border-b dark:border-white/5 border-black/10">
         <input
           autoFocus
