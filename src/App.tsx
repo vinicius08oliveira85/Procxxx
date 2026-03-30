@@ -40,6 +40,7 @@ import {
   SortDesc,
   Pencil,
   TableProperties,
+  FileText,
   type LucideIcon,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -1091,10 +1092,221 @@ export default function App() {
   };
 
   return (
-    <div className={cn(
-      "min-h-screen relative transition-colors duration-700 selection:bg-blue-500/30",
-      isDarkMode ? "bg-[#0a0a0a] text-zinc-100" : "bg-[#f3f3f3] text-zinc-900"
-    )}>
+    <div
+      className={cn(
+        'min-h-dvh relative transition-colors duration-700 selection:bg-blue-500/30',
+        step === 'upload'
+          ? 'bg-[#131313] text-[#e5e2e1]'
+          : isDarkMode
+            ? 'bg-[#0a0a0a] text-zinc-100'
+            : 'bg-[#f3f3f3] text-zinc-900'
+      )}
+    >
+      {step === 'upload' && (
+        <>
+          <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+            <div
+              className="absolute inset-0 bg-[radial-gradient(at_0%_0%,rgba(37,99,235,0.15)_0px,transparent_50%),radial-gradient(at_100%_100%,rgba(87,27,193,0.15)_0px,transparent_50%)]"
+              aria-hidden
+            />
+            <div
+              className="fixed top-1/4 -right-64 w-[400px] h-[400px] rounded-full bg-blue-500/10 blur-[100px]"
+              aria-hidden
+            />
+            <div
+              className="fixed bottom-1/4 -left-64 w-[400px] h-[400px] rounded-full bg-purple-600/10 blur-[100px]"
+              aria-hidden
+            />
+          </div>
+          <nav className="fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between border-b border-white/5 bg-[#1c1b1b]/80 px-4 shadow-[0_20px_40px_rgba(0,0,0,0.4)] backdrop-blur-xl sm:px-8">
+            <span className="font-jakarta text-lg font-bold tracking-tight text-white">
+              Assistente de Cruzamento
+            </span>
+            <div className="hidden items-center gap-8 md:flex">
+              <LandingStepStrip currentStep={step} />
+            </div>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <button
+                type="button"
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className="rounded-full p-2 text-[#c3c6d7] transition-all hover:bg-white/10 hover:text-white active:scale-95"
+                aria-label={isDarkMode ? 'Ativar tema claro' : 'Ativar tema escuro'}
+                title={isDarkMode ? 'Ativar tema claro' : 'Ativar tema escuro'}
+              >
+                {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
+              <button
+                type="button"
+                onClick={reset}
+                className="rounded-full p-2 text-[#c3c6d7] transition-all hover:bg-white/10 hover:text-white active:scale-95"
+                aria-label="Reiniciar"
+                title="Reiniciar"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="pointer-events-none absolute bottom-0 left-0 h-px w-full bg-gradient-to-b from-white/5 to-transparent" />
+          </nav>
+          <div className="md:hidden fixed top-16 left-0 right-0 z-40 flex justify-center border-b border-white/5 bg-[#1c1b1b]/90 px-2 py-2 backdrop-blur-xl">
+            <LandingStepStrip currentStep={step} compact />
+          </div>
+          <main className="relative z-10 mx-auto flex min-h-dvh max-w-4xl flex-col gap-6 px-4 pb-10 pt-28 md:pt-20">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+              className="flex flex-col gap-6"
+            >
+              <header className="flex flex-col items-center gap-2 text-center">
+                <h1 className="font-jakarta text-4xl font-extrabold tracking-tighter text-white md:text-5xl">
+                  Inicie seu{' '}
+                  <span className="bg-gradient-to-r from-[#b4c5ff] to-[#d0bcff] bg-clip-text text-transparent">
+                    Cruzamento
+                  </span>
+                </h1>
+                <p className="max-w-lg text-base font-light leading-relaxed text-[#c3c6d7]">
+                  Importe suas planilhas para o mapeamento de dados com precisão atmosférica.
+                </p>
+              </header>
+              <UploadHowItWorksDetails />
+              <section className="mx-auto w-full max-w-xl upload-mica upload-ghost-border flex flex-col gap-4 rounded-2xl p-6 shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
+                <UploadCard
+                  variant="landing"
+                  landingAccent="blue"
+                  title="1. Tabela Principal (Base)"
+                  description="Tabela que receberá os novos dados cruzados."
+                  file={activeTask.fileA}
+                  onUpload={(e) => handleFileUpload(e, 'A')}
+                  onRemove={() => updateActiveTask({ fileA: null })}
+                  onSheetChange={(sheetName) =>
+                    updateActiveTask({
+                      fileA: activeTask.fileA ? { ...activeTask.fileA, selectedSheet: sheetName } : null,
+                    })
+                  }
+                  onRename={(newName) =>
+                    updateActiveTask({
+                      fileA: activeTask.fileA ? { ...activeTask.fileA, name: newName } : null,
+                    })
+                  }
+                />
+                <UploadCard
+                  variant="landing"
+                  landingAccent="violet"
+                  title="2. Tabela de Busca (Fonte)"
+                  description="Fonte de onde os dados serão extraídos."
+                  file={activeTask.fileB}
+                  onUpload={(e) => handleFileUpload(e, 'B')}
+                  onRemove={() => updateActiveTask({ fileB: null })}
+                  onSheetChange={(sheetName) =>
+                    updateActiveTask({
+                      fileB: activeTask.fileB ? { ...activeTask.fileB, selectedSheet: sheetName } : null,
+                    })
+                  }
+                  onRename={(newName) =>
+                    updateActiveTask({
+                      fileB: activeTask.fileB ? { ...activeTask.fileB, name: newName } : null,
+                    })
+                  }
+                />
+                <div className="flex justify-center pt-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateActiveTask({
+                        fileC: activeTask.fileC ? null : { name: '', sheets: {}, selectedSheet: '' },
+                      })
+                    }
+                    className={cn(
+                      'flex min-h-[44px] items-center gap-2 rounded-full border border-dashed px-4 py-2 text-[11px] font-medium uppercase tracking-wide transition-all',
+                      activeTask.fileC
+                        ? 'border-red-500/40 text-red-400 hover:bg-red-500/10'
+                        : 'border-[#434655]/40 text-[#c3c6d7] hover:border-white/20 hover:bg-white/5 hover:text-white'
+                    )}
+                  >
+                    {activeTask.fileC ? <X size={14} /> : <Plus size={14} />}
+                    {activeTask.fileC ? 'Remover Tabela C' : 'Adicionar Tabela C (Opcional)'}
+                  </button>
+                </div>
+                {activeTask.fileC && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="w-full"
+                  >
+                    <UploadCard
+                      variant="landing"
+                      landingAccent="violet"
+                      title="3. Tabela de Busca Extra"
+                      description="Use esta opção se precisar buscar dados em mais um arquivo."
+                      file={activeTask.fileC}
+                      onUpload={(e) => handleFileUpload(e, 'C')}
+                      onRemove={() => updateActiveTask({ fileC: null })}
+                      onSheetChange={(sheetName) =>
+                        updateActiveTask({
+                          fileC: activeTask.fileC
+                            ? { ...activeTask.fileC, selectedSheet: sheetName }
+                            : null,
+                        })
+                      }
+                      onRename={(newName) =>
+                        updateActiveTask({
+                          fileC: activeTask.fileC ? { ...activeTask.fileC, name: newName } : null,
+                        })
+                      }
+                    />
+                  </motion.div>
+                )}
+              </section>
+              <div className="flex flex-wrap items-center justify-center gap-3 text-[#c3c6d7]">
+                {[activeTask.fileA, activeTask.fileB].map((f, i) => (
+                  <div key={i} className="flex items-center gap-1.5">
+                    <div
+                      className={cn(
+                        'h-2.5 w-2.5 rounded-full transition-all',
+                        f ? 'bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.8)]' : 'bg-white/15'
+                      )}
+                    />
+                    <span
+                      className={cn(
+                        'text-xs font-bold sm:text-sm',
+                        f ? 'text-blue-300' : 'text-[#8d90a0]'
+                      )}
+                    >
+                      {i === 0 ? 'Tabela A' : 'Tabela B'}
+                    </span>
+                  </div>
+                ))}
+                <span className="text-xs font-medium text-[#8d90a0] sm:text-sm">
+                  — {[activeTask.fileA, activeTask.fileB].filter(Boolean).length} de 2 arquivos prontos
+                </span>
+              </div>
+              <footer className="mt-1 flex flex-col items-center gap-4">
+                <button
+                  type="button"
+                  disabled={!activeTask.fileA || !activeTask.fileB}
+                  onClick={() => setStep('configure')}
+                  className="group relative flex min-h-[48px] items-center gap-3 overflow-hidden rounded-full bg-gradient-to-r from-[#2563eb] to-[#571bc1] px-10 py-4 font-jakarta text-base font-extrabold text-white shadow-[0_15px_30px_rgba(37,99,235,0.25)] transition-all hover:scale-[1.02] active:scale-95 disabled:pointer-events-none disabled:opacity-40 disabled:hover:scale-100"
+                >
+                  <div className="pointer-events-none absolute inset-0 bg-white/20 opacity-0 transition-opacity group-hover:opacity-100" />
+                  <span className="relative">Continuar para Configuração</span>
+                  <ArrowRight size={20} className="relative shrink-0" />
+                </button>
+                <p className="font-jakarta text-[10px] uppercase tracking-[0.12em] text-[#8d90a0]">
+                  Formatos: .xlsx, .xls, .csv, .tsv, .ods (até 50MB)
+                </p>
+                <p className="max-w-md px-2 text-center text-xs text-[#8d90a0]">
+                  {!activeTask.fileA || !activeTask.fileB
+                    ? 'Carregue as duas primeiras planilhas para continuar.'
+                    : 'Próximo passo: escolher como ligar as colunas.'}
+                </p>
+              </footer>
+            </motion.div>
+          </main>
+        </>
+      )}
+
+      {step !== 'upload' && (
+      <>
       {/* Windows 12 Bloom Background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute top-[-10%] left-[-10%] w-[80%] h-[80%] rounded-full bg-blue-600/20 blur-[120px] animate-bloom" />
@@ -1168,109 +1380,6 @@ export default function App() {
           <div className="flex flex-1 flex-col min-h-0 p-3 sm:p-4 md:p-5 lg:px-6 xl:px-8 pb-safe">
             <div className="flex flex-1 flex-col min-h-0">
             <AnimatePresence mode="wait">
-              {step === 'upload' && (
-                <motion.div 
-                  key="upload"
-                  initial={{ opacity: 0, scale: 0.98, y: 10 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 1.02, y: -10 }}
-                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                  className="w-full max-w-none space-y-4"
-                >
-              <UploadHowItWorksCollapsible />
-              <div className="grid md:grid-cols-2 gap-4 md:gap-6">
-                <UploadCard 
-                  title="1. Tabela Principal (Base)" 
-                  description="Carregue aqui a planilha que você quer preencher ou completar."
-                  file={activeTask.fileA}
-                  onUpload={(e) => handleFileUpload(e, 'A')}
-                  onRemove={() => updateActiveTask({ fileA: null })}
-                  onSheetChange={(sheetName) => updateActiveTask({ fileA: activeTask.fileA ? { ...activeTask.fileA, selectedSheet: sheetName } : null })}
-                  onRename={(newName) => updateActiveTask({ fileA: activeTask.fileA ? { ...activeTask.fileA, name: newName } : null })}
-                />
-                <UploadCard 
-                  title="2. Tabela de Busca (Fonte)" 
-                  description="Carregue aqui a planilha que contém as informações que você procura."
-                  file={activeTask.fileB}
-                  onUpload={(e) => handleFileUpload(e, 'B')}
-                  onRemove={() => updateActiveTask({ fileB: null })}
-                  onSheetChange={(sheetName) => updateActiveTask({ fileB: activeTask.fileB ? { ...activeTask.fileB, selectedSheet: sheetName } : null })}
-                  onRename={(newName) => updateActiveTask({ fileB: activeTask.fileB ? { ...activeTask.fileB, name: newName } : null })}
-                />
-              </div>
-
-              {/* Indicador de progresso de upload */}
-              <div className="flex items-center justify-center gap-3 mt-2">
-                {[activeTask.fileA, activeTask.fileB].map((f, i) => (
-                  <div key={i} className="flex items-center gap-1.5">
-                    <div className={cn(
-                      "w-2.5 h-2.5 rounded-full transition-all duration-500",
-                      f ? "bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]" : "dark:bg-white/10 bg-black/10"
-                    )} />
-                    <span className={cn(
-                      "text-xs sm:text-sm font-bold transition-colors duration-300",
-                      f ? "text-blue-400" : "text-zinc-500"
-                    )}>
-                      {i === 0 ? "Tabela A" : "Tabela B"}
-                    </span>
-                  </div>
-                ))}
-                <span className="text-xs sm:text-sm text-zinc-500 font-medium">
-                  — {[activeTask.fileA, activeTask.fileB].filter(Boolean).length} de 2 arquivos prontos
-                </span>
-              </div>
-
-              <div className="mt-2 flex flex-col items-center gap-3">
-                  <button 
-                    onClick={() => updateActiveTask({ fileC: activeTask.fileC ? null : { name: '', sheets: {}, selectedSheet: '' } })}
-                    className={cn(
-                      "flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-3 rounded-xl text-sm font-black transition-all active:scale-95",
-                      activeTask.fileC 
-                        ? "bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20" 
-                        : "dark:bg-white/5 bg-black/5 text-zinc-500 dark:hover:text-zinc-100 hover:text-zinc-900 border dark:border-white/5 border-black/10 dark:hover:border-white/10 hover:border-black/20"
-                    )}
-                  >
-                    {activeTask.fileC ? <X size={14} /> : <Plus size={14} />}
-                    {activeTask.fileC ? "Remover Tabela C" : "Adicionar Tabela C (Opcional)"}
-                  </button>
-
-                {activeTask.fileC && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    className="w-full max-w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto"
-                  >
-                    <UploadCard 
-                      title="3. Tabela de Busca Extra" 
-                      description="Use esta opção se precisar buscar dados em mais um arquivo."
-                      file={activeTask.fileC}
-                      onUpload={(e) => handleFileUpload(e, 'C')}
-                      onRemove={() => updateActiveTask({ fileC: null })}
-                      onSheetChange={(sheetName) => updateActiveTask({ fileC: activeTask.fileC ? { ...activeTask.fileC, selectedSheet: sheetName } : null })}
-                      onRename={(newName) => updateActiveTask({ fileC: activeTask.fileC ? { ...activeTask.fileC, name: newName } : null })}
-                    />
-                  </motion.div>
-                )}
-
-                <div className="flex flex-col items-center gap-2 w-full">
-                <button
-                  disabled={!activeTask.fileA || !activeTask.fileB}
-                  onClick={() => setStep('configure')}
-                  className="fluent-button-primary w-full sm:w-auto mt-2 min-h-[44px] px-8 sm:px-12 py-4 text-base sm:text-lg group shadow-[0_12px_32px_rgba(37,99,235,0.3)]"
-                >
-                  Continuar para Configuração
-                  <ArrowRight size={20} className="inline-block ml-2 group-hover:translate-x-1 transition-transform" />
-                </button>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center max-w-md px-2">
-                  {!activeTask.fileA || !activeTask.fileB
-                    ? 'Carregue as duas primeiras planilhas para continuar.'
-                    : 'Próximo passo: escolher como ligar as colunas.'}
-                </p>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
           {step === 'configure' && (
             <motion.div 
               key="configure"
@@ -2438,6 +2547,8 @@ export default function App() {
 
         </motion.div>
       </div>
+      </>
+      )}
 
       {error && (
         <div className="fixed right-4 sm:right-8 max-w-md z-[200] bg-red-50 border-l-4 border-red-500 p-4 rounded-lg shadow-2xl flex items-start gap-3 animate-bounce bottom-[max(1.5rem,env(safe-area-inset-bottom,0px))] sm:bottom-[max(2rem,env(safe-area-inset-bottom,0px))]">
@@ -2456,10 +2567,22 @@ export default function App() {
         </div>
       )}
 
-      {loading && step === 'configure' && (
-        <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-[200] flex flex-col items-center justify-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p className="text-xl font-bold text-blue-900 animate-pulse">Cruzando dados...</p>
+      {loading && (step === 'configure' || step === 'upload') && (
+        <div
+          className={cn(
+            'fixed inset-0 z-[200] flex flex-col items-center justify-center backdrop-blur-sm',
+            step === 'upload' ? 'bg-[#131313]/85' : 'bg-white/80'
+          )}
+        >
+          <div className="mb-4 h-16 w-16 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+          <p
+            className={cn(
+              'animate-pulse text-xl font-bold',
+              step === 'upload' ? 'text-white' : 'text-blue-900'
+            )}
+          >
+            {step === 'upload' ? 'Lendo arquivo...' : 'Cruzando dados...'}
+          </p>
         </div>
       )}
 
@@ -2472,61 +2595,117 @@ export default function App() {
   );
 }
 
-function UploadHowItWorksCollapsible() {
-  const [open, setOpen] = useState(false);
+function LandingStepStrip({ currentStep, compact }: { currentStep: Step; compact?: boolean }) {
+  const items: { id: Step; label: string }[] = [
+    { id: 'upload', label: '1 Upload' },
+    { id: 'configure', label: '2 Configurar' },
+    { id: 'result', label: '3 Resultado' },
+  ];
+  const activeIndex = items.findIndex((x) => x.id === currentStep);
   return (
-    <div className="fluent-card p-3 sm:p-4 border border-blue-500/20 bg-blue-500/[0.04] dark:bg-blue-500/[0.06]">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between gap-3 text-left min-h-[44px] rounded-xl -m-1 px-1 py-1"
-        aria-expanded={open}
-      >
-        <span className="flex items-center gap-2 font-bold text-sm text-zinc-900 dark:text-white">
-          <HelpCircle className="w-5 h-5 text-blue-500 shrink-0" aria-hidden />
-          Como funciona em 3 passos
-        </span>
-        <ChevronDown
-          className={cn('w-5 h-5 text-zinc-500 shrink-0 transition-transform', open && 'rotate-180')}
-          aria-hidden
-        />
-      </button>
-      {open && (
-        <ol className="mt-3 pl-1 space-y-2 text-sm text-zinc-600 dark:text-zinc-400 list-decimal list-inside leading-relaxed">
-          <li>
-            Carregue a <strong className="text-zinc-800 dark:text-zinc-200">tabela principal</strong> e a{' '}
-            <strong className="text-zinc-800 dark:text-zinc-200">tabela de busca</strong> (Excel ou CSV).
-          </li>
-          <li>
-            Indique qual <strong className="text-zinc-800 dark:text-zinc-200">coluna liga</strong> as duas tabelas (por
-            exemplo, o mesmo CPF ou código).
-          </li>
-          <li>
-            Escolha quais colunas trazer e <strong className="text-zinc-800 dark:text-zinc-200">execute o cruzamento</strong>;
-            depois pode baixar o resultado.
-          </li>
-        </ol>
-      )}
+    <div className={cn('flex flex-wrap items-center justify-center gap-4 sm:gap-6', compact && 'gap-3')}>
+      {items.map((s, i) => {
+        const active = s.id === currentStep;
+        const done = i < activeIndex;
+        return (
+          <span
+            key={s.id}
+            className={cn(
+              'border-b-2 pb-1 text-[10px] font-bold uppercase tracking-[0.06em] transition-colors sm:text-[11px] sm:tracking-[0.05em]',
+              active
+                ? 'border-blue-500 text-blue-400'
+                : done
+                  ? 'border-transparent text-emerald-400/90'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-200'
+            )}
+          >
+            {s.label}
+          </span>
+        );
+      })}
     </div>
   );
 }
+
+function UploadHowItWorksDetails() {
+  return (
+    <section className="mx-auto w-full max-w-2xl">
+      <details className="group upload-ghost-border overflow-hidden rounded-2xl bg-[#1c1b1b] transition-all [&_summary::-webkit-details-marker]:hidden">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-3 transition-colors hover:bg-white/5">
+          <div className="flex items-center gap-3">
+            <Info className="h-5 w-5 shrink-0 text-[#b4c5ff]" aria-hidden />
+            <span className="font-jakarta text-sm font-semibold text-white">Como funciona em 3 passos</span>
+          </div>
+          <ChevronDown
+            className="h-5 w-5 shrink-0 text-[#c3c6d7] transition-transform group-open:rotate-180"
+            aria-hidden
+          />
+        </summary>
+        <div className="grid grid-cols-1 gap-4 border-t border-white/5 px-5 pb-4 pt-4 md:grid-cols-3">
+          <div className="flex items-start gap-3">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#2563eb] text-[9px] font-bold text-white">
+              01
+            </div>
+            <div>
+              <p className="text-[13px] font-medium text-white">Importe</p>
+              <p className="text-[11px] text-[#c3c6d7]">Suba a base e a consulta.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#571bc1] text-[9px] font-bold text-white">
+              02
+            </div>
+            <div>
+              <p className="text-[13px] font-medium text-white">Mapeie</p>
+              <p className="text-[11px] text-[#c3c6d7]">Selecione as chaves e colunas.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#353534] text-[9px] font-bold text-white">
+              03
+            </div>
+            <div>
+              <p className="text-[13px] font-medium text-white">Resultado</p>
+              <p className="text-[11px] text-[#c3c6d7]">Baixe a planilha consolidada.</p>
+            </div>
+          </div>
+        </div>
+      </details>
+    </section>
+  );
+}
+
+const UPLOAD_ACCEPT = '.xlsx,.xls,.xlsb,.xlsm,.ods,.csv,.tsv';
 
 /**
  * Componente de cartão para upload de arquivos Excel.
  * Exibe o status do arquivo, permite trocar de planilha e remover o arquivo.
  */
-function UploadCard({ title, description, file, onUpload, onRemove, onSheetChange, onRename }: { 
-  title: string; 
-  description: string; 
+function UploadCard({
+  title,
+  description,
+  file,
+  onUpload,
+  onRemove,
+  onSheetChange,
+  onRename,
+  variant = 'default',
+  landingAccent = 'blue',
+}: {
+  title: string;
+  description: string;
   file: ExcelData | null;
   onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemove: () => void;
   onSheetChange: (sheetName: string) => void;
   onRename?: (newName: string) => void;
+  variant?: 'default' | 'landing';
+  landingAccent?: 'blue' | 'violet';
 }) {
+  const isLanding = variant === 'landing';
   const hasFile = file && file.name;
   const [isEditing, setIsEditing] = useState(false);
-  const [tempName, setTempName] = useState("");
+  const [tempName, setTempName] = useState('');
 
   const startEditing = () => {
     if (file) {
@@ -2542,41 +2721,177 @@ function UploadCard({ title, description, file, onUpload, onRemove, onSheetChang
     setIsEditing(false);
   };
 
-  return (
-    <div className={cn(
-      "fluent-card p-4 transition-all group relative overflow-hidden",
-      hasFile ? "ring-2 ring-blue-500/50" : "hover:ring-2 hover:ring-blue-500/30"
-    )}>
-      <div className="flex items-center gap-3">
-        <div className={cn(
-          "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all",
-          hasFile ? "bg-blue-600 text-white" : "dark:bg-white/5 bg-black/5 text-zinc-500 group-hover:text-blue-500"
-        )}>
-          {file ? <TableIcon size={20} /> : <FileUp size={20} />}
-        </div>
+  const landingIconWrap = cn(
+    'flex h-12 w-12 shrink-0 items-center justify-center rounded-full',
+    landingAccent === 'violet' ? 'bg-violet-500/10 text-[#d0bcff]' : 'bg-blue-500/10 text-[#b4c5ff]'
+  );
 
-        {hasFile && file ? (
-          <>
-            <div className="flex-1 min-w-0">
-              {isEditing ? (
-                <div className="flex items-center gap-2 mb-0.5">
-                  <input 
-                    type="text" 
+  const landingImportBtn = cn(
+    'flex min-h-[44px] cursor-pointer items-center justify-center whitespace-nowrap rounded-full px-5 py-2 text-xs font-bold text-white transition-all active:scale-95',
+    landingAccent === 'violet'
+      ? 'bg-[#571bc1] hover:shadow-[0_0_15px_rgba(87,27,193,0.4)]'
+      : 'bg-[#2563eb] hover:shadow-[0_0_15px_rgba(37,99,235,0.4)]'
+  );
+
+  const csvHint =
+    file && /\.csv$/i.test(file.name) ? (
+      <div
+        className={cn(
+          'mt-2 flex items-start gap-2 rounded-lg border px-2 py-2 text-xs font-medium leading-relaxed',
+          isLanding
+            ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+            : 'border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+        )}
+      >
+        <Info size={14} className="mt-0.5 shrink-0" aria-hidden />
+        <span>CSV detectado. Se houver caracteres incorretos, o arquivo pode usar encoding Windows-1252.</span>
+      </div>
+    ) : null;
+
+  if (isLanding) {
+    return (
+      <div
+        className={cn(
+          'upload-ghost-border relative overflow-hidden rounded-xl bg-[#2a2a2a] p-5 transition-all hover:bg-white/[0.03]',
+          hasFile ? 'ring-2 ring-blue-400/35' : ''
+        )}
+      >
+        <div className="flex flex-col items-center gap-5 sm:flex-row">
+          <div className={landingIconWrap}>
+            {hasFile && file ? (
+              <TableIcon className="h-6 w-6" aria-hidden />
+            ) : landingAccent === 'violet' ? (
+              <Search className="h-6 w-6" aria-hidden />
+            ) : (
+              <FileText className="h-6 w-6" aria-hidden />
+            )}
+          </div>
+
+          {hasFile && file ? (
+            <>
+              <div className="min-w-0 flex-1 text-center sm:text-left">
+                {isEditing ? (
+                  <input
+                    type="text"
                     value={tempName}
                     onChange={(e) => setTempName(e.target.value)}
                     onBlur={saveName}
                     onKeyDown={(e) => e.key === 'Enter' && saveName()}
                     autoFocus
-                    className="w-full bg-transparent border-b border-blue-500 outline-none text-xs sm:text-sm font-bold text-zinc-900 dark:text-white pb-0.5"
+                    className="mb-0.5 w-full border-b border-blue-400 bg-transparent pb-0.5 text-sm font-bold text-white outline-none"
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    className="group/name mb-0.5 flex w-full items-center justify-center gap-2 sm:justify-start"
+                    onClick={startEditing}
+                    title="Clique para renomear"
+                  >
+                    <span className="block truncate text-sm font-bold text-white">{file.name}</span>
+                    <Pencil
+                      size={14}
+                      className="shrink-0 text-zinc-500 opacity-60 group-hover/name:opacity-100"
+                      aria-hidden
+                    />
+                  </button>
+                )}
+                <span className="text-xs font-medium text-[#c3c6d7]">
+                  {file.sheets[file.selectedSheet].length} registros
+                </span>
+              </div>
+              {Object.keys(file.sheets).length > 1 && (
+                <select
+                  value={file.selectedSheet}
+                  onChange={(e) => onSheetChange(e.target.value)}
+                  className="min-h-[44px] max-w-[150px] rounded-full border border-white/15 bg-zinc-900/90 px-3 py-2 text-xs font-bold text-white"
+                >
+                  {Object.keys(file.sheets).map((name) => (
+                    <option key={name} value={name} className="bg-zinc-900">
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <button
+                type="button"
+                onClick={onRemove}
+                className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-zinc-400 transition-all hover:bg-red-500/15 hover:text-red-400"
+                aria-label="Remover arquivo"
+                title="Remover arquivo"
+              >
+                <X size={18} />
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="min-w-0 flex-1 text-center sm:text-left">
+                <h3 className="font-jakarta text-base font-bold text-white">{title}</h3>
+                <p className="mt-0.5 text-[12px] leading-snug text-[#c3c6d7]">{description}</p>
+              </div>
+              <label className="shrink-0 cursor-pointer">
+                <input type="file" accept={UPLOAD_ACCEPT} onChange={onUpload} className="hidden" />
+                <span className={landingImportBtn}>Importar</span>
+              </label>
+            </>
+          )}
+        </div>
+        {csvHint}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        'fluent-card group relative overflow-hidden p-4 transition-all',
+        hasFile ? 'ring-2 ring-blue-500/50' : 'hover:ring-2 hover:ring-blue-500/30'
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <div
+          className={cn(
+            'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all',
+            hasFile ? 'bg-blue-600 text-white' : 'bg-black/5 text-zinc-500 group-hover:text-blue-500 dark:bg-white/5'
+          )}
+        >
+          {file ? <TableIcon size={20} /> : <FileUp size={20} />}
+        </div>
+
+        {hasFile && file ? (
+          <>
+            <div className="min-w-0 flex-1">
+              {isEditing ? (
+                <div className="mb-0.5 flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={tempName}
+                    onChange={(e) => setTempName(e.target.value)}
+                    onBlur={saveName}
+                    onKeyDown={(e) => e.key === 'Enter' && saveName()}
+                    autoFocus
+                    className="w-full border-b border-blue-500 bg-transparent pb-0.5 text-xs font-bold text-zinc-900 outline-none dark:text-white sm:text-sm"
                   />
                 </div>
               ) : (
-                <div className="flex items-center gap-2 group/name cursor-pointer mb-0.5" onClick={startEditing} title="Clique para renomear">
-                  <span className="font-bold text-xs sm:text-sm truncate block text-zinc-900 dark:text-white">{file.name}</span>
-                  <Pencil size={14} className="text-zinc-400 opacity-40 sm:opacity-0 sm:group-hover/name:opacity-100 transition-opacity shrink-0" aria-hidden />
+                <div
+                  className="group/name mb-0.5 flex cursor-pointer items-center gap-2"
+                  onClick={startEditing}
+                  onKeyDown={(e) => e.key === 'Enter' && startEditing()}
+                  role="button"
+                  tabIndex={0}
+                  title="Clique para renomear"
+                >
+                  <span className="block truncate text-xs font-bold text-zinc-900 dark:text-white sm:text-sm">
+                    {file.name}
+                  </span>
+                  <Pencil
+                    size={14}
+                    className="shrink-0 text-zinc-400 opacity-40 transition-opacity sm:opacity-0 sm:group-hover/name:opacity-100"
+                    aria-hidden
+                  />
                 </div>
               )}
-              <span className="text-xs text-zinc-500 font-medium">
+              <span className="text-xs font-medium text-zinc-500">
                 {file.sheets[file.selectedSheet].length} registros
               </span>
             </div>
@@ -2584,16 +2899,19 @@ function UploadCard({ title, description, file, onUpload, onRemove, onSheetChang
               <select
                 value={file.selectedSheet}
                 onChange={(e) => onSheetChange(e.target.value)}
-                className="fluent-select min-h-[44px] py-2 px-2 text-sm font-bold max-w-[110px] sm:max-w-[140px]"
+                className="fluent-select max-w-[110px] min-h-[44px] px-2 py-2 text-sm font-bold sm:max-w-[140px]"
               >
-                {Object.keys(file.sheets).map(name => (
-                  <option key={name} value={name} className="bg-white dark:bg-zinc-900">{name}</option>
+                {Object.keys(file.sheets).map((name) => (
+                  <option key={name} value={name} className="bg-white dark:bg-zinc-900">
+                    {name}
+                  </option>
                 ))}
               </select>
             )}
-            <button 
-              onClick={onRemove} 
-              className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-red-500/20 text-zinc-400 hover:text-red-500 transition-all rounded-lg shrink-0"
+            <button
+              type="button"
+              onClick={onRemove}
+              className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-all hover:bg-red-500/20 hover:text-red-500"
               aria-label="Remover arquivo"
               title="Remover arquivo"
             >
@@ -2602,15 +2920,15 @@ function UploadCard({ title, description, file, onUpload, onRemove, onSheetChang
           </>
         ) : (
           <>
-            <div className="flex-1 min-w-0 min-h-0">
-              <span className="font-bold text-sm text-zinc-900 dark:text-white leading-tight block">{title}</span>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium leading-snug line-clamp-2 sm:line-clamp-none mt-0.5">
+            <div className="min-h-0 min-w-0 flex-1">
+              <span className="block text-sm font-bold leading-tight text-zinc-900 dark:text-white">{title}</span>
+              <p className="mt-0.5 line-clamp-2 text-xs font-medium leading-snug text-zinc-500 dark:text-zinc-400 sm:line-clamp-none">
                 {description}
               </p>
             </div>
             <label className="shrink-0 cursor-pointer">
-              <input type="file" accept=".xlsx,.xls,.xlsb,.xlsm,.ods,.csv,.tsv" onChange={onUpload} className="hidden" />
-              <div className="fluent-button-primary min-h-[44px] px-4 py-2.5 cursor-pointer text-sm font-bold flex items-center gap-2 whitespace-nowrap">
+              <input type="file" accept={UPLOAD_ACCEPT} onChange={onUpload} className="hidden" />
+              <div className="fluent-button-primary flex min-h-[44px] cursor-pointer items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm font-bold">
                 <FileSpreadsheet size={18} className="shrink-0" aria-hidden />
                 <span>Importar</span>
               </div>
@@ -2618,13 +2936,7 @@ function UploadCard({ title, description, file, onUpload, onRemove, onSheetChang
           </>
         )}
       </div>
-
-      {file && /\.csv$/i.test(file.name) && (
-        <div className="flex items-start gap-2 px-2 py-2 mt-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-medium leading-relaxed">
-          <Info size={14} className="shrink-0 mt-0.5" aria-hidden />
-          <span>CSV detectado. Se houver caracteres incorretos, o arquivo pode usar encoding Windows-1252.</span>
-        </div>
-      )}
+      {csvHint}
     </div>
   );
 }
