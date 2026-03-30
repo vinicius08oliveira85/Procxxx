@@ -35,6 +35,8 @@ interface ConfigureAiAssistantProps {
   headersB: string[];
   headersC: string[];
   onApply: (patch: ApplyPatch) => void;
+  /** Layout compacto alinhado ao painel lateral da etapa Configurar. */
+  variant?: 'default' | 'bento';
 }
 
 function formatKeyPair(keyA: string, keyB: string): string {
@@ -50,6 +52,7 @@ export function ConfigureAiAssistant({
   headersB,
   headersC,
   onApply,
+  variant = 'default',
 }: ConfigureAiAssistantProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -130,8 +133,24 @@ export function ConfigureAiAssistant({
 
   const ia = preview?.suggestion;
 
+  const isBento = variant === 'bento';
+
   return (
-    <div className="fluent-card p-4 border border-violet-500/20 dark:border-violet-400/15 bg-violet-500/[0.04] dark:bg-violet-500/[0.06]">
+    <div
+      className={cn(
+        isBento
+          ? 'rounded-xl border border-[#434655]/15 p-5 backdrop-blur-xl shadow-[0_12px_32px_rgba(0,0,0,0.35)]'
+          : 'fluent-card p-4 border border-violet-500/20 dark:border-violet-400/15 bg-violet-500/[0.04] dark:bg-violet-500/[0.06]'
+      )}
+      style={
+        isBento
+          ? {
+              background: 'rgba(28, 27, 27, 0.72)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
+            }
+          : undefined
+      }
+    >
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div className="flex items-start gap-3">
           <div className="w-9 h-9 rounded-xl bg-violet-500/15 flex items-center justify-center text-violet-500 shrink-0">
