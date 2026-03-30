@@ -39,6 +39,7 @@ import {
   SortAsc,
   SortDesc,
   Pencil,
+  TableProperties,
   type LucideIcon,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -50,6 +51,7 @@ import {
   columnStringSamplesLookLikeDates,
 } from './lib/resultTableSort';
 import { ConfigureAiAssistant } from './components/ConfigureAiAssistant';
+import { PivotTableModal } from './components/PivotTableModal';
 
 interface ExcelData {
   name: string;
@@ -417,6 +419,7 @@ export default function App() {
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
   /** Durante arraste de redimensionar coluna (só repintura; commit no pointerup). */
   const [columnResizePreview, setColumnResizePreview] = useState<{ colId: string; widthPx: number } | null>(null);
+  const [showPivotModal, setShowPivotModal] = useState(false);
   const columnResizeSessionRef = useRef<{
     colId: string;
     startX: number;
@@ -2072,6 +2075,15 @@ export default function App() {
                             <Settings2 size={18} />
                           </button>
                           <button
+                            type="button"
+                            onClick={() => setShowPivotModal(true)}
+                            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-emerald-400 hover:bg-emerald-500/10 border border-emerald-500/25 transition-all active:scale-95"
+                            aria-label="Tabela dinâmica"
+                            title="Tabela dinâmica"
+                          >
+                            <TableProperties size={18} />
+                          </button>
+                          <button
                             onClick={downloadResult}
                             className="fluent-button-primary min-h-[44px] px-3 py-2 text-xs flex items-center gap-1.5"
                             aria-label="Baixar resultado"
@@ -2140,6 +2152,13 @@ export default function App() {
                         className="min-h-[44px] flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-500 dark:hover:text-zinc-100 hover:text-zinc-900 dark:hover:bg-white/5 hover:bg-black/5 border dark:border-white/10 border-black/10 transition-all active:scale-95"
                       >
                         <Settings2 size={14} /> Editar Config.
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowPivotModal(true)}
+                        className="min-h-[44px] flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 border border-emerald-500/25 transition-all active:scale-95"
+                      >
+                        <TableProperties size={14} /> Tabela dinâmica
                       </button>
                       <button
                         onClick={downloadResult}
@@ -2443,6 +2462,12 @@ export default function App() {
           <p className="text-xl font-bold text-blue-900 animate-pulse">Cruzando dados...</p>
         </div>
       )}
+
+      <PivotTableModal
+        open={showPivotModal}
+        onClose={() => setShowPivotModal(false)}
+        rows={filteredResultData as Record<string, unknown>[]}
+      />
     </div>
   );
 }
