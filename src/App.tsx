@@ -55,14 +55,7 @@ import { ConfigureAiAssistant } from './components/ConfigureAiAssistant';
 import { ConfigureTabPanels } from './components/ConfigureTabPanels';
 import { ConfigureStepShell, ConfigureWizardStepper } from './components/ConfigureStepShell';
 import { PivotTableModal } from './components/PivotTableModal';
-
-interface ExcelData {
-  name: string;
-  sheets: {
-    [sheetName: string]: any[];
-  };
-  selectedSheet: string;
-}
+import type { ExcelData, ColumnSetting, LookupTask } from './types/lookupTask';
 
 type Step = 'upload' | 'configure' | 'result';
 
@@ -71,14 +64,6 @@ const RESULT_INDEX_COL_WIDTH_PX = 48;
 const DEFAULT_RESULT_COL_WIDTH_PX = 140;
 const MIN_RESULT_COL_WIDTH_PX = 64;
 const MAX_RESULT_COL_WIDTH_PX = 600;
-
-interface ColumnSetting {
-  id: string;
-  visible: boolean;
-  pinned: boolean;
-  /** Largura em px na grelha de resultados; omitido = default. */
-  widthPx?: number;
-}
 
 function getResultColWidthPx(c: ColumnSetting): number {
   return c.widthPx ?? DEFAULT_RESULT_COL_WIDTH_PX;
@@ -98,38 +83,6 @@ function pairHighlightClasses(
   const bgTint = isEven ? 'bg-orange-500/[0.08]' : 'bg-amber-500/[0.08]';
   if (m.side === 'a') return cn(borderColor, bgTint, 'border-l-2');
   return cn(borderColor, bgTint, 'border-r-2');
-}
-
-export interface LookupTask {
-  id: string;
-  name: string;
-  fileA: ExcelData | null;
-  fileB: ExcelData | null;
-  keyA: string;
-  keyB: string;
-  selectedColsA: string[];
-  selectedColsB: string[];
-  fileC: ExcelData | null;
-  keyA_C: string;
-  keyC: string;
-  selectedColsC: string[];
-  lookupType: 'xlookup' | 'vlookup';
-  exactMatch: boolean;
-  trimSpaces: boolean;
-  ignoreCase: boolean;
-  removeSpecialChars: boolean;
-  duplicateStrategy: 'first' | 'last' | 'concatenate';
-  fuzzyThreshold: number;
-  ifNotFound: string;
-  ifNotFoundC: string;
-  matchMode: 0 | -1 | 1 | 2;
-  searchDirection: 1 | -1;
-  includeStatusCols: boolean;
-  resultData: any[] | null;
-  resultFilter: 'all' | 'matched' | 'orphans' | 'divergent';
-  divergentPairs: { colA: string; colLookup: string }[];
-  showAdvanced: boolean;
-  columnSettings: ColumnSetting[];
 }
 
 /** `Object.entries` perde o tipo dos valores; aqui preservamos `Set<string>`. */
