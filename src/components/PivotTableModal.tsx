@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ChevronRight,
   GripVertical,
+  Copy,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import {
@@ -16,8 +17,14 @@ import {
   type PivotLayout,
   computePivot,
   flattenPivotRows,
+  formatPivotMeasureValue,
   getPivotableFields,
 } from '../lib/pivotEngine';
+import {
+  buildPivotTableHtml,
+  buildPivotTableTsv,
+  copyPivotTableTsvAndHtml,
+} from '../lib/pivotClipboard';
 
 export interface PivotTableModalProps {
   open: boolean;
@@ -97,15 +104,6 @@ function defaultExpandedPaths(root: import('../lib/pivotEngine').PivotTreeNode):
   return s;
 }
 
-function formatPivotNumber(n: number, agg: PivotAgg): string {
-  if (!Number.isFinite(n)) return '—';
-  if (agg === 'count') return String(Math.round(n));
-  if (agg === 'sum' || agg === 'min' || agg === 'max') {
-    return Number.isInteger(n) && Math.abs(n) < 1e12 ? String(n) : n.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
-  }
-  return n.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
-}
-
 export function PivotTableModal({ open, onClose, rows }: PivotTableModalProps) {
   const [draft, setDraft] = useState<PivotLayout>(emptyLayout);
   const [committed, setCommitted] = useState<PivotLayout>(emptyLayout);
@@ -113,6 +111,7 @@ export function PivotTableModal({ open, onClose, rows }: PivotTableModalProps) {
   const [fieldSearch, setFieldSearch] = useState('');
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => new Set());
   const [openFilterField, setOpenFilterField] = useState<string | null>(null);
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'ok' | 'error'>('idle');
 
   const fields = useMemo(() => getPivotableFields(rows[0]), [rows]);
 
@@ -179,6 +178,7 @@ export function PivotTableModal({ open, onClose, rows }: PivotTableModalProps) {
       setDeferUpdate(false);
       setFieldSearch('');
       setOpenFilterField(null);
+      setCopyStatus('idle');
     }
   }, [open]);
 
@@ -321,6 +321,41 @@ export function PivotTableModal({ open, onClose, rows }: PivotTableModalProps) {
     () => flattenPivotRows(pivotResult.root, expandedPaths, true),
     [pivotResult.root, expandedPaths]
   );
+
+  const copyPivotTable = useCallback(async () => {
+    if (pivotResult.error || pivotResult.dataHeaders.length === 0) return;
+    const formatCell = (val: number, colIndex: number) => {
+      const mi = pivotResult.dataHeaders[colIndex]?.measureIndex ?? 0;
+      const agg = effectiveLayout.measures[mi]?.agg ?? 'count';
+      return formatPivotMeasureValue(val, agg);
+    };
+    try {
+      const tsv = buildPivotTableTsv(
+        pivotResult.dataHeaders,
+        flatRows,
+        pivotResult.grandTotal,
+        formatCell
+      );
+      const html = buildPivotTableHtml(
+        pivotResult.dataHeaders,
+        flatRows,
+        pivotResult.grandTotal,
+        formatCell
+      );
+      await copyPivotTableTsvAndHtml(tsv, html);
+      setCopyStatus('ok');
+      window.setTimeout(() => setCopyStatus('idle'), 2000);
+    } catch {
+      setCopyStatus('error');
+      window.setTimeout(() => setCopyStatus('idle'), 3500);
+    }
+  }, [
+    pivotResult.error,
+    pivotResult.dataHeaders,
+    pivotResult.grandTotal,
+    flatRows,
+    effectiveLayout.measures,
+  ]);
 
   if (!open) return null;
 
@@ -560,7 +595,29 @@ export function PivotTableModal({ open, onClose, rows }: PivotTableModalProps) {
             </div>
 
             <div className="px-4 pb-4 flex-1 min-h-[200px]">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">Pré-visualização</h3>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+                  Pré-visualização
+                </h3>
+                {!pivotResult.error && pivotResult.dataHeaders.length > 0 && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    {copyStatus === 'ok' && (
+                      <span className="text-xs font-bold text-emerald-400">Copiado (TSV + HTML)</span>
+                    )}
+                    {copyStatus === 'error' && (
+                      <span className="text-xs font-bold text-red-400">Não foi possível copiar</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => void copyPivotTable()}
+                      className="min-h-[40px] flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 text-zinc-200 transition-colors"
+                    >
+                      <Copy size={14} aria-hidden />
+                      Copiar tabela
+                    </button>
+                  </div>
+                )}
+              </div>
               {pivotResult.error ? (
                 <p className="text-sm text-amber-400">{pivotResult.error}</p>
               ) : (
@@ -618,7 +675,7 @@ export function PivotTableModal({ open, onClose, rows }: PivotTableModalProps) {
                               const agg = effectiveLayout.measures[mi]?.agg ?? 'count';
                               return (
                                 <td key={i} className="px-3 py-2 text-right tabular-nums text-zinc-200">
-                                  {formatPivotNumber(val, agg)}
+                                  {formatPivotMeasureValue(val, agg)}
                                 </td>
                               );
                             })}
@@ -632,7 +689,7 @@ export function PivotTableModal({ open, onClose, rows }: PivotTableModalProps) {
                           const agg = effectiveLayout.measures[mi]?.agg ?? 'count';
                           return (
                             <td key={i} className="px-3 py-2 text-right tabular-nums">
-                              {formatPivotNumber(val, agg)}
+                              {formatPivotMeasureValue(val, agg)}
                             </td>
                           );
                         })}

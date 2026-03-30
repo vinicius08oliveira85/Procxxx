@@ -176,6 +176,18 @@ export function measureTitle(m: PivotMeasure): string {
   return `${map[m.agg]} de ${m.field}`;
 }
 
+/** Formata célula de medida para exibição / exportação (TSV, HTML). */
+export function formatPivotMeasureValue(n: number, agg: PivotAgg): string {
+  if (!Number.isFinite(n)) return '—';
+  if (agg === 'count') return String(Math.round(n));
+  if (agg === 'sum' || agg === 'min' || agg === 'max') {
+    return Number.isInteger(n) && Math.abs(n) < 1e12
+      ? String(n)
+      : n.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+  }
+  return n.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+}
+
 function shortMeasureTitle(m: PivotMeasure): string {
   const map: Record<PivotAgg, string> = {
     count: 'Cont.',
