@@ -256,6 +256,15 @@ export function PivotTableModal({ open, onClose, rows }: PivotTableModalProps) {
     }));
   };
 
+  const setMeasureShowAs = (id: string, mode: 'value' | 'percentOfTotal') => {
+    setDraft((prev) => ({
+      ...prev,
+      measures: prev.measures.map((m) =>
+        m.id === id ? { ...m, showAs: mode === 'percentOfTotal' ? 'percentOfTotal' : undefined } : m
+      ),
+    }));
+  };
+
   const toggleCheckbox = (field: string, checked: boolean) => {
     setDraft((prev) => {
       if (!checked) {
@@ -326,8 +335,9 @@ export function PivotTableModal({ open, onClose, rows }: PivotTableModalProps) {
     if (pivotResult.error || pivotResult.dataHeaders.length === 0) return;
     const formatCell = (val: number, colIndex: number) => {
       const mi = pivotResult.dataHeaders[colIndex]?.measureIndex ?? 0;
-      const agg = effectiveLayout.measures[mi]?.agg ?? 'count';
-      return formatPivotMeasureValue(val, agg);
+      const meas = effectiveLayout.measures[mi];
+      const agg = meas?.agg ?? 'count';
+      return formatPivotMeasureValue(val, agg, meas?.showAs);
     };
     try {
       const tsv = buildPivotTableTsv(
@@ -503,13 +513,15 @@ export function PivotTableModal({ open, onClose, rows }: PivotTableModalProps) {
                       e.dataTransfer.setData(DND_TYPE, JSON.stringify({ field: m.field, measureId: m.id }));
                       e.dataTransfer.effectAllowed = 'move';
                     }}
-                    className="flex items-center gap-1 flex-wrap bg-zinc-800 border border-zinc-600 rounded-lg px-2 py-1 text-xs"
+                    className={cn(
+                      'flex items-center gap-1 flex-wrap rounded-lg border border-zinc-600/90 bg-zinc-800/80 px-2 py-1 text-xs backdrop-blur-sm'
+                    )}
                   >
                     <GripVertical className="w-3 h-3 text-zinc-500 shrink-0" aria-hidden />
                     <select
                       value={m.agg}
                       onChange={(e) => setMeasureAgg(m.id, e.target.value as PivotAgg)}
-                      className="bg-zinc-900 border border-zinc-600 rounded px-1 py-0.5 text-zinc-200 max-w-[140px]"
+                      className="rounded border border-zinc-600/80 bg-zinc-900/90 px-1 py-0.5 text-zinc-200 max-w-[140px]"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <option value="count">Contagem</option>
@@ -517,6 +529,19 @@ export function PivotTableModal({ open, onClose, rows }: PivotTableModalProps) {
                       <option value="avg">Média</option>
                       <option value="min">Mínimo</option>
                       <option value="max">Máximo</option>
+                    </select>
+                    <select
+                      value={m.showAs === 'percentOfTotal' ? 'percentOfTotal' : 'value'}
+                      onChange={(e) =>
+                        setMeasureShowAs(m.id, e.target.value as 'value' | 'percentOfTotal')
+                      }
+                      className="rounded border border-zinc-600/80 bg-zinc-900/90 px-1 py-0.5 text-zinc-200 max-w-[118px]"
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label="Exibir medida como"
+                      title="Valor ou percentual do total"
+                    >
+                      <option value="value">Valor</option>
+                      <option value="percentOfTotal">% do total</option>
                     </select>
                     <span className="truncate max-w-[120px]" title={m.field}>
                       {m.field}
@@ -672,10 +697,11 @@ export function PivotTableModal({ open, onClose, rows }: PivotTableModalProps) {
                             </td>
                             {node.aggregates.map((val, i) => {
                               const mi = pivotResult.dataHeaders[i]?.measureIndex ?? 0;
-                              const agg = effectiveLayout.measures[mi]?.agg ?? 'count';
+                              const meas = effectiveLayout.measures[mi];
+                              const agg = meas?.agg ?? 'count';
                               return (
                                 <td key={i} className="px-3 py-2 text-right tabular-nums text-zinc-200">
-                                  {formatPivotMeasureValue(val, agg)}
+                                  {formatPivotMeasureValue(val, agg, meas?.showAs)}
                                 </td>
                               );
                             })}
@@ -686,10 +712,11 @@ export function PivotTableModal({ open, onClose, rows }: PivotTableModalProps) {
                         <td className="px-3 py-2">Total Geral</td>
                         {pivotResult.grandTotal.map((val, i) => {
                           const mi = pivotResult.dataHeaders[i]?.measureIndex ?? 0;
-                          const agg = effectiveLayout.measures[mi]?.agg ?? 'count';
+                          const meas = effectiveLayout.measures[mi];
+                          const agg = meas?.agg ?? 'count';
                           return (
                             <td key={i} className="px-3 py-2 text-right tabular-nums">
-                              {formatPivotMeasureValue(val, agg)}
+                              {formatPivotMeasureValue(val, agg, meas?.showAs)}
                             </td>
                           );
                         })}

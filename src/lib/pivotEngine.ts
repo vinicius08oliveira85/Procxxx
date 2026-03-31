@@ -3,11 +3,13 @@
  */
 
 export type PivotAgg = 'count' | 'sum' | 'avg' | 'min' | 'max';
+export type PivotShowAs = 'value' | 'percentOfTotal';
 
 export interface PivotMeasure {
   id: string;
   field: string;
   agg: PivotAgg;
+  showAs?: PivotShowAs;
 }
 
 /** Configuração commitada (layout) da tabela dinâmica. */
@@ -173,12 +175,16 @@ export function measureTitle(m: PivotMeasure): string {
     min: 'Mínimo',
     max: 'Máximo',
   };
-  return `${map[m.agg]} de ${m.field}`;
+  const base = `${map[m.agg]} de ${m.field}`;
+  return m.showAs === 'percentOfTotal' ? `${base} (% do Total)` : base;
 }
 
 /** Formata célula de medida para exibição / exportação (TSV, HTML). */
-export function formatPivotMeasureValue(n: number, agg: PivotAgg): string {
+export function formatPivotMeasureValue(n: number, agg: PivotAgg, showAs?: PivotShowAs): string {
   if (!Number.isFinite(n)) return '—';
+  if (showAs === 'percentOfTotal') {
+    return n.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+  }
   if (agg === 'count') return String(Math.round(n));
   if (agg === 'sum' || agg === 'min' || agg === 'max') {
     return Number.isInteger(n) && Math.abs(n) < 1e12
@@ -196,7 +202,8 @@ function shortMeasureTitle(m: PivotMeasure): string {
     min: 'Mín.',
     max: 'Máx.',
   };
-  return `${map[m.agg]} ${m.field}`;
+  const base = `${map[m.agg]} ${m.field}`;
+  return m.showAs === 'percentOfTotal' ? `${base} (% do Total)` : base;
 }
 
 function computeValuesForSlice(
@@ -224,6 +231,38 @@ function computeValuesForSlice(
 
 function addVectors(a: number[], b: number[]): number[] {
   return a.map((v, i) => v + (b[i] ?? 0));
+}
+
+/**
+ * Converte valores agregados em % do total geral da medida (por índice de medida).
+ */
+function applyPercentOfTotalToAggregates(
+  layout: PivotLayout,
+  measureTotals: number[],
+  aggregates: number[]
+): number[] {
+  const { measures, columnFields } = layout;
+  if (measures.length === 0) return aggregates;
+  return aggregates.map((v, idx) => {
+    const mi = columnFields.length === 0 ? idx : idx % measures.length;
+    const m = measures[mi];
+    if (!m || m.showAs !== 'percentOfTotal') return v;
+    const denom = measureTotals[mi] ?? 0;
+    if (denom === 0) return 0;
+    return (v / denom) * 100;
+  });
+}
+
+function mapPivotTreeShowAs(
+  node: PivotTreeNode,
+  layout: PivotLayout,
+  measureTotals: number[]
+): PivotTreeNode {
+  return {
+    ...node,
+    aggregates: applyPercentOfTotalToAggregates(layout, measureTotals, node.aggregates),
+    children: node.children.map((c) => mapPivotTreeShowAs(c, layout, measureTotals)),
+  };
 }
 
 function joinPath(prefix: string, key: string): string {
@@ -327,7 +366,8 @@ export function computePivot(rows: Record<string, unknown>[], layout: PivotLayou
   }
 
   const headers = buildDataHeaders(layout, colKeys);
-  const grandTotal = computeValuesForSlice(filtered, layout, colKeys);
+  const measureTotals = layout.measures.map((m) => aggregateRows(filtered, m));
+  let grandTotal = computeValuesForSlice(filtered, layout, colKeys);
 
   let root: PivotTreeNode;
 
@@ -358,6 +398,11 @@ export function computePivot(rows: Record<string, unknown>[], layout: PivotLayou
       aggregates: grandTotal,
       children,
     };
+  }
+
+  if (layout.measures.some((m) => m.showAs === 'percentOfTotal')) {
+    root = mapPivotTreeShowAs(root, layout, measureTotals);
+    grandTotal = applyPercentOfTotalToAggregates(layout, measureTotals, grandTotal);
   }
 
   return {

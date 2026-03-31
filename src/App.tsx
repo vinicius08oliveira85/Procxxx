@@ -32,6 +32,7 @@ import {
   FileSpreadsheet,
   Upload,
   Plus,
+  ChevronLeft,
   ChevronRight,
   ChevronDown,
   ArrowUpAZ,
@@ -369,6 +370,7 @@ export default function App() {
   const [openFilterCol, setOpenFilterCol] = useState<string | null>(null);
   const [showDivergentConfig, setShowDivergentConfig] = useState(false);
   const [visibleRows, setVisibleRows] = useState(50);
+  const [selectedRowIndex, setSelectedRowIndex] = useState<number | null>(null);
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
   /** Durante arraste de redimensionar coluna (só repintura; commit no pointerup). */
   const [columnResizePreview, setColumnResizePreview] = useState<{ colId: string; widthPx: number } | null>(null);
@@ -830,6 +832,16 @@ export default function App() {
     return data;
   }, [activeTask.resultData, activeTask.resultFilter, activeTask.fileC, activeTask.divergentPairs, columnFilters, sortConfig]);
 
+  useEffect(() => {
+    setSelectedRowIndex(null);
+  }, [activeTask.resultData, activeTaskId]);
+
+  useEffect(() => {
+    if (selectedRowIndex !== null && selectedRowIndex >= filteredResultData.length) {
+      setSelectedRowIndex(null);
+    }
+  }, [filteredResultData.length, selectedRowIndex]);
+
   /**
    * Calcula estatísticas básicas sobre o resultado do cruzamento.
    */
@@ -899,6 +911,31 @@ export default function App() {
 
     return { tableDisplayColumns: out, pairColumnMeta: pairMeta };
   }, [displayColumns, activeTask.divergentPairs]);
+
+  /**
+   * Troca a ordem de duas colunas adjacentes na grade de resultados, persistindo em `columnSettings`.
+   * Usa os índices em `tableDisplayColumns` para o vizinho e resolve os índices reais em `columnSettings`.
+   */
+  const moveTableDisplayColumn = useCallback(
+    (colId: string, direction: 'left' | 'right') => {
+      const cols = tableDisplayColumns;
+      const displayIdx = cols.findIndex(c => c.id === colId);
+      if (displayIdx < 0) return;
+      const neighborIdx = direction === 'left' ? displayIdx - 1 : displayIdx + 1;
+      if (neighborIdx < 0 || neighborIdx >= cols.length) return;
+
+      const idA = cols[displayIdx]!.id;
+      const idB = cols[neighborIdx]!.id;
+      const settings = [...activeTask.columnSettings];
+      const iA = settings.findIndex(c => c.id === idA);
+      const iB = settings.findIndex(c => c.id === idB);
+      if (iA < 0 || iB < 0) return;
+
+      [settings[iA], settings[iB]] = [settings[iB]!, settings[iA]!];
+      updateActiveTask({ columnSettings: settings });
+    },
+    [tableDisplayColumns, activeTask.columnSettings, updateActiveTask]
+  );
 
   /**
    * Executa a lógica de cruzamento de dados utilizando um Web Worker para não travar a UI.
@@ -1815,7 +1852,7 @@ export default function App() {
                         >
                           #
                         </th>
-                        {tableDisplayColumns.map(col => (
+                        {tableDisplayColumns.map((col, colIdx) => (
                           <th
                             key={col.id}
                             style={{
@@ -1823,14 +1860,50 @@ export default function App() {
                               minWidth: getResultColDisplayWidthPx(col),
                             }}
                             className={cn(
-                            "px-4 sm:px-6 py-4 text-xs font-black uppercase tracking-[0.15em] sm:tracking-[0.2em]",
+                            "group/header px-4 sm:px-6 py-4 text-xs font-black uppercase tracking-[0.15em] sm:tracking-[0.2em]",
                             col.id.startsWith('Lookup_') ? "text-blue-500 bg-blue-400/5" : 
                             col.id.startsWith('LookupC_') ? "text-purple-500 bg-purple-400/5" :
                             col.id.startsWith('Status_') ? "text-emerald-500 bg-emerald-400/5" :
                             "dark:text-zinc-500 text-zinc-600",
                             pairHighlightClasses(col.id, pairColumnMeta)
                           )}>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <div className="flex shrink-0 items-center gap-0.5 opacity-40 transition-opacity group-hover/header:opacity-100">
+                                <button
+                                  type="button"
+                                  disabled={colIdx === 0}
+                                  aria-label={`Mover coluna ${col.id} para a esquerda`}
+                                  title="Mover coluna para a esquerda"
+                                  className={cn(
+                                    'p-0.5 rounded-md border dark:border-white/10 border-black/10',
+                                    'dark:bg-white/[0.06] bg-black/[0.04] dark:hover:bg-white/10 hover:bg-black/10',
+                                    'text-zinc-500 dark:text-zinc-400 disabled:opacity-20 disabled:pointer-events-none'
+                                  )}
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    moveTableDisplayColumn(col.id, 'left');
+                                  }}
+                                >
+                                  <ChevronLeft size={12} strokeWidth={2.5} aria-hidden />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={colIdx >= tableDisplayColumns.length - 1}
+                                  aria-label={`Mover coluna ${col.id} para a direita`}
+                                  title="Mover coluna para a direita"
+                                  className={cn(
+                                    'p-0.5 rounded-md border dark:border-white/10 border-black/10',
+                                    'dark:bg-white/[0.06] bg-black/[0.04] dark:hover:bg-white/10 hover:bg-black/10',
+                                    'text-zinc-500 dark:text-zinc-400 disabled:opacity-20 disabled:pointer-events-none'
+                                  )}
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    moveTableDisplayColumn(col.id, 'right');
+                                  }}
+                                >
+                                  <ChevronRight size={12} strokeWidth={2.5} aria-hidden />
+                                </button>
+                              </div>
                               <span className="truncate max-w-[min(9rem,42vw)] sm:max-w-[min(11rem,28vw)] lg:max-w-[min(14rem,20vw)] xl:max-w-xs" title={col.id}>
                                 {col.id.startsWith('Lookup_') ? col.id.replace('Lookup_', '') : 
                                  col.id.startsWith('LookupC_') ? col.id.replace('LookupC_', '') : 
@@ -1922,13 +1995,25 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody className="divide-y dark:divide-white/5 divide-black/5">
-                      {filteredResultData.slice(0, visibleRows).map((row, i) => (
-                        <tr key={i} className={cn(
-                          "transition-all group dark:hover:bg-white/5 hover:bg-black/5",
-                          i % 2 === 0 ? "dark:bg-white/[0.02] bg-black/[0.02]" : ""
-                        )}>
+                      {filteredResultData.slice(0, visibleRows).map((row, i) => {
+                        const isRowSelected = selectedRowIndex === i;
+                        return (
+                        <tr
+                          key={i}
+                          onClick={() => setSelectedRowIndex(i)}
+                          className={cn(
+                            'transition-all group cursor-pointer dark:hover:bg-white/5 hover:bg-black/5',
+                            i % 2 === 0 && !isRowSelected ? 'dark:bg-white/[0.02] bg-black/[0.02]' : '',
+                            isRowSelected && 'bg-blue-500/20 border-l-2 border-blue-500'
+                          )}
+                        >
                           <td
-                            className="px-3 py-3 text-xs font-bold text-zinc-400 text-center sticky left-0 z-10 dark:bg-[#0f0f10] bg-[#fcfcfc] group-hover:bg-inherit shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)] border-r dark:border-white/5 border-black/5"
+                            className={cn(
+                              'px-3 py-3 text-xs font-bold text-zinc-400 text-center sticky left-0 z-10 shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)] border-r dark:border-white/5 border-black/5',
+                              isRowSelected
+                                ? 'bg-blue-500/20 dark:bg-blue-500/20 group-hover:bg-blue-500/25 dark:group-hover:bg-blue-500/25'
+                                : 'dark:bg-[#0f0f10] bg-[#fcfcfc] group-hover:bg-inherit'
+                            )}
                             style={{ width: RESULT_INDEX_COL_WIDTH_PX, minWidth: RESULT_INDEX_COL_WIDTH_PX }}
                           >
                             {i + 1}
@@ -1941,11 +2026,12 @@ export default function App() {
                                 key={col.id}
                                 style={{ width: cw, minWidth: cw }}
                                 className={cn(
-                                "px-4 sm:px-6 py-3 text-xs font-medium whitespace-nowrap transition-colors overflow-hidden text-ellipsis",
+                                'px-4 sm:px-6 py-3 text-xs font-medium whitespace-nowrap transition-colors overflow-hidden text-ellipsis',
                                 col.id.startsWith('Lookup_') ? "bg-blue-400/5 dark:text-blue-300 text-blue-600 dark:group-hover:text-blue-200 group-hover:text-blue-700" : 
                                 col.id.startsWith('LookupC_') ? "bg-purple-400/5 dark:text-purple-300 text-purple-600 dark:group-hover:text-purple-200 group-hover:text-purple-700" : 
                                 col.id.startsWith('Status_') ? "bg-emerald-400/5 font-black " + (val === 'VERDADEIRO' ? 'text-emerald-400' : 'text-red-400') : "dark:text-zinc-400 text-zinc-600 dark:group-hover:text-zinc-100 group-hover:text-zinc-900",
-                                pairHighlightClasses(col.id, pairColumnMeta)
+                                pairHighlightClasses(col.id, pairColumnMeta),
+                                isRowSelected && 'dark:!bg-blue-500/20 !bg-blue-500/20'
                               )}>
                                 {val === null || val === undefined 
                                   ? <span className="text-red-400/50 italic font-bold">#N/D</span> 
@@ -1957,7 +2043,8 @@ export default function App() {
                             );
                           })}
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                   {filteredResultData.length === 0 && (
