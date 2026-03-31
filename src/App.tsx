@@ -52,15 +52,10 @@ import {
   columnStringSamplesLookLikeDates,
 } from './lib/resultTableSort';
 import { ConfigureAiAssistant } from './components/ConfigureAiAssistant';
+import { ConfigureTabPanels } from './components/ConfigureTabPanels';
+import { ConfigureStepShell, ConfigureWizardStepper } from './components/ConfigureStepShell';
 import { PivotTableModal } from './components/PivotTableModal';
-
-interface ExcelData {
-  name: string;
-  sheets: {
-    [sheetName: string]: any[];
-  };
-  selectedSheet: string;
-}
+import type { ExcelData, ColumnSetting, LookupTask } from './types/lookupTask';
 
 type Step = 'upload' | 'configure' | 'result';
 
@@ -69,14 +64,6 @@ const RESULT_INDEX_COL_WIDTH_PX = 48;
 const DEFAULT_RESULT_COL_WIDTH_PX = 140;
 const MIN_RESULT_COL_WIDTH_PX = 64;
 const MAX_RESULT_COL_WIDTH_PX = 600;
-
-interface ColumnSetting {
-  id: string;
-  visible: boolean;
-  pinned: boolean;
-  /** Largura em px na grelha de resultados; omitido = default. */
-  widthPx?: number;
-}
 
 function getResultColWidthPx(c: ColumnSetting): number {
   return c.widthPx ?? DEFAULT_RESULT_COL_WIDTH_PX;
@@ -96,38 +83,6 @@ function pairHighlightClasses(
   const bgTint = isEven ? 'bg-orange-500/[0.08]' : 'bg-amber-500/[0.08]';
   if (m.side === 'a') return cn(borderColor, bgTint, 'border-l-2');
   return cn(borderColor, bgTint, 'border-r-2');
-}
-
-interface LookupTask {
-  id: string;
-  name: string;
-  fileA: ExcelData | null;
-  fileB: ExcelData | null;
-  keyA: string;
-  keyB: string;
-  selectedColsA: string[];
-  selectedColsB: string[];
-  fileC: ExcelData | null;
-  keyA_C: string;
-  keyC: string;
-  selectedColsC: string[];
-  lookupType: 'xlookup' | 'vlookup';
-  exactMatch: boolean;
-  trimSpaces: boolean;
-  ignoreCase: boolean;
-  removeSpecialChars: boolean;
-  duplicateStrategy: 'first' | 'last' | 'concatenate';
-  fuzzyThreshold: number;
-  ifNotFound: string;
-  ifNotFoundC: string;
-  matchMode: 0 | -1 | 1 | 2;
-  searchDirection: 1 | -1;
-  includeStatusCols: boolean;
-  resultData: any[] | null;
-  resultFilter: 'all' | 'matched' | 'orphans' | 'divergent';
-  divergentPairs: { colA: string; colLookup: string }[];
-  showAdvanced: boolean;
-  columnSettings: ColumnSetting[];
 }
 
 /** `Object.entries` perde o tipo dos valores; aqui preservamos `Set<string>`. */
@@ -407,9 +362,6 @@ export default function App() {
   const [step, setStep] = useState<Step>('upload');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchTermA, setSearchTermA] = useState<string>('');
-  const [searchTermB, setSearchTermB] = useState<string>('');
-  const [searchTermC, setSearchTermC] = useState<string>('');
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
   const [showColumnSettings, setShowColumnSettings] = useState(false);
   const [configTab, setConfigTab] = useState<'keys' | 'columns' | 'advanced'>('keys');
@@ -728,6 +680,90 @@ export default function App() {
       warnings 
     };
   }, [activeTask.keyA, activeTask.keyB, activeTask.selectedColsB, activeTask.keyA_C, activeTask.keyC, activeTask.selectedColsC, activeTask.fileC, activeTask.lookupType, headersB, headersC]);
+
+  /** Métricas rápidas na etapa Configurar (amostra limitada para taxa de match). */
+  const configureKeyMetrics = useMemo(() => {
+    const empty = {
+      totalRows: 0,
+      dupInB: 0,
+      matchApprox: null as number | null,
+      valueFormat: '—' as string,
+    };
+    if (!activeTask.fileA || !activeTask.fileB) return empty;
+    const sheetA = activeTask.fileA.sheets[activeTask.fileA.selectedSheet] ?? [];
+    const sheetB = activeTask.fileB.sheets[activeTask.fileB.selectedSheet] ?? [];
+    const totalRows = sheetA.length;
+
+    const norm = (v: unknown) => {
+      let s = String(v ?? '');
+      if (activeTask.trimSpaces) s = s.trim();
+      if (activeTask.ignoreCase) s = s.toLowerCase();
+      if (activeTask.removeSpecialChars) s = s.replace(/[^a-z0-9]/gi, '');
+      return s;
+    };
+
+    let dupInB = 0;
+    if (activeTask.keyB) {
+      const counts = new Map<string, number>();
+      const maxScan = Math.min(sheetB.length, 200_000);
+      for (let i = 0; i < maxScan; i++) {
+        const k = norm(sheetB[i][activeTask.keyB]);
+        if (!k) continue;
+        counts.set(k, (counts.get(k) ?? 0) + 1);
+      }
+      for (const n of counts.values()) {
+        if (n > 1) dupInB += n - 1;
+      }
+    }
+
+    let matchApprox: number | null = null;
+    if (activeTask.keyA && activeTask.keyB && sheetA.length && sheetB.length) {
+      const bSet = new Set<string>();
+      const maxB = Math.min(sheetB.length, 200_000);
+      for (let i = 0; i < maxB; i++) {
+        const k = norm(sheetB[i][activeTask.keyB]);
+        if (k) bSet.add(k);
+      }
+      const cap = Math.min(3000, sheetA.length);
+      let hits = 0;
+      let nonEmpty = 0;
+      for (let i = 0; i < cap; i++) {
+        const k = norm(sheetA[i][activeTask.keyA]);
+        if (!k) continue;
+        nonEmpty++;
+        if (bSet.has(k)) hits++;
+      }
+      matchApprox = nonEmpty > 0 ? Math.round((hits / nonEmpty) * 100) : 0;
+    }
+
+    let valueFormat = '—';
+    if (activeTask.keyA && sheetA.length) {
+      const samples: unknown[] = [];
+      for (let i = 0; i < Math.min(80, sheetA.length); i++) {
+        const v = sheetA[i][activeTask.keyA];
+        if (v !== '' && v != null) samples.push(v);
+        if (samples.length >= 10) break;
+      }
+      if (samples.length) {
+        const allNum = samples.every(
+          (v) =>
+            typeof v === 'number' ||
+            (typeof v === 'string' && String(v).trim() !== '' && !Number.isNaN(Number(String(v).trim())))
+        );
+        valueFormat = allNum ? 'Número' : 'Texto';
+      }
+    }
+
+    return { totalRows, dupInB, matchApprox, valueFormat };
+  }, [
+    activeTask.fileA,
+    activeTask.fileB,
+    activeTask.keyA,
+    activeTask.keyB,
+    activeTask.trimSpaces,
+    activeTask.ignoreCase,
+    activeTask.removeSpecialChars,
+  ]);
 
   /**
    * Filtra os dados de resultado com base no filtro global e nos filtros por coluna.
@@ -1095,7 +1131,7 @@ export default function App() {
     <div
       className={cn(
         'min-h-dvh relative transition-colors duration-700 selection:bg-blue-500/30',
-        step === 'upload'
+        step === 'upload' || step === 'configure'
           ? 'bg-[#131313] text-[#e5e2e1]'
           : isDarkMode
             ? 'bg-[#0a0a0a] text-zinc-100'
@@ -1305,7 +1341,158 @@ export default function App() {
         </>
       )}
 
-      {step !== 'upload' && (
+      {step === 'configure' && (
+        <ConfigureStepShell
+          onBack={() => setStep('upload')}
+          onNext={() => setConfigTab(configTab === 'keys' ? 'columns' : 'advanced')}
+          showNext={configTab !== 'advanced'}
+          onExecute={performLookup}
+          executeDisabled={!validation.isValid || loading}
+          executeLoading={loading}
+          isDarkMode={isDarkMode}
+          onToggleDark={() => setIsDarkMode(!isDarkMode)}
+          onReset={reset}
+          onGoUpload={() => setStep('upload')}
+          onNavTables={() => setConfigTab('columns')}
+          onNavMapping={() => setConfigTab('keys')}
+        >
+          <main className="relative z-10 mx-auto flex max-w-7xl flex-col gap-8 px-4 pb-40 pt-24 sm:px-8">
+            <div className="mx-auto flex w-full max-w-2xl justify-center">
+              <ConfigureWizardStepper />
+            </div>
+            <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12">
+              <div className="flex flex-col gap-8 lg:col-span-8">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-6"
+                >
+                  <div
+                    className="rounded-2xl border border-[#434655]/15 p-6 shadow-[0_20px_40px_rgba(0,0,0,0.4)] backdrop-blur-xl"
+                    style={{ background: 'rgba(28, 27, 27, 0.6)' }}
+                  >
+                    <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div
+                        className="flex w-fit gap-1 rounded-full border border-[#434655]/10 bg-[#0e0e0e] p-1"
+                        style={{ scrollbarWidth: 'none' }}
+                      >
+                        {(
+                          [
+                            { id: 'keys' as const, label: 'Conexão' },
+                            { id: 'columns' as const, label: 'Colunas a Trazer' },
+                            { id: 'advanced' as const, label: 'Opções Extras' },
+                          ] as const
+                        ).map((tab) => (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setConfigTab(tab.id)}
+                            className={cn(
+                              'rounded-full px-5 py-2 text-sm font-medium transition-all',
+                              configTab === tab.id
+                                ? 'bg-[#2a2a2a] text-[#b4c5ff]'
+                                : 'text-[#8d90a0] hover:text-[#e5e2e1]'
+                            )}
+                          >
+                            {tab.label}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={autoDetectConfig}
+                        className="flex min-h-[44px] items-center justify-center gap-2 rounded-full border border-[#434655]/25 px-4 py-2 text-xs font-bold text-[#b4c5ff] transition-all hover:bg-white/5"
+                      >
+                        <Sparkles size={16} className="shrink-0" aria-hidden />
+                        Configuração automática
+                      </button>
+                    </div>
+
+                    <ConfigureTabPanels
+                      configTab={configTab}
+                      activeTask={activeTask}
+                      onTaskPatch={updateActiveTask}
+                      headersA={headersA}
+                      headersB={headersB}
+                      headersC={headersC}
+                      metrics={configureKeyMetrics}
+                    />
+                  </div>
+
+                  {!validation.isValid && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex gap-4 rounded-xl border border-[#ffb4ab]/20 p-6 backdrop-blur-xl"
+                      style={{ background: 'rgba(147, 0, 10, 0.1)' }}
+                    >
+                      <div className="shrink-0 rounded-full bg-[#93000a] p-2">
+                        <AlertCircle className="h-5 w-5 text-[#ffdad6]" />
+                      </div>
+                      <div>
+                        <h4 className="font-jakarta text-base font-bold text-[#ffb4ab]">
+                          Atenção: configuração pendente
+                        </h4>
+                        <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-[#c3c6d7]">
+                          {validation.errors.map((err, i) => (
+                            <li key={i}>{err}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </motion.div>
+                  )}
+                </motion.div>
+              </div>
+
+              <div className="flex flex-col gap-8 lg:col-span-4">
+                <ConfigureAiAssistant
+                  variant="bento"
+                  fileA={activeTask.fileA}
+                  fileB={activeTask.fileB}
+                  fileC={activeTask.fileC}
+                  headersA={headersA}
+                  headersB={headersB}
+                  headersC={headersC}
+                  onApply={(patch) => updateActiveTask(patch)}
+                />
+                <div
+                  className="rounded-xl border border-[#434655]/15 p-6 backdrop-blur-xl"
+                  style={{ background: 'rgba(28, 27, 27, 0.6)' }}
+                >
+                  <h4 className="mb-4 text-xs font-medium uppercase tracking-widest text-[#8d90a0]">
+                    Amostra de dados
+                  </h4>
+                  <div className="relative aspect-video overflow-hidden rounded-lg border border-[#434655]/10 bg-[#1c1b1b]">
+                    <div
+                      className="absolute inset-0 opacity-40"
+                      style={{
+                        background:
+                          'radial-gradient(circle at 30% 40%, rgba(37,99,235,0.35), transparent 50%), radial-gradient(circle at 70% 60%, rgba(87,27,193,0.3), transparent 45%)',
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#1c1b1b] to-transparent" />
+                    <div className="absolute bottom-4 left-4 right-4">
+                      <p className="mb-1 text-[10px] text-[#b4c5ff]">
+                        {activeTask.fileA?.name ?? 'Tabela principal'}
+                      </p>
+                      <div className="h-1 w-full overflow-hidden rounded-full bg-white/10">
+                        <div
+                          className="h-full bg-[#2563eb] transition-all duration-500"
+                          style={{
+                            width: `${Math.min(100, Math.round((validation.isValid ? 1 : 0.4) * 100 + (activeTask.keyA && activeTask.keyB ? 25 : 0) + (activeTask.selectedColsB.length ? 25 : 0)))}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </ConfigureStepShell>
+      )}
+
+      {step === 'result' && (
       <>
       {/* Windows 12 Bloom Background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
@@ -1379,754 +1566,14 @@ export default function App() {
           {/* Main Content Area — flex-1 para o passo Resultado preencher altura útil */}
           <div className="flex flex-1 flex-col min-h-0 p-3 sm:p-4 md:p-5 lg:px-6 xl:px-8 pb-safe">
             <div className="flex flex-1 flex-col min-h-0">
-            <AnimatePresence mode="wait">
-          {step === 'configure' && (
-            <motion.div 
-              key="configure"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.05 }}
-              className="w-full max-w-none space-y-4"
-            >
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="flex gap-1 sm:gap-2 p-1 sm:p-1.5 mica rounded-xl sm:rounded-2xl border border-white/20 dark:border-white/10 w-full lg:w-fit overflow-x-auto scrollbar-none" style={{ scrollbarWidth: 'none' }}>
-                  {([
-                    { id: 'keys' as const, label: '1. Conexão', icon: Target },
-                    { id: 'columns' as const, label: '2. Colunas a Trazer', icon: Columns },
-                    { id: 'advanced' as const, label: '3. Opções Extras', icon: Settings2 },
-                  ] satisfies { id: 'keys' | 'columns' | 'advanced'; label: string; icon: LucideIcon }[]).map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setConfigTab(tab.id)}
-                      className={cn(
-                        "flex items-center gap-1.5 min-h-[44px] px-3 py-2.5 rounded-lg transition-all duration-300 font-medium text-sm whitespace-nowrap flex-1 sm:flex-none justify-center",
-                        configTab === tab.id 
-                          ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30" 
-                          : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white dark:hover:bg-white/5 hover:bg-black/5"
-                      )}
-                    >
-                      <tab.icon className="w-4 h-4 shrink-0" />
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex flex-col gap-2 w-full lg:max-w-2xl xl:max-w-3xl lg:items-end shrink-0">
-                  <button
-                    type="button"
-                    onClick={autoDetectConfig}
-                    className="flex items-center justify-center gap-2 min-h-[44px] w-full sm:w-auto px-4 py-2.5 dark:bg-white/5 dark:hover:bg-white/10 bg-black/5 hover:bg-black/10 text-blue-500 dark:text-blue-400 rounded-xl font-bold text-sm transition-all border dark:border-white/10 border-black/10 active:scale-[0.98]"
+              <AnimatePresence mode="wait">
+                {activeTask.resultData && stats && (
+                  <motion.div
+                    key="result"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex min-h-0 w-full max-w-none flex-1 flex-col gap-3 sm:gap-4"
                   >
-                    <Sparkles size={18} className="shrink-0 text-blue-500" aria-hidden />
-                    Tentar Configuração Automática
-                  </button>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed lg:text-right">
-                    <span className="font-semibold text-zinc-600 dark:text-zinc-300">Sugestão inteligente: </span>
-                    o sistema tenta adivinhar quais colunas ligam as duas tabelas (ex.: CPF com CPF) e quais colunas
-                    provavelmente quer copiar. Pode ajustar depois nas abas abaixo.
-                  </p>
-                </div>
-              </div>
-
-              <ConfigureAiAssistant
-                fileA={activeTask.fileA}
-                fileB={activeTask.fileB}
-                fileC={activeTask.fileC}
-                headersA={headersA}
-                headersB={headersB}
-                headersC={headersC}
-                onApply={(patch) => updateActiveTask(patch)}
-              />
-
-              <div>
-                <AnimatePresence mode="wait">
-                  {configTab === 'keys' && (
-                    <motion.div
-                      key="keys"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="grid grid-cols-1 md:grid-cols-2 gap-3"
-                    >
-                      <div className="fluent-card p-4 group">
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0">
-                            <Target className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Conexão Tabela Principal ↔ Busca</h3>
-                            <p className="text-xs text-zinc-500">Selecione a coluna que existe em ambas as tabelas (ex: Código, CPF, E-mail)</p>
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-3">
-                          <div className="space-y-1">
-                            <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Coluna na Tabela Principal</label>
-                            <select 
-                              value={activeTask.keyA}
-                              onChange={(e) => updateActiveTask({ keyA: e.target.value })}
-                              className="fluent-select w-full py-2 text-sm"
-                            >
-                              <option value="">Selecione a coluna...</option>
-                              {headersA.map(h => <option key={h} value={h}>{h}</option>)}
-                            </select>
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Coluna correspondente na Tabela de Busca</label>
-                            <select 
-                              value={activeTask.keyB}
-                              onChange={(e) => updateActiveTask({ keyB: e.target.value })}
-                              className="fluent-select w-full py-2 text-sm"
-                            >
-                              <option value="">Selecione a coluna...</option>
-                              {headersB.map(h => <option key={h} value={h}>{h}</option>)}
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-
-                      {activeTask.fileC && (
-                        <div className="fluent-card p-4 group">
-                          <div className="flex items-center gap-2 mb-3">
-                            <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-500 shrink-0">
-                              <Target className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Conexão Tabela Principal ↔ Busca Extra</h3>
-                              <p className="text-xs text-zinc-500">Selecione a coluna que existe em ambas as tabelas</p>
-                            </div>
-                          </div>
-                          
-                          <div className="space-y-3">
-                            <div className="space-y-1">
-                              <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Coluna na Tabela Principal</label>
-                              <select 
-                                value={activeTask.keyA_C}
-                                onChange={(e) => updateActiveTask({ keyA_C: e.target.value })}
-                                className="fluent-select w-full py-2 text-sm"
-                              >
-                                <option value="">Selecione a coluna...</option>
-                                {headersA.map(h => <option key={h} value={h}>{h}</option>)}
-                              </select>
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Coluna na Tabela Extra</label>
-                              <select 
-                                value={activeTask.keyC}
-                                onChange={(e) => updateActiveTask({ keyC: e.target.value })}
-                                className="fluent-select w-full py-2 text-sm"
-                              >
-                                <option value="">Selecione a coluna...</option>
-                                {headersC.map(h => <option key={h} value={h}>{h}</option>)}
-                              </select>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-
-                  {configTab === 'columns' && (
-                    <motion.div
-                      key="columns"
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 10 }}
-                      className="space-y-3"
-                    >
-                      {/* Configuração Tabela A - Colunas da base */}
-                      <div className="fluent-card p-3 sm:p-4 space-y-3">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                          <div>
-                            <h2 className="text-sm font-black flex items-center gap-1.5">
-                              <Columns size={14} className="text-zinc-400" /> Colunas Originais (Tabela Principal)
-                            </h2>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="bg-zinc-500/20 text-zinc-400 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">
-                              {activeTask.selectedColsA.length === 0 ? 'Todas' : `${activeTask.selectedColsA.length} selecionadas`}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 w-3.5 h-3.5" />
-                            <input
-                              type="text"
-                              placeholder="Filtrar nomes de colunas..."
-                              className="w-full pl-9 pr-3 py-2 rounded-xl dark:border-white/10 border-black/10 border dark:bg-black/20 bg-white/60 focus:border-blue-500 outline-none text-xs dark:text-zinc-300 text-zinc-700 font-medium"
-                              onChange={(e) => setSearchTermA(e.target.value.toLowerCase())}
-                            />
-                          </div>
-                          <div className="flex gap-1">
-                            <button
-                              onClick={() => updateActiveTask({ selectedColsA: headersA })}
-                              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-zinc-500 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/5 border-black/10"
-                            >
-                              Selecionar Tudo
-                            </button>
-                            <button
-                              onClick={() => updateActiveTask({ selectedColsA: [] })}
-                              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-zinc-500 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/5 border-black/10"
-                            >
-                              Todas (padrão)
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-[min(13.75rem,42dvh)] sm:max-h-[min(17rem,48dvh)] lg:max-h-[min(22rem,55dvh)] overflow-y-auto pr-1 custom-scrollbar">
-                          {headersA
-                            .filter(h => h.toLowerCase().includes(searchTermA))
-                            .map(h => (
-                            <button
-                              key={h}
-                              onClick={() => {
-                                updateActiveTask({
-                                  selectedColsA: activeTask.selectedColsA.includes(h)
-                                    ? activeTask.selectedColsA.filter(c => c !== h)
-                                    : [...activeTask.selectedColsA, h]
-                                });
-                              }}
-                              className={cn(
-                                "p-2.5 rounded-xl border-2 text-xs font-bold transition-all text-left flex items-center justify-between group relative overflow-hidden",
-                                activeTask.selectedColsA.includes(h)
-                                  ? "border-zinc-500/50 bg-zinc-500/10 text-zinc-300 shadow-sm"
-                                  : "dark:border-white/5 dark:bg-black/20 dark:hover:border-white/20 dark:hover:bg-white/5 border-black/10 bg-white/60 hover:border-black/20 hover:bg-black/5"
-                              )}
-                            >
-                              <span className="truncate z-10">{h}</span>
-                              {activeTask.selectedColsA.includes(h) ? (
-                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="z-10">
-                                  <CheckCircle2 size={16} className="text-zinc-400" />
-                                </motion.div>
-                              ) : (
-                                <div className="w-4 h-4 rounded-full border dark:border-white/10 border-black/10 group-hover:border-zinc-400" />
-                              )}
-                            </button>
-                          ))}
-                        </div>
-
-                        {activeTask.selectedColsA.length === 0 && (
-                          <p className="text-[10px] text-zinc-500 italic">Se não selecionar nada, todas as colunas originais serão mantidas.</p>
-                        )}
-                      </div>
-
-                      {/* Configuração Tabela B */}
-                      <div className="fluent-card p-3 sm:p-4 space-y-3">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                          <div>
-                            <h2 className="text-sm font-black flex items-center gap-1.5">
-                              <Columns size={14} className="text-blue-600" /> Colunas para Importar (Tabela de Busca)
-                              <div className="group relative">
-                                <Info size={13} className="text-zinc-500 cursor-help" />
-                                <div className="absolute bottom-full left-0 mb-2 w-64 p-3 dark:bg-zinc-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10 font-normal">
-                                  <p className="font-bold mb-1">O que trazer?</p>
-                                  <p className="opacity-80">Marque as colunas que contêm as informações que você quer copiar para a sua tabela principal.</p>
-                                </div>
-                              </div>
-                            </h2>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="bg-blue-600/20 text-blue-400 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">
-                              {activeTask.selectedColsB.length} selecionadas
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 w-3.5 h-3.5" />
-                            <input 
-                              type="text"
-                              placeholder="Filtrar nomes de colunas..."
-                              className="w-full pl-9 pr-3 py-2 rounded-xl border dark:border-white/10 border-black/10 dark:bg-black/20 bg-white/60 focus:border-blue-500 outline-none text-xs dark:text-zinc-300 text-zinc-700 font-medium"
-                              onChange={(e) => setSearchTermB(e.target.value.toLowerCase())}
-                            />
-                          </div>
-                          <div className="flex gap-1">
-                            <button 
-                              onClick={() => updateActiveTask({ selectedColsB: headersB })}
-                              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-blue-400 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/5 border-black/10"
-                            > 
-                              Selecionar Tudo
-                            </button>
-                            <button 
-                              onClick={() => updateActiveTask({ selectedColsB: [] })}
-                              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-zinc-500 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/5 border-black/10"
-                            >
-                              Limpar
-                            </button>
-                          </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-[min(13.75rem,42dvh)] sm:max-h-[min(17rem,48dvh)] lg:max-h-[min(22rem,55dvh)] overflow-y-auto pr-1 custom-scrollbar">
-                          {headersB
-                            .filter(h => h.toLowerCase().includes(searchTermB))
-                            .map(h => (
-                            <button
-                              key={h}
-                              onClick={() => {
-                                updateActiveTask({
-                                  selectedColsB: activeTask.selectedColsB.includes(h) 
-                                    ? activeTask.selectedColsB.filter(c => c !== h) 
-                                    : [...activeTask.selectedColsB, h]
-                                });
-                              }}
-                              className={cn(
-                                "p-2.5 rounded-xl border-2 text-xs font-bold transition-all text-left flex items-center justify-between group relative overflow-hidden",
-                                activeTask.selectedColsB.includes(h)
-                                  ? activeTask.lookupType === 'vlookup' && headersB.indexOf(h) < headersB.indexOf(activeTask.keyB)
-                                    ? "border-red-500/50 bg-red-500/10 text-red-400 shadow-sm"
-                                    : "border-blue-500/50 bg-blue-500/10 text-blue-400 shadow-sm"
-                                  : "dark:border-white/5 dark:bg-black/20 dark:hover:border-white/20 dark:hover:bg-white/5 border-black/10 bg-white/60 hover:border-black/20 hover:bg-black/5"
-                              )}
-                            >
-                              <span className="truncate z-10">{h}</span>
-                              {activeTask.selectedColsB.includes(h) ? (
-                                <motion.div 
-                                  initial={{ scale: 0 }}
-                                  animate={{ scale: 1 }}
-                                  className="z-10"
-                                >
-                                  {activeTask.lookupType === 'vlookup' && headersB.indexOf(h) < headersB.indexOf(activeTask.keyB) 
-                                    ? <AlertCircle size={16} className="text-red-400" />
-                                    : <CheckCircle2 size={16} className="text-blue-400" />
-                                  }
-                                </motion.div>
-                              ) : (
-                                <div className="w-4 h-4 rounded-full border dark:border-white/10 border-black/10 group-hover:border-blue-400" />
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Configuração Tabela C (Opcional) */}
-                      {activeTask.fileC && (
-                        <div className="fluent-card p-3 sm:p-4 space-y-3">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <div>
-                              <h2 className="text-sm font-black flex items-center gap-1.5">
-                                <Columns size={14} className="text-purple-400" /> Colunas para Importar (Tabela Extra)
-                                <div className="group relative">
-                                  <Info size={13} className="text-zinc-500 cursor-help" />
-                                  <div className="absolute bottom-full left-0 mb-2 w-64 p-3 dark:bg-zinc-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10 font-normal">
-                                    <p className="font-bold mb-1">O que trazer?</p>
-                                    <p className="opacity-80">Marque as colunas que você quer copiar desta tabela extra.</p>
-                                  </div>
-                                </div>
-                              </h2>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="bg-purple-600/20 text-purple-400 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">
-                                {activeTask.selectedColsC.length} selecionadas
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="flex flex-col sm:flex-row gap-2">
-                            <div className="relative flex-1">
-                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 w-3.5 h-3.5" />
-                              <input 
-                                type="text"
-                                placeholder="Filtrar colunas da Tabela C..."
-                                className="w-full pl-9 pr-3 py-2 rounded-xl border dark:border-white/10 border-black/10 dark:bg-black/20 bg-white/60 focus:border-blue-500 outline-none text-xs dark:text-zinc-300 text-zinc-700 font-medium"
-                                onChange={(e) => setSearchTermC(e.target.value.toLowerCase())}
-                              />
-                            </div>
-                            <div className="flex gap-1">
-                              <button 
-                                onClick={() => updateActiveTask({ selectedColsC: headersC })}
-                                className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-purple-400 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/5 border-black/10"
-                              >
-                                Selecionar Tudo
-                              </button>
-                              <button 
-                                onClick={() => updateActiveTask({ selectedColsC: [] })}
-                                className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-zinc-500 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/5 border-black/10"
-                              >
-                                Limpar
-                              </button>
-                            </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-[min(13.75rem,42dvh)] sm:max-h-[min(17rem,48dvh)] lg:max-h-[min(22rem,55dvh)] overflow-y-auto pr-1 custom-scrollbar">
-                            {headersC
-                              .filter(h => h.toLowerCase().includes(searchTermC))
-                              .map(h => (
-                              <button
-                                key={h}
-                                onClick={() => {
-                                  updateActiveTask({
-                                    selectedColsC: activeTask.selectedColsC.includes(h) 
-                                      ? activeTask.selectedColsC.filter(c => c !== h) 
-                                      : [...activeTask.selectedColsC, h]
-                                  });
-                                }}
-                                className={cn(
-                                  "p-2.5 rounded-xl border-2 text-xs font-bold transition-all text-left flex items-center justify-between group relative overflow-hidden",
-                                  activeTask.selectedColsC.includes(h)
-                                    ? activeTask.lookupType === 'vlookup' && headersC.indexOf(h) < headersC.indexOf(activeTask.keyC)
-                                      ? "border-red-500/50 bg-red-500/10 text-red-400 shadow-sm"
-                                      : "border-purple-500/50 bg-purple-500/10 text-purple-400 shadow-sm"
-                                    : "dark:border-white/5 dark:bg-black/20 dark:hover:border-white/20 dark:hover:bg-white/5 border-black/10 bg-white/60 hover:border-black/20 hover:bg-black/5"
-                                )}
-                              >
-                                <span className="truncate z-10">{h}</span>
-                                {activeTask.selectedColsC.includes(h) ? (
-                                  <motion.div 
-                                    initial={{ scale: 0 }}
-                                    animate={{ scale: 1 }}
-                                    className="z-10"
-                                  >
-                                    {activeTask.lookupType === 'vlookup' && headersC.indexOf(h) < headersC.indexOf(activeTask.keyC) 
-                                      ? <AlertCircle size={16} className="text-red-400" />
-                                      : <CheckCircle2 size={16} className="text-purple-400" />
-                                    }
-                                  </motion.div>
-                                ) : (
-                                  <div className="w-4 h-4 rounded-full border dark:border-white/10 border-black/10 group-hover:border-purple-400" />
-                                )}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-
-                  {configTab === 'advanced' && (
-                    <motion.div
-                      key="advanced"
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 10 }}
-                      className="fluent-card p-3 sm:p-4 space-y-3"
-                    >
-                      <div>
-                        <h2 className="text-sm font-black flex items-center gap-2">
-                          <Settings2 size={14} className="text-blue-600" /> Ajustes Finos
-                        </h2>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                        <div className="space-y-2 p-3 dark:bg-white/5 bg-black/5 rounded-2xl border dark:border-white/5 border-black/10">
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-1.5">
-                              <Zap size={12} className="text-blue-400" /> Padronização
-                            </h3>
-                            <div className="group relative">
-                              <Info size={11} className="text-zinc-500 cursor-help" />
-                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-zinc-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
-                                <p className="font-bold mb-1">Evitar erros comuns</p>
-                                <p className="opacity-80">Ajuda a encontrar correspondências mesmo que o texto não esteja idêntico (ex: "JOSÉ" e "jose").</p>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            {([
-                              { id: 'trimSpaces', label: 'Remover espaços extras', field: 'trimSpaces' as const, help: 'Remove espaços no início e fim do texto.' },
-                              { id: 'ignoreCase', label: 'Ignorar Maiúsculas/Minúsculas', field: 'ignoreCase' as const, help: 'Trata "TEXTO" e "texto" como iguais.' },
-                              { id: 'removeSpecialChars', label: 'Remover Caracteres Especiais', field: 'removeSpecialChars' as const, help: 'Remove acentos e símbolos (ex: "ç" vira "c").' },
-                            ] as const).map((opt) => (
-                              <div key={opt.id} className="flex items-center justify-between group/item">
-                                <label className="flex items-center gap-2 cursor-pointer group">
-                                  <div className="relative flex items-center">
-                                    <input 
-                                      type="checkbox" 
-                                      checked={activeTask[opt.field]} 
-                                      onChange={e => updateActiveTask({ [opt.field]: e.target.checked })} 
-                                      className="peer sr-only" 
-                                    />
-                                    <div className="w-8 h-5 bg-slate-200 dark:bg-slate-700 rounded-full peer peer-checked:bg-blue-600 transition-colors" />
-                                    <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-3" />
-                                  </div>
-                                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 group-hover:text-blue-600 transition-colors">{opt.label}</span>
-                                </label>
-                                <div className="group relative">
-                                  <Info size={10} className="text-slate-300 dark:text-slate-600 cursor-help" />
-                                  <div className="absolute bottom-full right-0 mb-2 w-48 p-2 dark:bg-slate-800 bg-white dark:text-white text-zinc-800 text-[9px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-lg border dark:border-white/10 border-black/10">
-                                    {opt.help}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
-                              <Layers size={12} className="text-blue-500" /> Se houver repetidos
-                            </h3>
-                            <div className="group relative">
-                              <Info size={11} className="text-slate-400 cursor-help" />
-                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
-                                <p className="font-bold mb-1">Duplicatas na busca</p>
-                                <p className="opacity-80">Se o código procurado aparecer mais de uma vez na tabela de busca, qual deles devemos usar?</p>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="space-y-1.5">
-                            <select 
-                              value={activeTask.duplicateStrategy}
-                              onChange={(e) => updateActiveTask({ duplicateStrategy: e.target.value as LookupTask['duplicateStrategy'] })}
-                              className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold outline-none focus:border-blue-500"
-                            >
-                              <option value="first">Usar o primeiro encontrado</option>
-                              <option value="last">Usar o último encontrado</option>
-                              <option value="concatenate">Juntar todos (Separar por ;)</option>
-                            </select>
-                            <p className="text-[10px] text-slate-400 italic leading-relaxed">
-                              {activeTask.duplicateStrategy === 'first' && "Retorna apenas a primeira ocorrência encontrada."}
-                              {activeTask.duplicateStrategy === 'last' && "Retorna apenas a última ocorrência encontrada."}
-                              {activeTask.duplicateStrategy === 'concatenate' && "Junta todos os valores encontrados separados por ponto e vírgula."}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Modo de Correspondência (XLOOKUP style) */}
-                        <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
-                              <Target size={12} className="text-blue-500" /> Modo de Busca
-                            </h3>
-                            <div className="group relative">
-                              <Info size={11} className="text-slate-400 cursor-help" />
-                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
-                                <p className="font-bold mb-1">Como comparar?</p>
-                                <p className="opacity-80">Define se o valor precisa ser idêntico ou se pode buscar valores próximos (útil para faixas de números).</p>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="space-y-1.5">
-                            <select 
-                              value={activeTask.matchMode}
-                              onChange={(e) => updateActiveTask({ matchMode: Number(e.target.value) as LookupTask['matchMode'] })}
-                              className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold outline-none focus:border-blue-500"
-                              disabled={!activeTask.exactMatch}
-                            >
-                              <option value="0">Correspondência Exata (Padrão)</option>
-                              <option value="-1">Aproximada (Menor valor próximo)</option>
-                              <option value="1">Aproximada (Maior valor próximo)</option>
-                              <option value="2">Usar Curingas (* e ?)</option>
-                            </select>
-                            <p className="text-[10px] text-slate-400 italic leading-relaxed">
-                              {!activeTask.exactMatch ? "Desativado em modo Fuzzy." : 
-                                activeTask.matchMode === 0 ? "Busca apenas o valor idêntico." :
-                                activeTask.matchMode === -1 ? "Se não encontrar, pega o valor imediatamente inferior." :
-                                activeTask.matchMode === 1 ? "Se não encontrar, pega o valor imediatamente superior." :
-                                "Permite usar '*' para vários caracteres e '?' para um único."
-                              }
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
-                              <Activity size={12} className="text-blue-500" /> Corretor de Digitação ({Math.round(activeTask.fuzzyThreshold * 100)}%)
-                            </h3>
-                            <div className="group relative">
-                              <Info size={11} className="text-slate-400 cursor-help" />
-                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
-                                <p className="font-bold mb-1">Tolerância a erros</p>
-                                <p className="opacity-80">Útil quando os nomes podem estar digitados errado. Quanto menor a porcentagem, mais diferenças ele aceita.</p>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <input 
-                              type="range" 
-                              min="0.1" 
-                              max="1.0" 
-                              step="0.05" 
-                              value={activeTask.fuzzyThreshold}
-                              onChange={e => updateActiveTask({ fuzzyThreshold: parseFloat(e.target.value) })}
-                              className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                            />
-                            <div className="flex justify-between text-[10px] text-slate-400 font-black">
-                              <span>MAIS FLEXÍVEL</span>
-                              <span>MAIS RÍGIDO</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Colunas de Status */}
-                        <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 sm:col-span-2 md:col-span-3">
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
-                              <CheckCircle2 size={12} className="text-blue-500" /> Colunas de Verificação
-                            </h3>
-                            <div className="group relative">
-                              <Info size={11} className="text-slate-400 cursor-help" />
-                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
-                                <p className="font-bold mb-1">Achou ou não?</p>
-                                <p className="opacity-80">Cria colunas no final dizendo "VERDADEIRO" se encontrou o valor ou "FALSO" se não encontrou.</p>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => updateActiveTask({ includeStatusCols: !activeTask.includeStatusCols })}
-                              className={cn(
-                                "relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none shrink-0",
-                                activeTask.includeStatusCols ? "bg-blue-600" : "bg-slate-200 dark:bg-slate-700"
-                              )}
-                            >
-                              <span
-                                className={cn(
-                                  "inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform",
-                                  activeTask.includeStatusCols ? "translate-x-[18px]" : "translate-x-0.5"
-                                )}
-                              />
-                            </button>
-                            <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
-                              Criar colunas que dizem se achou ou não (VERDADEIRO/FALSO)
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Valor se não encontrado */}
-                        <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 sm:col-span-2 md:col-span-3">
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
-                              <HelpCircle size={12} className="text-blue-500" /> O que escrever se não encontrar?
-                            </h3>
-                            <div className="group relative">
-                              <Info size={11} className="text-slate-400 cursor-help" />
-                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
-                                <p className="font-bold mb-1">Texto padrão</p>
-                                <p className="opacity-80">Quando não houver correspondência, este texto será preenchido na célula (ex: #N/D, Não Encontrado, 0).</p>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Para Tabela B</label>
-                              <input 
-                                type="text"
-                                value={activeTask.ifNotFound}
-                                onChange={(e) => updateActiveTask({ ifNotFound: e.target.value })}
-                                placeholder="#N/D"
-                                className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold outline-none focus:border-blue-500"
-                              />
-                            </div>
-                            {activeTask.fileC && (
-                              <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Para Tabela C</label>
-                                <input 
-                                  type="text"
-                                  value={activeTask.ifNotFoundC}
-                                  onChange={(e) => updateActiveTask({ ifNotFoundC: e.target.value })}
-                                  placeholder="#N/D"
-                                  className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold outline-none focus:border-blue-500"
-                                />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Direção da Busca (XLOOKUP style) */}
-                        <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 sm:col-span-2 md:col-span-3">
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
-                              <ArrowUpDown size={12} className="text-blue-500" /> Ordem da Busca
-                            </h3>
-                            <div className="group relative">
-                              <Info size={11} className="text-slate-400 cursor-help" />
-                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 dark:bg-slate-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10">
-                                <p className="font-bold mb-1">De cima ou de baixo?</p>
-                                <p className="opacity-80">Define se começa a procurar do início da tabela (padrão) ou do fim.</p>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="space-y-1.5">
-                            <select 
-                              value={activeTask.searchDirection}
-                              onChange={(e) => updateActiveTask({ searchDirection: Number(e.target.value) as LookupTask['searchDirection'] })}
-                              className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold outline-none focus:border-blue-500"
-                            >
-                              <option value="1">Do Primeiro ao Último (Padrão)</option>
-                              <option value="-1">Do Último ao Primeiro</option>
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* Validation Summary */}
-              {!validation.isValid && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-2xl p-3 flex items-start gap-3"
-                >
-                  <div className="p-1.5 bg-amber-100 dark:bg-amber-900/40 rounded-lg shrink-0">
-                    <AlertCircle size={14} className="text-amber-600 dark:text-amber-400" />
-                  </div>
-                  <div className="space-y-0.5">
-                    <p className="text-xs font-black text-amber-900 dark:text-amber-200 uppercase tracking-wider">Atenção necessária:</p>
-                    <ul className="text-xs text-amber-800 dark:text-amber-300/80 list-disc list-inside space-y-1 font-medium">
-                      {validation.errors.map((err, i) => <li key={i}>{err}</li>)}
-                    </ul>
-                  </div>
-                </motion.div>
-              )}
-
-              <div className="flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-2 pt-2">
-                <button 
-                  onClick={() => setStep('upload')}
-                  className="min-h-[44px] px-4 py-2 rounded-lg font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all active:scale-95 text-sm"
-                >
-                  Voltar
-                </button>
-                <div className="flex items-center gap-2 flex-wrap justify-end">
-                  {configTab !== 'advanced' && (
-                    <button
-                      onClick={() => setConfigTab(configTab === 'keys' ? 'columns' : 'advanced')}
-                      className="min-h-[44px] px-4 py-2 rounded-lg font-bold text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all border border-blue-100 dark:border-blue-900/40"
-                    >
-                      Próximo
-                    </button>
-                  )}
-                  <button
-                    disabled={!validation.isValid || loading}
-                    onClick={performLookup}
-                    className={cn(
-                      "min-h-[44px] px-5 py-2.5 rounded-lg font-black text-sm flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95",
-                      !validation.isValid
-                        ? "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
-                        : "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20"
-                    )}
-                  >
-                    {loading ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Processando...
-                      </>
-                    ) : (
-                      <>
-                        Executar Cruzamento <Zap size={16} />
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {step === 'result' && activeTask.resultData && stats && (
-            <motion.div 
-              key="result"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="w-full max-w-none flex flex-col flex-1 min-h-0 gap-3 sm:gap-4"
-            >
               {/* Dashboard Stats */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0">
                 {[
@@ -2539,12 +1986,11 @@ export default function App() {
                   )}
                 </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-      </div>
-
+          </div>
         </motion.div>
       </div>
       </>
@@ -2568,19 +2014,9 @@ export default function App() {
       )}
 
       {loading && (step === 'configure' || step === 'upload') && (
-        <div
-          className={cn(
-            'fixed inset-0 z-[200] flex flex-col items-center justify-center backdrop-blur-sm',
-            step === 'upload' ? 'bg-[#131313]/85' : 'bg-white/80'
-          )}
-        >
+        <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-[#131313]/85 backdrop-blur-sm">
           <div className="mb-4 h-16 w-16 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-          <p
-            className={cn(
-              'animate-pulse text-xl font-bold',
-              step === 'upload' ? 'text-white' : 'text-blue-900'
-            )}
-          >
+          <p className="animate-pulse text-xl font-bold text-white">
             {step === 'upload' ? 'Lendo arquivo...' : 'Cruzando dados...'}
           </p>
         </div>
