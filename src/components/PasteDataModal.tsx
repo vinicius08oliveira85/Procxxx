@@ -21,6 +21,8 @@ export type PasteDataModalProps = {
 export function PasteDataModal({ open, onClose, tableLabel, onAccept }: PasteDataModalProps) {
   const [text, setText] = useState('');
   const [hasHeaders, setHasHeaders] = useState(true);
+  /** Vazio = automático; número = colunas à esquerda sem categoria (cabeçalho em 2 linhas). */
+  const [leadingUngroupedInput, setLeadingUngroupedInput] = useState('');
   const deferredText = useDeferredValue(text);
   const isProcessing = text !== deferredText;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -29,6 +31,7 @@ export function PasteDataModal({ open, onClose, tableLabel, onAccept }: PasteDat
     if (!open) {
       setText('');
       setHasHeaders(true);
+      setLeadingUngroupedInput('');
     }
   }, [open]);
 
@@ -39,9 +42,17 @@ export function PasteDataModal({ open, onClose, tableLabel, onAccept }: PasteDat
     }
   }, [open]);
 
+  const parseOptions = useMemo(() => {
+    const t = leadingUngroupedInput.trim();
+    if (t === '') return undefined;
+    const n = parseInt(t, 10);
+    if (!Number.isFinite(n) || n < 0) return undefined;
+    return { leadingUngroupedColumns: n };
+  }, [leadingUngroupedInput]);
+
   const preview: PastePreviewState = useMemo(
-    () => parsePastedTable(deferredText, hasHeaders),
-    [deferredText, hasHeaders]
+    () => parsePastedTable(deferredText, hasHeaders, parseOptions),
+    [deferredText, hasHeaders, parseOptions]
   );
 
   const displayStatus: PasteParseStatus | 'processing' = isProcessing ? 'processing' : preview.status;
@@ -161,6 +172,33 @@ export function PasteDataModal({ open, onClose, tableLabel, onAccept }: PasteDat
                 </span>
               </label>
             </div>
+
+            {hasHeaders ? (
+              <details className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 dark:border-white/10 dark:bg-zinc-950/40">
+                <summary className="cursor-pointer text-xs font-bold text-zinc-600 dark:text-zinc-400">
+                  Ajuste fino · duas linhas de cabeçalho (categorias)
+                </summary>
+                <p className="mt-2 text-[11px] leading-snug text-zinc-500 dark:text-zinc-500">
+                  Se a primeira linha tiver menos colunas que a segunda (ex.: FBref), tentamos alinhar
+                  automaticamente. Use o campo abaixo só se precisar forçar quantas colunas à esquerda não
+                  pertencem a nenhuma categoria.
+                </p>
+                <label className="mt-2 flex flex-col gap-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+                    Colunas sem categoria à esquerda (vazio = automático)
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={leadingUngroupedInput}
+                    onChange={(e) => setLeadingUngroupedInput(e.target.value)}
+                    placeholder="ex.: 4"
+                    className="max-w-[120px] rounded-lg border border-white/20 bg-white/40 px-2 py-1.5 text-sm dark:border-white/10 dark:bg-zinc-900/60"
+                  />
+                </label>
+              </details>
+            ) : null}
           </div>
 
           {previewRows && previewRows.length > 0 ? (
