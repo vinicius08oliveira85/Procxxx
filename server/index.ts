@@ -8,7 +8,8 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { ZodError } from 'zod';
-import { runSuggestConfig } from '../api/ai/suggest-config';
+import { runSuggestConfig } from '../api/ai/suggest-config.ts';
+import { runStructurize, structurizeBodySchema } from '../api/ai/structurize.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -117,6 +118,78 @@ app.post('/api/ai/suggest-config', async (req, res) => {
     }
     console.error('[suggest-config] unexpected', msg, e);
     res.status(502).json({ error: 'Falha ao consultar o modelo. Tente novamente mais tarde.' });
+  }
+});
+
+app.post('/api/ai/structurize', async (req, res) => {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    res.status(503).json({
+      error: 'Serviço de IA indisponível: defina GEMINI_API_KEY no ambiente do servidor.',
+    });
+    return;
+  }
+
+  try {
+    const { text } = structurizeBodySchema.parse(req.body);
+    const result = await runStructurize(text, apiKey, defaultModel);
+    res.json(result);
+  } catch (e) {
+    if (e instanceof ZodError) {
+      res.status(400).json({ error: 'Corpo inválido: envie { "text": string } com 1–100000 caracteres.' });
+      return;
+    }
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg === 'GEMINI_AUTH') {
+      console.error('[structurize][gemini] auth rejected (401/403)');
+      res.status(502).json({
+        error: 'Chave Gemini inválida ou sem permissão. Confira GEMINI_API_KEY no .env / .env.local.',
+      });
+      return;
+    }
+    if (msg === 'GEMINI_NETWORK') {
+      console.error('[structurize][gemini] network error');
+      res.status(502).json({
+        error: 'Não foi possível contactar a API do Gemini (rede). Tente de novo.',
+      });
+      return;
+    }
+    if (msg.startsWith('GEMINI_HTTP_429')) {
+      const retryM = /Please retry in ([\d.]+)s/i.exec(msg);
+      const sec = retryM ? Math.ceil(parseFloat(retryM[1])) : undefined;
+      const waitHint =
+        sec != null && sec > 0 ? ` Tente de novo daqui a cerca de ${sec}s.` : ' Aguarde um minuto e tente de novo.';
+      console.error('[structurize][gemini] quota / rate limit (429)', msg);
+      res.status(429).json({
+        error:
+          'Limite de uso do Gemini atingido (cota do plano gratuito ou pedidos por minuto).' +
+          waitHint +
+          ' Consulte limites e faturação: https://ai.google.dev/gemini-api/docs/rate-limits',
+      });
+      return;
+    }
+    if (msg.startsWith('GEMINI_HTTP_')) {
+      console.error('[structurize][gemini] upstream HTTP', msg);
+      res.status(502).json({
+        error: 'A API do Gemini recusou a requisição. Verifique cota e GEMINI_MODEL (veja o terminal para detalhes).',
+      });
+      return;
+    }
+    if (msg === 'STRUCTURIZE_INVALID_ROWS') {
+      console.error('[structurize] invalid rows shape from model');
+      res.status(502).json({
+        error:
+          'A resposta do modelo não contém um array "rows" de objetos válido. Tente novamente ou reduza o tamanho do texto.',
+      });
+      return;
+    }
+    if (msg === 'MODEL_JSON_PARSE' || msg === 'EMPTY_MODEL_RESPONSE') {
+      console.error('[structurize][gemini] parse/empty output', msg);
+      res.status(502).json({ error: 'A resposta do modelo não pôde ser interpretada. Tente novamente.' });
+      return;
+    }
+    console.error('[structurize] unexpected', msg, e);
+    res.status(502).json({ error: 'Falha ao estruturar o texto. Tente novamente mais tarde.' });
   }
 });
 

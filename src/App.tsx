@@ -56,6 +56,8 @@ import { ConfigureAiAssistant } from './components/ConfigureAiAssistant';
 import { ConfigureTabPanels } from './components/ConfigureTabPanels';
 import { ConfigureStepShell, ConfigureWizardStepper } from './components/ConfigureStepShell';
 import { PivotTableModal } from './components/PivotTableModal';
+import { PasteDataModal } from './components/PasteDataModal';
+import { normalizeExcelRow } from './lib/excelRowNormalize';
 import type { ExcelData, ColumnSetting, LookupTask } from './types/lookupTask';
 
 type Step = 'upload' | 'configure' | 'result';
@@ -375,6 +377,7 @@ export default function App() {
   /** Durante arraste de redimensionar coluna (só repintura; commit no pointerup). */
   const [columnResizePreview, setColumnResizePreview] = useState<{ colId: string; widthPx: number } | null>(null);
   const [showPivotModal, setShowPivotModal] = useState(false);
+  const [pasteTarget, setPasteTarget] = useState<'A' | 'B' | 'C' | null>(null);
   const columnResizeSessionRef = useRef<{
     colId: string;
     startX: number;
@@ -542,25 +545,6 @@ export default function App() {
     const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
     const isText = ext === 'csv' || ext === 'tsv';
 
-    // Converte objetos Date para string DD/MM/AAAA (HH:MM) e números grandes
-    // (CPF, códigos) para string sem notação científica.
-    const normalizeRow = (row: Record<string, unknown>): Record<string, unknown> => {
-      const result: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(row)) {
-        if (v instanceof Date) {
-          const pad = (n: number) => String(n).padStart(2, '0');
-          const dateStr = `${pad(v.getDate())}/${pad(v.getMonth() + 1)}/${v.getFullYear()}`;
-          const hasTime = v.getHours() !== 0 || v.getMinutes() !== 0;
-          result[k] = hasTime ? `${dateStr} ${pad(v.getHours())}:${pad(v.getMinutes())}` : dateStr;
-        } else if (typeof v === 'number' && !isNaN(v) && Math.abs(v) >= 1e9) {
-          result[k] = Number.isInteger(v) ? String(v) : v.toFixed(0);
-        } else {
-          result[k] = v;
-        }
-      }
-      return result;
-    };
-
     const parseAndUpdate = (result: string | ArrayBuffer | null) => {
       try {
         // cellDates: true converte seriais de data do Excel em objetos Date do JS,
@@ -580,7 +564,7 @@ export default function App() {
             wb.Sheets[name],
             { defval: '' }
           );
-          sheets[name] = raw.map(normalizeRow);
+          sheets[name] = raw.map(normalizeExcelRow);
         });
 
         const data: ExcelData = {
@@ -612,6 +596,28 @@ export default function App() {
       reader.readAsArrayBuffer(file);
     }
   };
+
+  const handlePasteData = useCallback((type: 'A' | 'B' | 'C') => {
+    setPasteTarget(type);
+  }, []);
+
+  const handlePasteDataAccept = useCallback(
+    (data: ExcelData) => {
+      if (pasteTarget === 'A') updateActiveTask({ fileA: data });
+      else if (pasteTarget === 'B') updateActiveTask({ fileB: data });
+      else if (pasteTarget === 'C') updateActiveTask({ fileC: data });
+    },
+    [pasteTarget, updateActiveTask]
+  );
+
+  const pasteTargetLabel =
+    pasteTarget === 'A'
+      ? 'Tabela principal (A)'
+      : pasteTarget === 'B'
+        ? 'Tabela de busca (B)'
+        : pasteTarget === 'C'
+          ? 'Tabela extra (C)'
+          : undefined;
 
   /**
    * Cabeçalhos extraídos da Tabela A (planilha selecionada).
@@ -1261,6 +1267,7 @@ export default function App() {
                       fileA: activeTask.fileA ? { ...activeTask.fileA, name: newName } : null,
                     })
                   }
+                  onPaste={() => handlePasteData('A')}
                 />
                 <UploadCard
                   variant="landing"
@@ -1280,6 +1287,7 @@ export default function App() {
                       fileB: activeTask.fileB ? { ...activeTask.fileB, name: newName } : null,
                     })
                   }
+                  onPaste={() => handlePasteData('B')}
                 />
                 <div className="flex justify-center pt-1">
                   <button
@@ -1326,6 +1334,7 @@ export default function App() {
                           fileC: activeTask.fileC ? { ...activeTask.fileC, name: newName } : null,
                         })
                       }
+                      onPaste={() => handlePasteData('C')}
                     />
                   </motion.div>
                 )}
@@ -2109,6 +2118,13 @@ export default function App() {
         </div>
       )}
 
+      <PasteDataModal
+        open={pasteTarget !== null}
+        onClose={() => setPasteTarget(null)}
+        tableLabel={pasteTargetLabel}
+        onAccept={handlePasteDataAccept}
+      />
+
       <PivotTableModal
         open={showPivotModal}
         onClose={() => setShowPivotModal(false)}
@@ -2210,6 +2226,7 @@ function UploadCard({
   file,
   onUpload,
   onRemove,
+  onPaste,
   onSheetChange,
   onRename,
   variant = 'default',
@@ -2219,6 +2236,7 @@ function UploadCard({
   description: string;
   file: ExcelData | null;
   onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onPaste?: () => void;
   onRemove: () => void;
   onSheetChange: (sheetName: string) => void;
   onRename?: (newName: string) => void;
@@ -2351,10 +2369,21 @@ function UploadCard({
                 <h3 className="font-jakarta text-base font-bold text-white">{title}</h3>
                 <p className="mt-0.5 text-[12px] leading-snug text-[#c3c6d7]">{description}</p>
               </div>
-              <label className="shrink-0 cursor-pointer">
-                <input type="file" accept={UPLOAD_ACCEPT} onChange={onUpload} className="hidden" />
-                <span className={landingImportBtn}>Importar</span>
-              </label>
+              <div className="flex flex-col gap-2">
+                <label className="shrink-0 cursor-pointer">
+                  <input type="file" accept={UPLOAD_ACCEPT} onChange={onUpload} className="hidden" />
+                  <span className={landingImportBtn}>Importar Arquivo</span>
+                </label>
+                {onPaste ? (
+                  <button
+                    type="button"
+                    onClick={onPaste}
+                    className="text-[10px] font-bold uppercase tracking-widest text-[#b4c5ff] transition-colors hover:text-white"
+                  >
+                    Ou Colar Texto Bruto
+                  </button>
+                ) : null}
+              </div>
             </>
           )}
         </div>
