@@ -36,16 +36,22 @@ export function uniquifyHeaders(raw: string[]): string[] {
 const CLUB_CREST_PREFIX = /^Club Crest\s+/i;
 
 /**
- * Cabeçalho cuja coluna lógica é Squad (ex.: `Squad`, `Something / Squad`, `Squad (2)` após uniquify).
+ * Cabeçalho cuja coluna lógica é Squad (ex.: `Squad`, `Foo Squad`, `Foo / Squad`, `Squad (2)`).
  */
 export function isSquadColumnHeader(header: string): boolean {
-  const leaf =
-    header
-      .split(' / ')
-      .pop()
-      ?.replace(/\s*\(\d+\)\s*$/, '')
-      .trim() ?? '';
-  return leaf.length > 0 && /^squad$/i.test(leaf);
+  const base = header.replace(/\s*\(\d+\)\s*$/, '').trim();
+  if (/^squad$/i.test(base)) return true;
+  if (/\s\/\sSquad$/i.test(base)) return true;
+  if (/(^|\s)Squad$/i.test(base)) return true;
+  return false;
+}
+
+/** Junta categoria + subcabeçalho com espaço (ex.: `Home` + `MP` → `Home MP`). */
+export function combineCategoryAndSubheader(parent: string, sub: string): string {
+  const p = parent.trim();
+  const s = sub.trim();
+  if (!p) return s;
+  return `${p} ${s}`;
 }
 
 /** Remove texto de acessibilidade colado de alguns sites (ex.: "Club Crest Barcelona"). */
@@ -98,6 +104,32 @@ export function inferKnownGroupSpans(groups: string[], rest: number): number[] |
 }
 
 /**
+ * Tabelas estilo FBref: Home + Away com 9 métricas cada (MP … Pts/MP).
+ * L = colunas à esquerda sem grupo (ex.: Rk, Squad) = N - 18.
+ */
+export function tryHomeAwayTwoGroupLayout(groups: string[], N: number): { L: number; spans: number[] } | null {
+  if (groups.length !== 2) return null;
+  const a = normGroup(groups[0]);
+  const b = normGroup(groups[1]);
+  const isHomeAway =
+    (a === 'home' && b === 'away') || (a === 'away' && b === 'home');
+  if (!isHomeAway) return null;
+  const spanEach = 9;
+  const totalMetrics = spanEach * 2;
+  if (N < totalMetrics) return null;
+  const L = N - totalMetrics;
+  return { L, spans: [spanEach, spanEach] };
+}
+
+function fixSpanSum(spans: number[], rest: number): number[] {
+  const sum = spans.reduce((x, y) => x + y, 0);
+  if (sum === rest) return spans;
+  const out = [...spans];
+  out[out.length - 1] = (out[out.length - 1] ?? 0) + (rest - sum);
+  return out;
+}
+
+/**
  * Linha de categorias com menos células que a linha de cabeçalhos: expande para N colunas.
  */
 export function buildSparseCategoryParents(
@@ -112,29 +144,35 @@ export function buildSparseCategoryParents(
   if (G === 0) return Array(N).fill('');
 
   let L: number;
+  let spans: number[];
+
   if (options?.leadingUngroupedColumns != null && options.leadingUngroupedColumns >= 0) {
     L = Math.min(options.leadingUngroupedColumns, N - G);
+    const rest = N - L;
+    if (rest <= 0) return Array(N).fill('');
+    spans = fixSpanSum(inferKnownGroupSpans(groups, rest) ?? splitEven(rest, G), rest);
   } else {
-    const firstNonEmpty = topCells.findIndex((c) => c.trim() !== '');
-    const squad = bottomFirstCell.trim().toLowerCase() === 'squad';
-    if (squad && G >= 2) {
-      L = Math.max(4, firstNonEmpty >= 0 ? firstNonEmpty : 0);
+    const homeAway = tryHomeAwayTwoGroupLayout(groups, N);
+    if (homeAway) {
+      L = homeAway.L;
+      spans = homeAway.spans;
     } else {
-      L = firstNonEmpty >= 0 ? firstNonEmpty : 0;
+      const firstNonEmpty = topCells.findIndex((c) => c.trim() !== '');
+      const squad = bottomFirstCell.trim().toLowerCase() === 'squad';
+      if (squad && G >= 2) {
+        L = Math.max(4, firstNonEmpty >= 0 ? firstNonEmpty : 0);
+      } else {
+        L = firstNonEmpty >= 0 ? firstNonEmpty : 0;
+      }
+      L = Math.min(L, N - 1);
+      const rest = N - L;
+      if (rest <= 0) return Array(N).fill('');
+      spans = fixSpanSum(inferKnownGroupSpans(groups, rest) ?? splitEven(rest, G), rest);
     }
-    L = Math.min(L, N - 1);
   }
 
   const rest = N - L;
   if (rest <= 0) return Array(N).fill('');
-
-  let spans = inferKnownGroupSpans(groups, rest) ?? splitEven(rest, G);
-  const sumSpans = spans.reduce((a, b) => a + b, 0);
-  if (sumSpans !== rest) {
-    const d = rest - sumSpans;
-    spans = [...spans];
-    spans[spans.length - 1] = (spans[spans.length - 1] ?? 0) + d;
-  }
 
   const out: string[] = [];
   for (let i = 0; i < L; i++) out.push('');
@@ -169,8 +207,8 @@ export function mergeTwoHeaderRows(
   }
 
   const combined = r1.map((sub, i) => {
-    const p = (parents[i] ?? '').trim();
-    return p ? `${p} / ${sub}` : sub;
+    const p = parents[i] ?? '';
+    return combineCategoryAndSubheader(p, sub);
   });
   return uniquifyHeaders(combined);
 }
