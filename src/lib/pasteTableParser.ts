@@ -33,6 +33,31 @@ export function uniquifyHeaders(raw: string[]): string[] {
   });
 }
 
+const CLUB_CREST_PREFIX = /^Club Crest\s+/i;
+
+/**
+ * Cabeçalho cuja coluna lógica é Squad (ex.: `Squad`, `Something / Squad`, `Squad (2)` após uniquify).
+ */
+export function isSquadColumnHeader(header: string): boolean {
+  const leaf =
+    header
+      .split(' / ')
+      .pop()
+      ?.replace(/\s*\(\d+\)\s*$/, '')
+      .trim() ?? '';
+  return leaf.length > 0 && /^squad$/i.test(leaf);
+}
+
+/** Remove texto de acessibilidade colado de alguns sites (ex.: "Club Crest Barcelona"). */
+export function normalizeSquadPastedValue(raw: string): string {
+  return raw.replace(CLUB_CREST_PREFIX, '').trim();
+}
+
+export function normalizePastedCellValue(header: string, raw: string): string {
+  if (!isSquadColumnHeader(header)) return raw;
+  return normalizeSquadPastedValue(raw);
+}
+
 /** Reparte `total` em `parts` partes inteiras o mais igual possível. */
 export function splitEven(total: number, parts: number): number[] {
   if (parts <= 0) return [];
@@ -233,7 +258,7 @@ export function parsePastedTable(
     const cells = splitRow(line, delimiter);
     const row: Record<string, unknown> = {};
     headers.forEach((header, idx) => {
-      row[header] = cells[idx] ?? '';
+      row[header] = normalizePastedCellValue(header, cells[idx] ?? '');
     });
     return row;
   });

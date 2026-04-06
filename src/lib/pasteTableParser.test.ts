@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   detectDelimiter,
   forwardFillCategoryRow,
+  isSquadColumnHeader,
   isTwoLineHeaderLayout,
   mergeTwoHeaderRows,
+  normalizeSquadPastedValue,
   parsePastedTable,
   splitEven,
   uniquifyHeaders,
@@ -24,6 +26,19 @@ describe('detectDelimiter', () => {
 describe('uniquifyHeaders', () => {
   it('duplica com sufixo numérico', () => {
     expect(uniquifyHeaders(['Nome', 'Nome', 'Nome'])).toEqual(['Nome', 'Nome (2)', 'Nome (3)']);
+  });
+});
+
+describe('normalizeSquadPastedValue / isSquadColumnHeader', () => {
+  it('remove prefixo Club Crest', () => {
+    expect(normalizeSquadPastedValue('Club Crest Barcelona')).toBe('Barcelona');
+    expect(normalizeSquadPastedValue('club crest Real Madrid')).toBe('Real Madrid');
+  });
+  it('identifica coluna Squad', () => {
+    expect(isSquadColumnHeader('Squad')).toBe(true);
+    expect(isSquadColumnHeader('Table / Squad')).toBe(true);
+    expect(isSquadColumnHeader('Squad (2)')).toBe(true);
+    expect(isSquadColumnHeader('Top Team Scorer')).toBe(false);
   });
 });
 
@@ -96,6 +111,18 @@ describe('parsePastedTable', () => {
   it('vazio aguarda colagem', () => {
     const r = parsePastedTable('   ', true);
     expect(r.status).toBe('waiting');
+  });
+
+  it('remove Club Crest na coluna Squad (tabela de classificação)', () => {
+    const sample = [
+      'Rk\tSquad\tMP\tW',
+      '1\tClub Crest Barcelona\t30\t25',
+      '2\tClub Crest Real Madrid\t30\t22',
+    ].join('\n');
+    const r = parsePastedTable(sample, true);
+    expect(r.status).toBe('ready');
+    expect(r.rows![0].Squad).toBe('Barcelona');
+    expect(r.rows![1].Squad).toBe('Real Madrid');
   });
 
   it('tabela duas linhas de cabeçalho (estilo FBref)', () => {
