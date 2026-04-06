@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildResultExportRows,
+  buildResultExportRowsForJson,
   getResultExportVisibleColumnIds,
   resultExportBaseFileName,
 } from './exportResult';
@@ -32,6 +33,28 @@ describe('buildResultExportRows', () => {
     ]);
     const rows: Record<string, unknown>[] = [{ x: 1, y: 2, z: 3, extra: 4 }];
     expect(buildResultExportRows(settings, rows)).toEqual([{ x: 1, y: 2 }]);
+  });
+});
+
+describe('buildResultExportRowsForJson', () => {
+  it('remove Lookup_ quando não há colisão com coluna normal', () => {
+    const settings = cols([{ id: 'id', visible: true }, { id: 'Lookup_Email', visible: true }]);
+    const rows = [{ id: 1, Lookup_Email: 'a@b.pt' }];
+    expect(buildResultExportRowsForJson(settings, rows)).toEqual([{ id: 1, Email: 'a@b.pt' }]);
+  });
+
+  it('mantém Lookup_ se já existir chave com o nome despojado (ex.: coluna A com mesmo id)', () => {
+    const settings = cols([{ id: 'Email', visible: true }, { id: 'Lookup_Email', visible: true }]);
+    const rows = [{ Email: 'a@a.pt', Lookup_Email: 'b@b.pt' }];
+    expect(buildResultExportRowsForJson(settings, rows)).toEqual([
+      { Email: 'a@a.pt', Lookup_Email: 'b@b.pt' },
+    ]);
+  });
+
+  it('LookupC_ sem colisão usa nome sem prefixo', () => {
+    const settings = cols([{ id: 'LookupC_Code', visible: true }]);
+    const rows = [{ LookupC_Code: 'X' }];
+    expect(buildResultExportRowsForJson(settings, rows)).toEqual([{ Code: 'X' }]);
   });
 });
 

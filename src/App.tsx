@@ -61,6 +61,7 @@ import { PasteDataModal } from './components/PasteDataModal';
 import { normalizeExcelRow } from './lib/excelRowNormalize';
 import {
   buildResultExportRows,
+  buildResultExportRowsForJson,
   downloadJsonFile,
   getResultExportVisibleColumnIds,
   resultExportBaseFileName,
@@ -1096,7 +1097,7 @@ export default function App() {
 
   const downloadResultJson = () => {
     if (!filteredResultData || filteredResultData.length === 0) return;
-    const exportData = buildResultExportRows(
+    const exportData = buildResultExportRowsForJson(
       activeTask.columnSettings,
       filteredResultData as Record<string, unknown>[]
     );
