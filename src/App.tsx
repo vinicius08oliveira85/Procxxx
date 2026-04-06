@@ -42,6 +42,7 @@ import {
   Pencil,
   TableProperties,
   FileText,
+  FileJson,
   type LucideIcon,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -58,6 +59,12 @@ import { ConfigureStepShell, ConfigureWizardStepper } from './components/Configu
 import { PivotTableModal } from './components/PivotTableModal';
 import { PasteDataModal } from './components/PasteDataModal';
 import { normalizeExcelRow } from './lib/excelRowNormalize';
+import {
+  buildResultExportRows,
+  downloadJsonFile,
+  getResultExportVisibleColumnIds,
+  resultExportBaseFileName,
+} from './lib/exportResult';
 import type { ExcelData, ColumnSetting, LookupTask } from './types/lookupTask';
 
 type Step = 'upload' | 'configure' | 'result';
@@ -1066,31 +1073,34 @@ export default function App() {
   const downloadResult = () => {
     if (!filteredResultData || filteredResultData.length === 0) return;
 
-    const visibleCols = activeTask.columnSettings
-      .filter(c => c.visible && !c.id.startsWith('_'))
-      .map(c => c.id);
-
-    const exportData = filteredResultData.map(row => {
-      const clean: Record<string, unknown> = {};
-      visibleCols.forEach(col => { clean[col] = row[col]; });
-      return clean;
-    });
+    const exportData = buildResultExportRows(
+      activeTask.columnSettings,
+      filteredResultData as Record<string, unknown>[]
+    );
+    const visibleCols = getResultExportVisibleColumnIds(activeTask.columnSettings);
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const widthById = new Map<string, number>(
       activeTask.columnSettings.map((c): [string, number] => [c.id, getResultColWidthPx(c)])
     );
     const sheet = ws as import('xlsx').WorkSheet;
-    sheet['!cols'] = visibleCols.map(colId => {
+    sheet['!cols'] = visibleCols.map((colId) => {
       const px = widthById.get(colId) ?? DEFAULT_RESULT_COL_WIDTH_PX;
       return { wch: Math.max(8, Math.min(60, Math.round(px / 7))) };
     });
     const wb = XLSX.utils.book_new();
-    const fileName = activeTask.resultFilter === 'all'
-      ? `resultado_${activeTask.name}.xlsx`
-      : `resultado_${activeTask.name}_${activeTask.resultFilter}.xlsx`;
-    XLSX.utils.book_append_sheet(wb, ws, "Resultado");
+    const fileName = `${resultExportBaseFileName(activeTask)}.xlsx`;
+    XLSX.utils.book_append_sheet(wb, ws, 'Resultado');
     XLSX.writeFile(wb, fileName);
+  };
+
+  const downloadResultJson = () => {
+    if (!filteredResultData || filteredResultData.length === 0) return;
+    const exportData = buildResultExportRows(
+      activeTask.columnSettings,
+      filteredResultData as Record<string, unknown>[]
+    );
+    downloadJsonFile(exportData, `${resultExportBaseFileName(activeTask)}.json`);
   };
 
   /**
@@ -1686,13 +1696,24 @@ export default function App() {
                             <TableProperties size={18} />
                           </button>
                           <button
+                            type="button"
                             onClick={downloadResult}
                             className="fluent-button-primary min-h-[44px] px-3 py-2 text-xs flex items-center gap-1.5"
-                            aria-label="Baixar resultado"
-                            title="Baixar resultado"
+                            aria-label="Baixar resultado em Excel"
+                            title="Baixar Excel"
                           >
                             <Download size={16} />
-                            <span className="font-bold">Baixar</span>
+                            <span className="font-bold">Excel</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={downloadResultJson}
+                            className="min-h-[44px] px-3 py-2 text-xs font-bold flex items-center gap-1.5 rounded-xl border dark:border-white/10 border-black/10 text-zinc-600 dark:text-zinc-300 hover:bg-black/5 dark:hover:bg-white/10 transition-all active:scale-95"
+                            aria-label="Baixar resultado em JSON"
+                            title="Baixar JSON"
+                          >
+                            <FileJson size={16} />
+                            <span>JSON</span>
                           </button>
                         </div>
                       </div>
@@ -1763,10 +1784,20 @@ export default function App() {
                         <TableProperties size={14} /> Tabela dinâmica
                       </button>
                       <button
+                        type="button"
                         onClick={downloadResult}
-                        className="fluent-button-primary min-h-[44px] px-4 py-2 text-xs"
+                        className="fluent-button-primary min-h-[44px] px-4 py-2 text-xs flex items-center gap-1.5"
                       >
                         <Download size={14} /> Baixar Excel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={downloadResultJson}
+                        className="min-h-[44px] flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-zinc-600 dark:text-zinc-300 border dark:border-white/10 border-black/10 hover:bg-black/5 dark:hover:bg-white/10 transition-all active:scale-95"
+                        aria-label="Baixar resultado em JSON"
+                        title="Baixar JSON"
+                      >
+                        <FileJson size={14} /> Baixar JSON
                       </button>
                     </div>
                   </div>
