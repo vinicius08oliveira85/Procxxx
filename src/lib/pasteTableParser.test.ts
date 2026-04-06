@@ -8,6 +8,7 @@ import {
   normalizeSquadPastedValue,
   parsePastedTable,
   splitEven,
+  tryHomeAwayTwoGroupLayout,
   uniquifyHeaders,
 } from './pasteTableParser';
 
@@ -37,6 +38,7 @@ describe('normalizeSquadPastedValue / isSquadColumnHeader', () => {
   it('identifica coluna Squad', () => {
     expect(isSquadColumnHeader('Squad')).toBe(true);
     expect(isSquadColumnHeader('Table / Squad')).toBe(true);
+    expect(isSquadColumnHeader('Table Squad')).toBe(true);
     expect(isSquadColumnHeader('Squad (2)')).toBe(true);
     expect(isSquadColumnHeader('Top Team Scorer')).toBe(false);
   });
@@ -67,6 +69,16 @@ describe('isTwoLineHeaderLayout', () => {
   });
 });
 
+describe('tryHomeAwayTwoGroupLayout', () => {
+  it('20 colunas: 2 fixas + 9 Home + 9 Away', () => {
+    const r = tryHomeAwayTwoGroupLayout(['Home', 'Away'], 20);
+    expect(r).toEqual({ L: 2, spans: [9, 9] });
+  });
+  it('18 colunas: só blocos Home/Away', () => {
+    expect(tryHomeAwayTwoGroupLayout(['Home', 'Away'], 18)).toEqual({ L: 0, spans: [9, 9] });
+  });
+});
+
 describe('mergeTwoHeaderRows (FBref)', () => {
   const top = '\tPlaying Time\tPerformance\tPer 90 Minutes'.split('\t');
   const bottom =
@@ -77,12 +89,12 @@ describe('mergeTwoHeaderRows (FBref)', () => {
   it('gera chaves compostas com spans 4+8+5 quando Squad', () => {
     const h = mergeTwoHeaderRows(top, bottom);
     expect(h[0]).toBe('Squad');
-    expect(h[4]).toBe('Playing Time / MP');
-    expect(h[7]).toBe('Playing Time / 90s');
-    expect(h[8]).toBe('Performance / Gls');
-    expect(h[15]).toBe('Performance / CrdR');
-    expect(h[16]).toBe('Per 90 Minutes / Gls');
-    expect(h[20]).toBe('Per 90 Minutes / G+A-PK');
+    expect(h[4]).toBe('Playing Time MP');
+    expect(h[7]).toBe('Playing Time 90s');
+    expect(h[8]).toBe('Performance Gls');
+    expect(h[15]).toBe('Performance CrdR');
+    expect(h[16]).toBe('Per 90 Minutes Gls');
+    expect(h[20]).toBe('Per 90 Minutes G+A-PK');
   });
 });
 
@@ -113,6 +125,22 @@ describe('parsePastedTable', () => {
     expect(r.status).toBe('waiting');
   });
 
+  it('cabeçalho Home/Away com Rk e Squad (FBref)', () => {
+    const sample = [
+      '\tHome\tAway',
+      'Rk\tSquad\tMP\tW\tD\tL\tGF\tGA\tGD\tPts\tPts/MP\tMP\tW\tD\tL\tGF\tGA\tGD\tPts\tPts/MP',
+      '1\tClub Crest Barcelona\t15\t15\t0\t0\t47\t8\t+39\t45\t3.00\t15\t10\t1\t4\t33\t21\t+12\t31\t2.07',
+    ].join('\n');
+    const r = parsePastedTable(sample, true);
+    expect(r.status).toBe('ready');
+    expect(r.rows![0].Squad).toBe('Barcelona');
+    expect(r.rows![0]['Home MP']).toBe('15');
+    expect(r.rows![0]['Home Pts']).toBe('45');
+    expect(r.rows![0]['Away MP']).toBe('15');
+    expect(r.rows![0]['Away Pts']).toBe('31');
+    expect(r.rows![0].Rk).toBe('1');
+  });
+
   it('remove Club Crest na coluna Squad (tabela de classificação)', () => {
     const sample = [
       'Rk\tSquad\tMP\tW',
@@ -136,8 +164,8 @@ describe('parsePastedTable', () => {
     expect(r.message).toContain('2 linhas');
     expect(r.rows).toHaveLength(1);
     expect(r.rows![0]['Squad']).toBe('Alavés');
-    expect(r.rows![0]['Playing Time / MP']).toBe('30');
-    expect(r.rows![0]['Performance / Gls']).toBe('30');
-    expect(r.rows![0]['Per 90 Minutes / Gls']).toBe('1.00');
+    expect(r.rows![0]['Playing Time MP']).toBe('30');
+    expect(r.rows![0]['Performance Gls']).toBe('30');
+    expect(r.rows![0]['Per 90 Minutes Gls']).toBe('1.00');
   });
 });

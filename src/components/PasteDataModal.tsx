@@ -1,7 +1,17 @@
 import React, { useEffect, useMemo, useDeferredValue, useRef, useState } from 'react';
-import { AlertCircle, CheckCircle2, Clipboard, Loader2, Table as TableIcon, X } from 'lucide-react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  Clipboard,
+  FileJson,
+  Loader2,
+  Table as TableIcon,
+  X,
+} from 'lucide-react';
 import { cn } from '../lib/utils';
 import { normalizeExcelRow } from '../lib/excelRowNormalize';
+import { downloadJsonFile } from '../lib/exportResult';
+import { orderColumnsForLeagueTable, toLeagueTablePayload } from '../lib/leagueTableShape';
 import {
   parsePastedTable,
   type PasteParseStatus,
@@ -73,6 +83,17 @@ export function PasteDataModal({ open, onClose, tableLabel, onAccept }: PasteDat
     };
     onAccept(data);
     onClose();
+  };
+
+  const handleLeagueTableJson = () => {
+    if (!previewRows?.length || columns.length === 0) return;
+    const { order, metricKey } = orderColumnsForLeagueTable(columns);
+    const payload = toLeagueTablePayload(previewRows as Record<string, unknown>[], order, {
+      title: 'League Table',
+      metricColumnKey: metricKey,
+    });
+    if (!payload) return;
+    downloadJsonFile(payload, 'league_table.json');
   };
 
   if (!open) return null;
@@ -243,7 +264,16 @@ export function PasteDataModal({ open, onClose, tableLabel, onAccept }: PasteDat
                   </tbody>
                 </table>
               </div>
-              <div className="flex flex-wrap justify-end gap-2 pt-1">
+              <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleLeagueTableJson}
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl border border-violet-500/30 bg-violet-500/10 px-4 py-2.5 text-sm font-bold text-violet-800 transition-colors hover:bg-violet-500/15 dark:border-violet-400/25 dark:bg-violet-500/10 dark:text-violet-200 dark:hover:bg-violet-500/20"
+                  title='JSON com firstColumnHeader, headers e rows { metric, values[] }'
+                >
+                  <FileJson size={18} className="shrink-0" aria-hidden />
+                  League Table JSON
+                </button>
                 <button
                   type="button"
                   onClick={() => setText('')}
