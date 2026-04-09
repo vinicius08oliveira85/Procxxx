@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import * as XLSX from 'xlsx';
 import { 
   FileUp, 
@@ -394,6 +395,8 @@ export default function App() {
   const [configTab, setConfigTab] = useState<'keys' | 'columns' | 'advanced'>('keys');
   const [columnFilters, setColumnFilters] = useState<{ [col: string]: Set<string> }>({});
   const [openFilterCol, setOpenFilterCol] = useState<string | null>(null);
+  /** Botão "Filtrar…" da coluna aberta — âncora para o menu em portal (evita corte por overflow). */
+  const columnFilterAnchorRef = useRef<HTMLButtonElement | null>(null);
   const [showDivergentConfig, setShowDivergentConfig] = useState(false);
   const [visibleRows, setVisibleRows] = useState(50);
   const [selectedRowIndex, setSelectedRowIndex] = useState<number | null>(null);
@@ -2112,6 +2115,7 @@ export default function App() {
                           )}>
                             <button
                               type="button"
+                              ref={openFilterCol === col.id ? columnFilterAnchorRef : undefined}
                               onClick={() => setOpenFilterCol(openFilterCol === col.id ? null : col.id)}
                               className={cn(
                                 "w-full min-h-[36px] flex items-center justify-between gap-1 px-2 py-2 pr-3 rounded-lg text-xs font-bold transition-all",
@@ -2139,6 +2143,7 @@ export default function App() {
                             {openFilterCol === col.id && (
                               <ColumnFilterDropdown
                                 colId={col.id}
+                                anchorRef={columnFilterAnchorRef}
                                 allData={activeTask.resultData ?? []}
                                 selectedSet={columnFilters[col.id] ?? null}
                                 sortConfig={sortConfig}
@@ -2656,6 +2661,7 @@ function UploadCard({
 
 function ColumnFilterDropdown({
   colId,
+  anchorRef,
   allData,
   selectedSet,
   sortConfig,
@@ -2665,6 +2671,7 @@ function ColumnFilterDropdown({
   onClose,
 }: {
   colId: string;
+  anchorRef: React.RefObject<HTMLButtonElement | null>;
   allData: any[];
   selectedSet: Set<string> | null;
   sortConfig: SortConfig | null;
@@ -2674,7 +2681,14 @@ function ColumnFilterDropdown({
   onClose: () => void;
 }) {
   const [search, setSearch] = React.useState('');
-  const ref = React.useRef<HTMLDivElement>(null);
+  const panelRef = React.useRef<HTMLDivElement>(null);
+  const [placement, setPlacement] = React.useState<{
+    top: number;
+    left: number;
+    width: number;
+    maxHeight: number;
+    transform?: string;
+  } | null>(null);
 
   const uniqueValues = React.useMemo((): string[] => {
     const vals = new Set(allData.map(row => String(row[colId] ?? '')));
@@ -2701,21 +2715,88 @@ function ColumnFilterDropdown({
     onApply(base.size === uniqueValues.length ? null : base);
   };
 
+  const updatePlacement = React.useCallback(() => {
+    const anchor = anchorRef.current;
+    if (!anchor) return;
+    const rect = anchor.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const margin = 8;
+    const gap = 4;
+    const minW = 224;
+    const width = Math.min(Math.max(rect.width, minW), vw - margin * 2);
+    let left = rect.left;
+    if (left + width > vw - margin) left = Math.max(margin, vw - width - margin);
+    if (left < margin) left = margin;
+
+    const spaceBelow = vh - rect.bottom - gap - margin;
+    const spaceAbove = rect.top - gap - margin;
+    const openUpward = spaceBelow < 160 && spaceAbove > spaceBelow;
+    const avail = Math.max(0, openUpward ? spaceAbove : spaceBelow);
+    const maxH = Math.min(avail, vh - margin * 2);
+
+    if (openUpward) {
+      setPlacement({
+        top: rect.top - gap,
+        left,
+        width,
+        maxHeight: maxH,
+        transform: 'translateY(-100%)',
+      });
+    } else {
+      setPlacement({
+        top: rect.bottom + gap,
+        left,
+        width,
+        maxHeight: maxH,
+      });
+    }
+  }, [anchorRef]);
+
+  useLayoutEffect(() => {
+    updatePlacement();
+  }, [updatePlacement, displayed.length, search, colId]);
+
   React.useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+      const t = e.target as Node;
+      if (panelRef.current?.contains(t)) return;
+      if (anchorRef.current?.contains(t)) return;
+      onClose();
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
+  }, [onClose, anchorRef]);
 
-  return (
+  React.useEffect(() => {
+    window.addEventListener('resize', updatePlacement);
+    window.addEventListener('scroll', updatePlacement, true);
+    return () => {
+      window.removeEventListener('resize', updatePlacement);
+      window.removeEventListener('scroll', updatePlacement, true);
+    };
+  }, [updatePlacement]);
+
+  if (typeof document === 'undefined' || !placement) {
+    return null;
+  }
+
+  const panel = (
     <div
-      ref={ref}
-      className="absolute z-50 top-full left-0 mt-1 w-56 dark:bg-zinc-900/95 bg-white/95 backdrop-blur-xl border dark:border-white/10 border-black/10 rounded-2xl shadow-2xl overflow-hidden"
+      ref={panelRef}
+      role="dialog"
+      aria-label={`Filtro da coluna ${colId}`}
+      className="fixed z-[300] flex flex-col dark:bg-zinc-900/98 bg-white/98 backdrop-blur-xl border dark:border-white/10 border-black/10 rounded-2xl shadow-2xl overflow-hidden"
+      style={{
+        top: placement.top,
+        left: placement.left,
+        width: placement.width,
+        maxHeight: placement.maxHeight,
+        transform: placement.transform,
+      }}
       onClick={e => e.stopPropagation()}
     >
-      <div className="p-1 border-b dark:border-white/5 border-black/10">
+      <div className="shrink-0 p-1 border-b dark:border-white/5 border-black/10">
         <button
           type="button"
           onClick={() => { onSort('asc'); onClose(); }}
@@ -2750,7 +2831,7 @@ function ColumnFilterDropdown({
         )}
       </div>
 
-      <div className="p-2 border-b dark:border-white/5 border-black/10">
+      <div className="shrink-0 p-2 border-b dark:border-white/5 border-black/10">
         <input
           autoFocus
           type="text"
@@ -2761,7 +2842,7 @@ function ColumnFilterDropdown({
         />
       </div>
 
-      <div className="flex flex-wrap gap-2 px-3 py-2 border-b dark:border-white/5 border-black/10">
+      <div className="shrink-0 flex flex-wrap gap-2 px-3 py-2 border-b dark:border-white/5 border-black/10">
         <button
           type="button"
           onClick={() => onApply(null)}
@@ -2778,7 +2859,7 @@ function ColumnFilterDropdown({
         </button>
       </div>
 
-      <div className="max-h-52 overflow-y-auto custom-scrollbar py-1">
+      <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar py-1">
         {displayed.length === 0 ? (
           <p className="text-center text-zinc-500 text-xs py-4">Nenhum valor encontrado</p>
         ) : (
@@ -2813,7 +2894,7 @@ function ColumnFilterDropdown({
         )}
       </div>
 
-      <div className="p-2 border-t dark:border-white/5 border-black/10">
+      <div className="shrink-0 p-2 border-t dark:border-white/5 border-black/10">
         <button
           type="button"
           onClick={onClose}
@@ -2824,6 +2905,8 @@ function ColumnFilterDropdown({
       </div>
     </div>
   );
+
+  return createPortal(panel, document.body);
 }
 
 /**
