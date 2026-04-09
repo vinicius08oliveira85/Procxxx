@@ -43,6 +43,7 @@ import {
   TableProperties,
   FileText,
   FileJson,
+  Users,
   type LucideIcon,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -103,6 +104,19 @@ function columnFilterEntries(filters: Record<string, Set<string>>): [string, Set
 
 function columnFilterValueSets(filters: Record<string, Set<string>>): Set<string>[] {
   return Object.values(filters) as Set<string>[];
+}
+
+/** Mesma ideia do `clean` do worker: chave estável para detectar duplicados no resultado. */
+function normalizeDuplicateKeyCell(
+  val: unknown,
+  opts: Pick<LookupTask, 'trimSpaces' | 'ignoreCase' | 'removeSpecialChars'>
+): string {
+  if (val === undefined || val === null) return '';
+  let s = String(val);
+  if (opts.trimSpaces) s = s.trim();
+  if (opts.ignoreCase) s = s.toLowerCase();
+  if (opts.removeSpecialChars) s = s.replace(/[^a-z0-9]/gi, '');
+  return s;
 }
 
 // Web Worker Code extracted to a constant for better performance and maintainability
@@ -364,6 +378,8 @@ export default function App() {
       includeStatusCols: true,
       resultData: null,
       resultFilter: 'all',
+      duplicateKeyFilterEnabled: false,
+      duplicateKeyColumnId: '',
       divergentPairs: [],
       showAdvanced: false,
       columnSettings: [],
@@ -515,6 +531,8 @@ export default function App() {
       includeStatusCols: true,
       resultData: null,
       resultFilter: 'all',
+      duplicateKeyFilterEnabled: false,
+      duplicateKeyColumnId: '',
       divergentPairs: [],
       showAdvanced: false,
       columnSettings: [],
@@ -823,6 +841,27 @@ export default function App() {
       }
     }
 
+    const dupEnabled = activeTask.duplicateKeyFilterEnabled;
+    const dupCol = activeTask.duplicateKeyColumnId;
+    if (dupEnabled && dupCol) {
+      const normOpts = {
+        trimSpaces: activeTask.trimSpaces,
+        ignoreCase: activeTask.ignoreCase,
+        removeSpecialChars: activeTask.removeSpecialChars,
+      };
+      const counts = new Map<string, number>();
+      for (const row of data) {
+        let k = normalizeDuplicateKeyCell(row[dupCol], normOpts);
+        if (!k) k = '__EMPTY__';
+        counts.set(k, (counts.get(k) || 0) + 1);
+      }
+      data = data.filter(row => {
+        let k = normalizeDuplicateKeyCell(row[dupCol], normOpts);
+        if (!k) k = '__EMPTY__';
+        return (counts.get(k) || 0) > 1;
+      });
+    }
+
     const activeColFilters = columnFilterEntries(columnFilters);
     if (activeColFilters.length > 0) {
       data = data.filter(row =>
@@ -844,7 +883,19 @@ export default function App() {
     }
 
     return data;
-  }, [activeTask.resultData, activeTask.resultFilter, activeTask.fileC, activeTask.divergentPairs, columnFilters, sortConfig]);
+  }, [
+    activeTask.resultData,
+    activeTask.resultFilter,
+    activeTask.fileC,
+    activeTask.divergentPairs,
+    activeTask.duplicateKeyFilterEnabled,
+    activeTask.duplicateKeyColumnId,
+    activeTask.trimSpaces,
+    activeTask.ignoreCase,
+    activeTask.removeSpecialChars,
+    columnFilters,
+    sortConfig,
+  ]);
 
   useEffect(() => {
     setSelectedRowIndex(null);
@@ -1008,7 +1059,17 @@ export default function App() {
         visible: !key.startsWith('_'), // Hide internal columns starting with _
         pinned: false
       }));
-      updateActiveTask({ resultData, columnSettings });
+      const keyA = activeTask.keyA;
+      const defaultDupCol =
+        keyA && Object.prototype.hasOwnProperty.call(firstRow, keyA)
+          ? keyA
+          : Object.keys(firstRow).find(k => !k.startsWith('_')) ?? '';
+      updateActiveTask({
+        resultData,
+        columnSettings,
+        duplicateKeyFilterEnabled: false,
+        duplicateKeyColumnId: defaultDupCol,
+      });
       setStep('result');
       setLoading(false);
       worker.terminate();
@@ -1170,6 +1231,8 @@ export default function App() {
       includeStatusCols: true,
       resultData: null,
       resultFilter: 'all',
+      duplicateKeyFilterEnabled: false,
+      duplicateKeyColumnId: '',
       divergentPairs: [],
       showAdvanced: false,
       columnSettings: [],
@@ -1669,9 +1732,13 @@ export default function App() {
                         <h2 className="text-lg sm:text-xl font-black tracking-tight shrink-0">Resultados</h2>
                         {/* Botões de ação — visíveis somente em mobile aqui */}
                         <div className="flex items-center gap-1.5 sm:hidden shrink-0">
-                          {columnFilterValueSets(columnFilters).some(s => s.size > 0) && (
+                          {(columnFilterValueSets(columnFilters).some(s => s.size > 0) ||
+                            activeTask.duplicateKeyFilterEnabled) && (
                             <button
-                              onClick={() => setColumnFilters({})}
+                              onClick={() => {
+                                setColumnFilters({});
+                                updateActiveTask({ duplicateKeyFilterEnabled: false });
+                              }}
                               className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-xs font-bold text-amber-400 hover:bg-amber-500/10 border border-amber-500/20 transition-all active:scale-95"
                               aria-label="Limpar filtros de colunas"
                               title="Limpar filtros"
@@ -1759,13 +1826,75 @@ export default function App() {
                           {activeTask.divergentPairs.length > 0 ? `${activeTask.divergentPairs.length} par(es)` : 'Pares'}
                         </button>
                       </div>
+                      <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = !activeTask.duplicateKeyFilterEnabled;
+                            if (next) {
+                              const eligible = activeTask.columnSettings.filter(c => !c.id.startsWith('_'));
+                              const ids = new Set(eligible.map(c => c.id));
+                              let col = activeTask.duplicateKeyColumnId;
+                              if (!col || !ids.has(col)) {
+                                col = ids.has(activeTask.keyA) ? activeTask.keyA : eligible[0]?.id ?? '';
+                              }
+                              updateActiveTask({
+                                duplicateKeyFilterEnabled: true,
+                                duplicateKeyColumnId: col,
+                              });
+                            } else {
+                              updateActiveTask({ duplicateKeyFilterEnabled: false });
+                            }
+                          }}
+                          className={cn(
+                            'flex items-center gap-1.5 min-h-[44px] px-3 py-2 rounded-lg text-xs font-bold transition-all border whitespace-nowrap shrink-0',
+                            activeTask.duplicateKeyFilterEnabled
+                              ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/25 border-violet-500/40'
+                              : 'text-zinc-500 dark:border-white/10 border-black/10 dark:hover:bg-white/5 hover:bg-black/5 dark:hover:text-zinc-200 hover:text-zinc-800'
+                          )}
+                          title="Mostrar só linhas em que o valor da coluna escolhida se repete (ex.: mesmo CPF em guias diferentes)"
+                        >
+                          <Users size={14} className="shrink-0" />
+                          <span className="text-[11px] sm:text-xs">Duplicados</span>
+                        </button>
+                        <select
+                          aria-label="Coluna para detectar duplicados"
+                          disabled={!activeTask.duplicateKeyFilterEnabled}
+                          value={activeTask.duplicateKeyColumnId}
+                          onChange={(e) => updateActiveTask({ duplicateKeyColumnId: e.target.value })}
+                          className={cn(
+                            'min-h-[40px] max-w-[min(100%,240px)] rounded-lg border px-2 py-1.5 text-xs font-bold outline-none focus:border-violet-500',
+                            activeTask.duplicateKeyFilterEnabled
+                              ? 'border-violet-500/40 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100'
+                              : 'border-black/10 dark:border-white/10 opacity-50 cursor-not-allowed bg-black/5 dark:bg-white/5'
+                          )}
+                        >
+                          {activeTask.columnSettings
+                            .filter(c => !c.id.startsWith('_'))
+                            .map(c => (
+                              <option key={c.id} value={c.id}>
+                                {c.id}
+                              </option>
+                            ))}
+                        </select>
+                        {activeTask.duplicateKeyFilterEnabled && (
+                          <span className="text-[10px] text-zinc-500 dark:text-zinc-400 max-w-sm leading-snug">
+                            Mesma normalização da busca (espaços, maiúsculas, especiais). Para igualar CPF com e sem
+                            pontuação, ative &quot;Remover caracteres especiais&quot; em Ajustes finos.
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {/* Direita: botões de ação — ocultos em mobile (exibidos acima) */}
                     <div className="hidden sm:flex items-center gap-2 shrink-0">
-                      {columnFilterValueSets(columnFilters).some(s => s.size > 0) && (
+                      {(columnFilterValueSets(columnFilters).some(s => s.size > 0) ||
+                        activeTask.duplicateKeyFilterEnabled) && (
                         <button
-                          onClick={() => setColumnFilters({})}
+                          onClick={() => {
+                            setColumnFilters({});
+                            updateActiveTask({ duplicateKeyFilterEnabled: false });
+                          }}
                           className="min-h-[44px] flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-amber-400 hover:bg-amber-500/10 border border-amber-500/20 transition-all active:scale-95"
                         >
                           <X size={13} /> Limpar Filtros

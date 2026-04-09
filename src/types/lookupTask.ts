@@ -45,6 +45,10 @@ export interface LookupTask {
   includeStatusCols: boolean;
   resultData: any[] | null;
   resultFilter: 'all' | 'matched' | 'orphans' | 'divergent';
+  /** Quando true, mantém só linhas cuja coluna `duplicateKeyColumnId` aparece mais de uma vez (após demais filtros). */
+  duplicateKeyFilterEnabled: boolean;
+  /** Coluna do resultado usada para agrupar duplicados (ex.: CPF na base). */
+  duplicateKeyColumnId: string;
   divergentPairs: { colA: string; colLookup: string }[];
   showAdvanced: boolean;
   columnSettings: ColumnSetting[];
