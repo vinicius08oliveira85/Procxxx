@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Columns, Search, CheckCircle2, Info, AlertCircle } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { FluentPressableButton } from '../../lib/fluentMotion';
 import type { LookupTask } from '../../types/lookupTask';
 import type { ConfigureTaskPatch } from './configureTabShared';
 
@@ -35,12 +36,12 @@ export function ConfigureColumnsTab({
       <div className="fluent-card p-3 sm:p-4 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h2 className="text-sm font-black flex items-center gap-1.5">
+            <h2 className="text-sm font-black tracking-tight flex items-center gap-1.5">
               <Columns size={14} className="text-zinc-400" /> Colunas originais (tabela principal)
             </h2>
           </div>
           <div className="flex items-center gap-2">
-            <span className="bg-zinc-500/20 text-zinc-400 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">
+            <span className="bg-gradient-to-br from-zinc-500/20 to-zinc-600/10 text-zinc-300 border border-white/10 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">
               {activeTask.selectedColsA.length === 0
                 ? 'Todas'
                 : `${activeTask.selectedColsA.length} selecionadas`}
@@ -60,20 +61,20 @@ export function ConfigureColumnsTab({
             />
           </div>
           <div className="flex gap-1">
-            <button
+            <FluentPressableButton
               type="button"
               onClick={() => onTaskPatch({ selectedColsA: headersA })}
-              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-zinc-500 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/5 border-black/10"
+              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-zinc-500 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/10 border-black/10"
             >
               Selecionar tudo
-            </button>
-            <button
+            </FluentPressableButton>
+            <FluentPressableButton
               type="button"
               onClick={() => onTaskPatch({ selectedColsA: [] })}
-              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-zinc-500 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/5 border-black/10"
+              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-zinc-500 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/10 border-black/10"
             >
               Todas (padrão)
-            </button>
+            </FluentPressableButton>
           </div>
         </div>
 
@@ -81,7 +82,7 @@ export function ConfigureColumnsTab({
           {headersA
             .filter((h) => h.toLowerCase().includes(searchTermA))
             .map((h) => (
-              <button
+              <FluentPressableButton
                 key={h}
                 type="button"
                 onClick={() => {
@@ -106,12 +107,12 @@ export function ConfigureColumnsTab({
                 ) : (
                   <div className="w-4 h-4 rounded-full border dark:border-white/10 border-black/10 group-hover:border-zinc-400" />
                 )}
-              </button>
+              </FluentPressableButton>
             ))}
         </div>
 
         {activeTask.selectedColsA.length === 0 && (
-          <p className="text-[10px] text-zinc-500 italic">
+          <p className="text-[10px] text-zinc-400 italic">
             Se não selecionar nada, todas as colunas originais serão mantidas.
           </p>
         )}
@@ -120,8 +121,8 @@ export function ConfigureColumnsTab({
       <div className="fluent-card p-3 sm:p-4 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h2 className="text-sm font-black flex items-center gap-1.5">
-              <Columns size={14} className="text-blue-600" /> Colunas para importar (tabela de busca)
+            <h2 className="text-sm font-black tracking-tight flex items-center gap-1.5">
+              <Columns size={14} className="text-blue-500" /> Colunas para importar (tabela de busca)
               <div className="group relative">
                 <Info size={13} className="text-zinc-500 cursor-help" />
                 <div className="absolute bottom-full left-0 mb-2 w-64 p-3 dark:bg-zinc-900 bg-white dark:text-white text-zinc-800 text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity delay-300 pointer-events-none z-50 shadow-xl border dark:border-white/10 border-black/10 font-normal">
@@ -134,7 +135,7 @@ export function ConfigureColumnsTab({
             </h2>
           </div>
           <div className="flex items-center gap-2">
-            <span className="bg-blue-600/20 text-blue-400 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">
+            <span className="bg-gradient-to-br from-blue-600/25 via-blue-500/15 to-blue-700/10 text-blue-300 border border-white/10 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">
               {activeTask.selectedColsB.length} selecionadas
             </span>
           </div>
@@ -152,20 +153,20 @@ export function ConfigureColumnsTab({
             />
           </div>
           <div className="flex gap-1">
-            <button
+            <FluentPressableButton
               type="button"
               onClick={() => onTaskPatch({ selectedColsB: headersB })}
-              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-blue-400 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/5 border-black/10"
+              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-blue-400 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/10 border-black/10"
             >
               Selecionar tudo
-            </button>
-            <button
+            </FluentPressableButton>
+            <FluentPressableButton
               type="button"
               onClick={() => onTaskPatch({ selectedColsB: [] })}
-              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-zinc-500 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/5 border-black/10"
+              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-zinc-500 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/10 border-black/10"
             >
               Limpar
-            </button>
+            </FluentPressableButton>
           </div>
         </div>
 
@@ -173,7 +174,7 @@ export function ConfigureColumnsTab({
           {headersB
             .filter((h) => h.toLowerCase().includes(searchTermB))
             .map((h) => (
-              <button
+              <FluentPressableButton
                 key={h}
                 type="button"
                 onClick={() => {
@@ -206,7 +207,7 @@ export function ConfigureColumnsTab({
                 ) : (
                   <div className="w-4 h-4 rounded-full border dark:border-white/10 border-black/10 group-hover:border-blue-400" />
                 )}
-              </button>
+              </FluentPressableButton>
             ))}
         </div>
       </div>
@@ -215,7 +216,7 @@ export function ConfigureColumnsTab({
         <div className="fluent-card p-3 sm:p-4 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <h2 className="text-sm font-black flex items-center gap-1.5">
+              <h2 className="text-sm font-black tracking-tight flex items-center gap-1.5">
                 <Columns size={14} className="text-purple-400" /> Colunas para importar (tabela extra)
                 <div className="group relative">
                   <Info size={13} className="text-zinc-500 cursor-help" />
@@ -227,7 +228,7 @@ export function ConfigureColumnsTab({
               </h2>
             </div>
             <div className="flex items-center gap-2">
-              <span className="bg-purple-600/20 text-purple-400 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">
+              <span className="bg-gradient-to-br from-purple-600/25 via-fuchsia-500/15 to-purple-800/10 text-purple-200 border border-white/10 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">
                 {activeTask.selectedColsC.length} selecionadas
               </span>
             </div>
@@ -245,20 +246,20 @@ export function ConfigureColumnsTab({
               />
             </div>
             <div className="flex gap-1">
-              <button
+              <FluentPressableButton
                 type="button"
                 onClick={() => onTaskPatch({ selectedColsC: headersC })}
-                className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-purple-400 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/5 border-black/10"
+                className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-purple-400 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/10 border-black/10"
               >
                 Selecionar tudo
-              </button>
-              <button
+              </FluentPressableButton>
+              <FluentPressableButton
                 type="button"
                 onClick={() => onTaskPatch({ selectedColsC: [] })}
-                className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-zinc-500 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/5 border-black/10"
+                className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-zinc-500 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/10 border-black/10"
               >
                 Limpar
-              </button>
+              </FluentPressableButton>
             </div>
           </div>
 
@@ -266,7 +267,7 @@ export function ConfigureColumnsTab({
             {headersC
               .filter((h) => h.toLowerCase().includes(searchTermC))
               .map((h) => (
-                <button
+                <FluentPressableButton
                   key={h}
                   type="button"
                   onClick={() => {
@@ -299,7 +300,7 @@ export function ConfigureColumnsTab({
                   ) : (
                     <div className="w-4 h-4 rounded-full border dark:border-white/10 border-black/10 group-hover:border-purple-400" />
                   )}
-                </button>
+                </FluentPressableButton>
               ))}
           </div>
         </div>

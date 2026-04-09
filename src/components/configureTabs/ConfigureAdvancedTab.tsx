@@ -84,7 +84,7 @@ export function ConfigureAdvancedTab({ activeTask, onTaskPatch }: ConfigureAdvan
                       onChange={(e) => onTaskPatch({ [opt.field]: e.target.checked })}
                       className="peer sr-only"
                     />
-                    <div className="w-8 h-5 bg-slate-200 dark:bg-slate-700 rounded-full peer peer-checked:bg-blue-600 transition-colors" />
+                    <div className="w-9 h-5 bg-slate-200 dark:bg-zinc-800 rounded-full peer peer-checked:bg-blue-600 transition-all duration-300 ring-1 ring-white/5" />
                     <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-3" />
                   </div>
                   <span className="text-xs font-bold text-slate-700 dark:text-slate-300 group-hover:text-blue-600 transition-colors">

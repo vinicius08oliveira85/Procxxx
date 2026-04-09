@@ -49,6 +49,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
+import { FluentPressableButton, FluentPressableDiv } from './lib/fluentMotion';
 import { computeAutoDetectLookup } from './lib/autoDetectLookupConfig';
 import {
   type SortConfig,
@@ -1262,21 +1263,21 @@ export default function App() {
         <>
           <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
             <div
-              className="absolute inset-0 bg-[radial-gradient(at_0%_0%,rgba(37,99,235,0.15)_0px,transparent_50%),radial-gradient(at_100%_100%,rgba(87,27,193,0.15)_0px,transparent_50%)]"
+              className="absolute inset-0 bg-[radial-gradient(at_0%_0%,rgba(37,99,235,0.1)_0px,transparent_55%),radial-gradient(at_100%_100%,rgba(87,27,193,0.1)_0px,transparent_55%)]"
               aria-hidden
             />
             <div
-              className="fixed top-1/4 -right-64 w-[400px] h-[400px] rounded-full bg-blue-500/10 blur-[100px]"
+              className="fixed top-1/4 -right-64 h-[400px] w-[400px] rounded-full bg-blue-500/[0.08] blur-[100px]"
               aria-hidden
             />
             <div
-              className="fixed bottom-1/4 -left-64 w-[400px] h-[400px] rounded-full bg-purple-600/10 blur-[100px]"
+              className="fixed bottom-1/4 -left-64 h-[400px] w-[400px] rounded-full bg-purple-600/[0.08] blur-[100px]"
               aria-hidden
             />
           </div>
-          <nav className="fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between border-b border-white/5 bg-[#1c1b1b]/80 px-4 shadow-[0_20px_40px_rgba(0,0,0,0.4)] backdrop-blur-xl sm:px-8">
+          <nav className="fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between border-b border-white/10 bg-[#1c1b1b]/55 px-4 shadow-[0_20px_40px_rgba(0,0,0,0.35)] backdrop-blur-2xl sm:px-8">
             <span className="font-jakarta text-lg font-bold tracking-tight text-white">
-              Assistente de Cruzamento
+              Excel Lookup Master
             </span>
             <div className="hidden items-center gap-8 md:flex">
               <LandingStepStrip currentStep={step} />
@@ -1303,7 +1304,7 @@ export default function App() {
             </div>
             <div className="pointer-events-none absolute bottom-0 left-0 h-px w-full bg-gradient-to-b from-white/5 to-transparent" />
           </nav>
-          <div className="md:hidden fixed top-16 left-0 right-0 z-40 flex justify-center border-b border-white/5 bg-[#1c1b1b]/90 px-2 py-2 backdrop-blur-xl">
+          <div className="fixed top-16 left-0 right-0 z-40 flex justify-center border-b border-white/10 bg-[#1c1b1b]/50 px-2 py-2 backdrop-blur-2xl md:hidden">
             <LandingStepStrip currentStep={step} compact />
           </div>
           <main className="relative z-10 mx-auto flex min-h-dvh max-w-4xl flex-col gap-6 px-4 pb-10 pt-28 md:pt-20">
@@ -1325,7 +1326,7 @@ export default function App() {
                 </p>
               </header>
               <UploadHowItWorksDetails />
-              <section className="mx-auto w-full max-w-xl upload-mica upload-ghost-border flex flex-col gap-4 rounded-2xl p-6 shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
+              <section className="upload-ghost-border mx-auto flex w-full max-w-xl flex-col gap-4 rounded-[28px] border border-white/10 bg-[#1c1b1b]/45 p-6 shadow-[0_20px_40px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
                 <UploadCard
                   variant="landing"
                   landingAccent="blue"
@@ -1440,16 +1441,19 @@ export default function App() {
                 </span>
               </div>
               <footer className="mt-1 flex flex-col items-center gap-4">
-                <button
+                <motion.button
                   type="button"
                   disabled={!activeTask.fileA || !activeTask.fileB}
                   onClick={() => setStep('configure')}
-                  className="group relative flex min-h-[48px] items-center gap-3 overflow-hidden rounded-full bg-gradient-to-r from-[#2563eb] to-[#571bc1] px-10 py-4 font-jakarta text-base font-extrabold text-white shadow-[0_15px_30px_rgba(37,99,235,0.25)] transition-all hover:scale-[1.02] active:scale-95 disabled:pointer-events-none disabled:opacity-40 disabled:hover:scale-100"
+                  whileHover={!activeTask.fileA || !activeTask.fileB ? undefined : { scale: 1.01 }}
+                  whileTap={!activeTask.fileA || !activeTask.fileB ? undefined : { scale: 0.98 }}
+                  transition={{ type: 'spring', stiffness: 420, damping: 26 }}
+                  className="group relative flex min-h-[52px] items-center gap-3 overflow-hidden rounded-full bg-gradient-to-r from-[#2563eb] via-[#4f46e5] to-[#7c3aed] px-12 py-4 font-jakarta text-base font-extrabold tracking-tight text-white shadow-[0_20px_40px_rgba(37,99,235,0.22)] transition-shadow hover:shadow-[0_24px_48px_rgba(37,99,235,0.28)] disabled:pointer-events-none disabled:opacity-40"
                 >
-                  <div className="pointer-events-none absolute inset-0 bg-white/20 opacity-0 transition-opacity group-hover:opacity-100" />
+                  <div className="pointer-events-none absolute inset-0 bg-white/15 opacity-0 transition-opacity group-hover:opacity-100" />
                   <span className="relative">Continuar para Configuração</span>
                   <ArrowRight size={20} className="relative shrink-0" />
-                </button>
+                </motion.button>
                 <p className="font-jakarta text-[10px] uppercase tracking-[0.12em] text-[#8d90a0]">
                   Formatos: .xlsx, .xls, .csv, .tsv, .ods (até 50MB)
                 </p>
@@ -1490,13 +1494,10 @@ export default function App() {
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-6"
                 >
-                  <div
-                    className="rounded-2xl border border-[#434655]/15 p-6 shadow-[0_20px_40px_rgba(0,0,0,0.4)] backdrop-blur-xl"
-                    style={{ background: 'rgba(28, 27, 27, 0.6)' }}
-                  >
+                  <div className="rounded-[28px] border border-white/10 bg-[#1c1b1b]/50 p-6 shadow-[0_20px_48px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
                     <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <div
-                        className="flex w-fit gap-1 rounded-full border border-[#434655]/10 bg-[#0e0e0e] p-1"
+                        className="flex w-fit gap-1 rounded-full border border-white/10 bg-[#0e0e0e]/80 p-1 backdrop-blur-xl"
                         style={{ scrollbarWidth: 'none' }}
                       >
                         {(
@@ -1506,29 +1507,35 @@ export default function App() {
                             { id: 'advanced' as const, label: 'Opções Extras' },
                           ] as const
                         ).map((tab) => (
-                          <button
+                          <motion.button
                             key={tab.id}
                             type="button"
                             onClick={() => setConfigTab(tab.id)}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            transition={{ type: 'spring', stiffness: 450, damping: 28 }}
                             className={cn(
-                              'rounded-full px-5 py-2 text-sm font-medium transition-all',
+                              'rounded-full px-5 py-2 text-sm font-medium tracking-tight transition-all',
                               configTab === tab.id
-                                ? 'bg-[#2a2a2a] text-[#b4c5ff]'
-                                : 'text-[#8d90a0] hover:text-[#e5e2e1]'
+                                ? 'bg-[#2a2a2a] text-[#b4c5ff] shadow-inner'
+                                : 'text-zinc-400 hover:text-[#e5e2e1]'
                             )}
                           >
                             {tab.label}
-                          </button>
+                          </motion.button>
                         ))}
                       </div>
-                      <button
+                      <motion.button
                         type="button"
                         onClick={autoDetectConfig}
-                        className="flex min-h-[44px] items-center justify-center gap-2 rounded-full border border-[#434655]/25 px-4 py-2 text-xs font-bold text-[#b4c5ff] transition-all hover:bg-white/5"
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.98 }}
+                        transition={{ type: 'spring', stiffness: 420, damping: 26 }}
+                        className="flex min-h-[44px] items-center justify-center gap-2 rounded-full border border-white/10 px-4 py-2 text-xs font-bold text-[#b4c5ff] transition-colors hover:bg-white/5"
                       >
                         <Sparkles size={16} className="shrink-0" aria-hidden />
                         Configuração automática
-                      </button>
+                      </motion.button>
                     </div>
 
                     <ConfigureTabPanels
@@ -1578,11 +1585,8 @@ export default function App() {
                   headersC={headersC}
                   onApply={(patch) => updateActiveTask(patch)}
                 />
-                <div
-                  className="rounded-xl border border-[#434655]/15 p-6 backdrop-blur-xl"
-                  style={{ background: 'rgba(28, 27, 27, 0.6)' }}
-                >
-                  <h4 className="mb-4 text-xs font-medium uppercase tracking-widest text-[#8d90a0]">
+                <div className="rounded-[24px] border border-white/10 bg-[#1c1b1b]/45 p-6 backdrop-blur-2xl">
+                  <h4 className="mb-4 text-xs font-medium uppercase tracking-tight text-zinc-400">
                     Amostra de dados
                   </h4>
                   <div className="relative aspect-video overflow-hidden rounded-lg border border-[#434655]/10 bg-[#1c1b1b]">
@@ -1618,19 +1622,18 @@ export default function App() {
       {step === 'result' && (
       <>
       {/* Windows 12 Bloom Background */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[80%] h-[80%] rounded-full bg-blue-600/20 blur-[120px] animate-bloom" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] rounded-full bg-purple-600/20 blur-[120px] animate-bloom [animation-delay:4s]" />
-        <div className="absolute top-[20%] right-[-10%] w-[60%] h-[60%] rounded-full bg-emerald-500/15 blur-[100px] animate-bloom [animation-delay:8s]" />
-        <div className="absolute bottom-[20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-amber-500/15 blur-[100px] animate-bloom [animation-delay:12s]" />
-        
-        {/* Dynamic Mesh Gradients */}
-        <div className="absolute inset-0 opacity-30 dark:opacity-20">
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-400 rounded-full blur-[100px] animate-pulse-glow" />
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-400 rounded-full blur-[100px] animate-pulse-glow [animation-delay:2s]" />
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        <div className="animate-bloom absolute left-[-10%] top-[-10%] h-[80%] w-[80%] rounded-full bg-blue-600/[0.12] blur-[120px]" />
+        <div className="animate-bloom absolute bottom-[-10%] right-[-10%] h-[70%] w-[70%] rounded-full bg-purple-600/[0.12] blur-[120px] [animation-delay:4s]" />
+        <div className="animate-bloom absolute right-[-10%] top-[20%] h-[60%] w-[60%] rounded-full bg-emerald-500/[0.1] blur-[100px] [animation-delay:8s]" />
+        <div className="animate-bloom absolute bottom-[20%] left-[-10%] h-[50%] w-[50%] rounded-full bg-amber-500/[0.1] blur-[100px] [animation-delay:12s]" />
+
+        <div className="absolute inset-0 opacity-20 dark:opacity-[0.14]">
+          <div className="animate-pulse-glow absolute left-1/4 top-1/4 h-96 w-96 rounded-full bg-blue-400/30 blur-[100px]" />
+          <div className="animate-pulse-glow absolute bottom-1/4 right-1/4 h-96 w-96 rounded-full bg-purple-400/25 blur-[100px] [animation-delay:2s]" />
         </div>
 
-        <div className="absolute inset-0 bg-white/10 dark:bg-black/20 backdrop-blur-[1px]" />
+        <div className="absolute inset-0 bg-white/[0.06] backdrop-blur-[2px] dark:bg-black/25" />
       </div>
 
       {/* Main Window Container */}
@@ -1649,8 +1652,8 @@ export default function App() {
                   <Layers size={16} className="text-white" />
                 </div>
                 <div>
-                  <h1 className="text-base sm:text-xl md:text-2xl font-black tracking-tighter bg-gradient-to-r from-zinc-900 to-zinc-500 dark:from-white dark:to-zinc-400 bg-clip-text text-transparent whitespace-nowrap">
-                    Assistente de Cruzamento (Lookup)
+                  <h1 className="whitespace-nowrap bg-gradient-to-r from-zinc-900 to-zinc-500 bg-clip-text text-base font-black tracking-tight text-transparent dark:from-white dark:to-zinc-400 sm:text-xl md:text-2xl">
+                    Excel Lookup Master
                   </h1>
                 </div>
               </div>
@@ -1705,7 +1708,13 @@ export default function App() {
                   { label: "Não Encontrados", value: stats.orphans, icon: AlertCircle, color: "text-amber-400", bg: "bg-amber-500/10" },
                   { label: "Taxa de Sucesso", value: `${stats.rate.toFixed(1)}%`, icon: Activity, color: "text-violet-400", bg: "bg-violet-500/10" },
                 ].map((stat, i) => (
-                  <div key={i} className="fluent-card p-3 sm:p-4 flex flex-row sm:flex-col items-center sm:text-center gap-3 sm:gap-1.5">
+                  <motion.div
+                    key={i}
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    transition={{ type: 'spring', stiffness: 420, damping: 26 }}
+                    className="fluent-card flex flex-row items-center gap-3 p-3 sm:flex-col sm:gap-1.5 sm:p-4 sm:text-center"
+                  >
                     <div className={cn("p-2 rounded-xl shrink-0", stat.bg)}>
                       <stat.icon className={stat.color} size={18} />
                     </div>
@@ -1721,11 +1730,11 @@ export default function App() {
                         </div>
                       )}
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
 
-              <div className="fluent-card overflow-hidden flex flex-col flex-1 min-h-0">
+              <div className="fluent-card flex min-h-0 flex-1 flex-col overflow-hidden">
                 <div className="p-3 sm:p-4 border-b dark:border-white/5 border-black/10 space-y-2 shrink-0">
                   {/* Linha principal: filtros + ações */}
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -1766,16 +1775,16 @@ export default function App() {
                           >
                             <TableProperties size={18} />
                           </button>
-                          <button
+                          <FluentPressableButton
                             type="button"
                             onClick={downloadResult}
-                            className="fluent-button-primary min-h-[44px] px-3 py-2 text-xs flex items-center gap-1.5"
+                            className="fluent-button-primary flex min-h-[44px] items-center gap-1.5 px-3 py-2 text-xs"
                             aria-label="Baixar resultado em Excel"
                             title="Baixar Excel"
                           >
                             <Download size={16} />
                             <span className="font-bold">Excel</span>
-                          </button>
+                          </FluentPressableButton>
                           <button
                             type="button"
                             onClick={downloadResultJson}
@@ -1916,13 +1925,13 @@ export default function App() {
                       >
                         <TableProperties size={14} /> Tabela dinâmica
                       </button>
-                      <button
+                      <FluentPressableButton
                         type="button"
                         onClick={downloadResult}
-                        className="fluent-button-primary min-h-[44px] px-4 py-2 text-xs flex items-center gap-1.5"
+                        className="fluent-button-primary flex min-h-[44px] items-center gap-1.5 px-4 py-2 text-xs"
                       >
                         <Download size={14} /> Baixar Excel
-                      </button>
+                      </FluentPressableButton>
                       <button
                         type="button"
                         onClick={downloadResultJson}
@@ -2018,9 +2027,9 @@ export default function App() {
                       })}
                     </colgroup>
                     <thead className="sticky top-0 z-20">
-                      <tr className="dark:bg-zinc-900/90 bg-zinc-50/95 backdrop-blur-2xl">
+                      <tr className="border-b border-black/[0.04] bg-white/70 backdrop-blur-2xl dark:border-white/[0.07] dark:bg-zinc-950/80">
                         <th
-                          className="px-3 py-4 text-xs font-black uppercase tracking-wider text-zinc-400 text-center sticky left-0 z-30 dark:bg-zinc-900/95 bg-zinc-50/95 backdrop-blur-xl shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]"
+                          className="sticky left-0 z-30 border-r border-black/[0.05] bg-white/75 px-3 py-4 text-center text-xs font-black uppercase tracking-tight text-zinc-400 shadow-[1px_0_0_0_rgba(0,0,0,0.04)] backdrop-blur-2xl dark:border-white/10 dark:bg-zinc-950/85 dark:text-zinc-400 dark:shadow-[1px_0_0_0_rgba(255,255,255,0.06)]"
                           style={{ width: RESULT_INDEX_COL_WIDTH_PX, minWidth: RESULT_INDEX_COL_WIDTH_PX }}
                         >
                           #
@@ -2033,11 +2042,14 @@ export default function App() {
                               minWidth: getResultColDisplayWidthPx(col),
                             }}
                             className={cn(
-                            "group/header px-4 sm:px-6 py-4 text-xs font-black uppercase tracking-[0.15em] sm:tracking-[0.2em]",
-                            col.id.startsWith('Lookup_') ? "text-blue-500 bg-blue-400/5" : 
-                            col.id.startsWith('LookupC_') ? "text-purple-500 bg-purple-400/5" :
-                            col.id.startsWith('Status_') ? "text-emerald-500 bg-emerald-400/5" :
-                            "dark:text-zinc-500 text-zinc-600",
+                            'group/header px-4 py-4 text-xs font-black uppercase tracking-tight sm:px-6 sm:tracking-wide',
+                            col.id.startsWith('Lookup_')
+                              ? 'bg-gradient-to-b from-blue-500/[0.14] via-blue-600/[0.08] to-transparent text-blue-600 dark:from-blue-500/20 dark:via-blue-600/12 dark:text-blue-300'
+                              : col.id.startsWith('LookupC_')
+                                ? 'bg-gradient-to-b from-purple-500/[0.14] via-fuchsia-600/[0.08] to-transparent text-purple-600 dark:from-purple-500/18 dark:via-fuchsia-600/10 dark:text-purple-200'
+                                : col.id.startsWith('Status_')
+                                  ? 'bg-gradient-to-b from-emerald-500/[0.12] via-teal-600/[0.07] to-transparent text-emerald-700 dark:from-emerald-500/18 dark:via-teal-600/10 dark:text-emerald-200'
+                                  : 'text-zinc-600 dark:text-zinc-400',
                             pairHighlightClasses(col.id, pairColumnMeta)
                           )}>
                             <div className="flex items-center gap-1.5 min-w-0">
@@ -2086,17 +2098,33 @@ export default function App() {
                               {sortConfig?.colId === col.id && (
                                 sortConfig.direction === 'asc' ? <SortAsc size={12} className="text-blue-500" /> : <SortDesc size={12} className="text-blue-500" />
                               )}
-                              {col.id.startsWith('Lookup_') && <span className="px-1.5 py-0.5 rounded text-[10px] leading-tight bg-blue-500/10 text-blue-500 border border-blue-500/20 font-bold">FONTE B</span>}
-                              {col.id.startsWith('LookupC_') && <span className="px-1.5 py-0.5 rounded text-[10px] leading-tight bg-purple-500/10 text-purple-500 border border-purple-500/20 font-bold">FONTE C</span>}
-                              {col.id.startsWith('Status_') && <span className="px-1.5 py-0.5 rounded text-[10px] leading-tight bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-bold">STATUS</span>}
-                              {!col.id.startsWith('Lookup') && !col.id.startsWith('Status_') && <span className="px-1.5 py-0.5 rounded text-[10px] leading-tight bg-zinc-500/10 text-zinc-500 border border-zinc-500/20 font-bold">BASE</span>}
+                              {col.id.startsWith('Lookup_') && (
+                                <span className="rounded-md border border-white/20 bg-gradient-to-br from-blue-500/35 via-blue-600/20 to-blue-400/10 px-1.5 py-0.5 text-[10px] font-bold leading-tight text-blue-100 shadow-inner dark:border-blue-400/25 dark:from-blue-500/40 dark:via-blue-600/25 dark:to-blue-500/10 dark:text-blue-50">
+                                  FONTE B
+                                </span>
+                              )}
+                              {col.id.startsWith('LookupC_') && (
+                                <span className="rounded-md border border-white/15 bg-gradient-to-br from-purple-500/35 via-fuchsia-600/20 to-purple-400/10 px-1.5 py-0.5 text-[10px] font-bold leading-tight text-purple-50 shadow-inner dark:border-purple-400/25 dark:from-purple-500/35 dark:via-fuchsia-600/22 dark:to-purple-600/10">
+                                  FONTE C
+                                </span>
+                              )}
+                              {col.id.startsWith('Status_') && (
+                                <span className="rounded-md border border-white/20 bg-gradient-to-br from-emerald-500/30 via-teal-600/18 to-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold leading-tight text-emerald-50 shadow-inner dark:border-emerald-400/25 dark:from-emerald-500/32 dark:via-teal-600/20 dark:to-emerald-700/10">
+                                  STATUS
+                                </span>
+                              )}
+                              {!col.id.startsWith('Lookup') && !col.id.startsWith('Status_') && (
+                                <span className="rounded-md border border-black/10 bg-gradient-to-br from-zinc-200/90 via-zinc-300/50 to-zinc-400/20 px-1.5 py-0.5 text-[10px] font-bold leading-tight text-zinc-700 shadow-inner dark:border-white/10 dark:from-zinc-600/35 dark:via-zinc-700/25 dark:to-zinc-900/30 dark:text-zinc-200">
+                                  BASE
+                                </span>
+                              )}
                             </div>
                           </th>
                         ))}
                       </tr>
-                      <tr className="dark:bg-zinc-900/80 bg-zinc-50/80 border-b dark:border-white/10 border-black/10">
+                      <tr className="border-b border-black/[0.06] bg-white/55 backdrop-blur-xl dark:border-white/10 dark:bg-zinc-950/55">
                         <th
-                          className="sticky left-0 z-30 dark:bg-zinc-900/90 bg-zinc-50/90 backdrop-blur-xl shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]"
+                          className="sticky left-0 z-30 border-r border-black/[0.05] bg-white/60 shadow-[1px_0_0_0_rgba(0,0,0,0.04)] backdrop-blur-xl dark:border-white/10 dark:bg-zinc-950/65 dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]"
                           style={{ width: RESULT_INDEX_COL_WIDTH_PX, minWidth: RESULT_INDEX_COL_WIDTH_PX }}
                         />
                         {tableDisplayColumns.map(col => (
@@ -2107,10 +2135,14 @@ export default function App() {
                               minWidth: getResultColDisplayWidthPx(col),
                             }}
                             className={cn(
-                            "px-2 sm:px-3 py-2 relative",
-                            col.id.startsWith('Lookup_') ? "bg-blue-400/5" :
-                            col.id.startsWith('LookupC_') ? "bg-purple-400/5" :
-                            col.id.startsWith('Status_') ? "bg-emerald-400/5" : "",
+                            'relative px-2 py-2 sm:px-3',
+                            col.id.startsWith('Lookup_')
+                              ? 'bg-gradient-to-b from-blue-500/[0.08] to-transparent dark:from-blue-500/12'
+                              : col.id.startsWith('LookupC_')
+                                ? 'bg-gradient-to-b from-purple-500/[0.08] to-transparent dark:from-purple-500/12'
+                                : col.id.startsWith('Status_')
+                                  ? 'bg-gradient-to-b from-emerald-500/[0.07] to-transparent dark:from-emerald-500/10'
+                                  : '',
                             pairHighlightClasses(col.id, pairColumnMeta)
                           )}>
                             <button
@@ -2457,9 +2489,9 @@ function UploadCard({
 
   if (isLanding) {
     return (
-      <div
+      <FluentPressableDiv
         className={cn(
-          'upload-ghost-border relative overflow-hidden rounded-xl bg-[#2a2a2a] p-5 transition-all hover:bg-white/[0.03]',
+          'upload-ghost-border relative overflow-hidden rounded-xl border border-white/10 bg-[#2a2a2a]/80 p-5 backdrop-blur-2xl transition-colors hover:bg-white/[0.04]',
           hasFile ? 'ring-2 ring-blue-400/35' : ''
         )}
       >
@@ -2532,8 +2564,8 @@ function UploadCard({
           ) : (
             <>
               <div className="min-w-0 flex-1 text-center sm:text-left">
-                <h3 className="font-jakarta text-base font-bold text-white">{title}</h3>
-                <p className="mt-0.5 text-[12px] leading-snug text-[#c3c6d7]">{description}</p>
+                <h3 className="font-jakarta text-base font-bold tracking-tight text-white">{title}</h3>
+                <p className="mt-0.5 text-[12px] leading-snug text-zinc-400">{description}</p>
               </div>
               <div className="flex flex-col gap-2">
                 <label className="shrink-0 cursor-pointer">
@@ -2554,12 +2586,12 @@ function UploadCard({
           )}
         </div>
         {csvHint}
-      </div>
+      </FluentPressableDiv>
     );
   }
 
   return (
-    <div
+    <FluentPressableDiv
       className={cn(
         'fluent-card group relative overflow-hidden p-4 transition-all',
         hasFile ? 'ring-2 ring-blue-500/50' : 'hover:ring-2 hover:ring-blue-500/30'
@@ -2646,16 +2678,21 @@ function UploadCard({
             </div>
             <label className="shrink-0 cursor-pointer">
               <input type="file" accept={UPLOAD_ACCEPT} onChange={onUpload} className="hidden" />
-              <div className="fluent-button-primary flex min-h-[44px] cursor-pointer items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm font-bold">
+              <motion.div
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ type: 'spring', stiffness: 420, damping: 26 }}
+                className="fluent-button-primary flex min-h-[44px] cursor-pointer items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm font-bold"
+              >
                 <FileSpreadsheet size={18} className="shrink-0" aria-hidden />
                 <span>Importar</span>
-              </div>
+              </motion.div>
             </label>
           </>
         )}
       </div>
       {csvHint}
-    </div>
+    </FluentPressableDiv>
   );
 }
 

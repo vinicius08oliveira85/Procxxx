@@ -100,7 +100,7 @@ export function PasteDataModal({ open, onClose, tableLabel, onAccept }: PasteDat
 
   return (
     <div
-      className="fixed inset-0 z-[260] flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm font-jakarta"
+      className="fixed inset-0 z-[260] flex items-center justify-center bg-black/60 p-3 font-jakarta backdrop-blur-md sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-labelledby="paste-data-modal-title"
@@ -135,7 +135,7 @@ export function PasteDataModal({ open, onClose, tableLabel, onAccept }: PasteDat
           </button>
         </header>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 sm:p-6">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 custom-scrollbar sm:p-6">
           <div
             className={cn(
               'flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-xs font-medium leading-snug',

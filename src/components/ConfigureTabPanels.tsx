@@ -1,5 +1,6 @@
 /**
  * Orquestra as abas Conexão / Colunas / Opções extras na etapa Configurar.
+ * Excel Lookup Master — painéis com hierarquia tipográfica Fluent.
  */
 import React from 'react';
 import { AnimatePresence } from 'motion/react';
@@ -31,7 +32,13 @@ export function ConfigureTabPanels({
   metrics,
 }: ConfigureTabPanelsProps) {
   return (
-    <AnimatePresence mode="wait">
+    <div className="space-y-1">
+      <div className="mb-5 border-b border-white/10 pb-3">
+        <p className="font-jakarta text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+          Excel Lookup Master — ajuste chaves, colunas e opções antes de executar
+        </p>
+      </div>
+      <AnimatePresence mode="wait">
       {configTab === 'keys' && (
         <ConfigureKeysTab
           activeTask={activeTask}
@@ -54,6 +61,7 @@ export function ConfigureTabPanels({
       {configTab === 'advanced' && (
         <ConfigureAdvancedTab activeTask={activeTask} onTaskPatch={onTaskPatch} />
       )}
-    </AnimatePresence>
+      </AnimatePresence>
+    </div>
   );
 }
