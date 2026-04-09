@@ -374,14 +374,14 @@ export function PivotTableModal({ open, onClose, rows }: PivotTableModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[250] flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-[250] flex items-center justify-center bg-black/60 p-3 backdrop-blur-md sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-labelledby="pivot-modal-title"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="w-full max-w-6xl max-h-[92vh] flex flex-col rounded-2xl border border-zinc-700 bg-[#1a1a1a] text-zinc-100 shadow-2xl overflow-hidden">
-        <header className="flex items-center justify-between gap-3 px-4 py-3 border-b border-zinc-700 shrink-0">
+      <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] border border-white/10 bg-zinc-950/55 text-zinc-100 shadow-2xl backdrop-blur-2xl">
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 py-3 backdrop-blur-xl">
           <h2 id="pivot-modal-title" className="text-base font-bold tracking-tight">
             Campos da Tabela Dinâmica
           </h2>
@@ -396,7 +396,7 @@ export function PivotTableModal({ open, onClose, rows }: PivotTableModalProps) {
         </header>
 
         <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
-          <div className="lg:w-[280px] shrink-0 border-b lg:border-b-0 lg:border-r border-zinc-700 flex flex-col min-h-0 max-h-[40vh] lg:max-h-none">
+          <div className="flex max-h-[40vh] min-h-0 shrink-0 flex-col border-b border-white/10 lg:max-h-none lg:w-[280px] lg:border-b-0 lg:border-r">
             <p className="text-xs text-zinc-400 px-3 pt-3 pb-1 font-medium">
               Escolha os campos para adicionar ao relatório:
             </p>
