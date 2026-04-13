@@ -99,6 +99,25 @@ function pairHighlightClasses(
   return cn(borderColor, bgTint, 'border-r-2');
 }
 
+/** Linha superior do cabeçalho estilo planilha (BASE / FONTE / STATUS). */
+function resultTableHeaderKindLabel(colId: string): string {
+  if (colId.startsWith('Lookup_')) return 'FONTE B';
+  if (colId.startsWith('LookupC_')) return 'FONTE C';
+  if (colId.startsWith('Status_')) return 'STATUS';
+  return 'BASE';
+}
+
+function resultColumnDisplayName(colId: string): string {
+  if (colId.startsWith('Lookup_')) return colId.replace('Lookup_', '');
+  if (colId.startsWith('LookupC_')) return colId.replace('LookupC_', '');
+  if (colId.startsWith('Status_')) {
+    if (colId === 'Status_B') return 'Enc. em B';
+    if (colId === 'Status_C') return 'Enc. em C';
+    return 'Enc. em Ambos';
+  }
+  return colId;
+}
+
 /** `Object.entries` perde o tipo dos valores; aqui preservamos `Set<string>`. */
 function columnFilterEntries(filters: Record<string, Set<string>>): [string, Set<string>][] {
   return Object.entries(filters) as [string, Set<string>][];
@@ -2027,9 +2046,9 @@ export default function App() {
                       })}
                     </colgroup>
                     <thead className="sticky top-0 z-20">
-                      <tr className="border-b border-black/[0.04] bg-white/70 backdrop-blur-2xl dark:border-white/[0.07] dark:bg-zinc-950/80">
+                      <tr className="border-b border-solid border-zinc-300 bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800">
                         <th
-                          className="sticky left-0 z-30 border-r border-black/[0.05] bg-white/75 px-3 py-4 text-center text-xs font-black uppercase tracking-tight text-zinc-400 shadow-[1px_0_0_0_rgba(0,0,0,0.04)] backdrop-blur-2xl dark:border-white/10 dark:bg-zinc-950/85 dark:text-zinc-400 dark:shadow-[1px_0_0_0_rgba(255,255,255,0.06)]"
+                          className="sticky left-0 z-30 border border-solid border-zinc-300 bg-zinc-100 px-3 py-3 text-center text-xs font-bold uppercase tracking-wide text-zinc-600 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
                           style={{ width: RESULT_INDEX_COL_WIDTH_PX, minWidth: RESULT_INDEX_COL_WIDTH_PX }}
                         >
                           #
@@ -2042,89 +2061,71 @@ export default function App() {
                               minWidth: getResultColDisplayWidthPx(col),
                             }}
                             className={cn(
-                            'group/header px-4 py-4 text-xs font-black uppercase tracking-tight sm:px-6 sm:tracking-wide',
-                            col.id.startsWith('Lookup_')
-                              ? 'bg-gradient-to-b from-blue-500/[0.14] via-blue-600/[0.08] to-transparent text-blue-600 dark:from-blue-500/20 dark:via-blue-600/12 dark:text-blue-300'
-                              : col.id.startsWith('LookupC_')
-                                ? 'bg-gradient-to-b from-purple-500/[0.14] via-fuchsia-600/[0.08] to-transparent text-purple-600 dark:from-purple-500/18 dark:via-fuchsia-600/10 dark:text-purple-200'
-                                : col.id.startsWith('Status_')
-                                  ? 'bg-gradient-to-b from-emerald-500/[0.12] via-teal-600/[0.07] to-transparent text-emerald-700 dark:from-emerald-500/18 dark:via-teal-600/10 dark:text-emerald-200'
-                                  : 'text-zinc-600 dark:text-zinc-400',
-                            pairHighlightClasses(col.id, pairColumnMeta)
-                          )}>
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <div className="flex shrink-0 items-center gap-0.5 opacity-40 transition-opacity group-hover/header:opacity-100">
-                                <button
-                                  type="button"
-                                  disabled={colIdx === 0}
-                                  aria-label={`Mover coluna ${col.id} para a esquerda`}
-                                  title="Mover coluna para a esquerda"
-                                  className={cn(
-                                    'p-0.5 rounded-md border dark:border-white/10 border-black/10',
-                                    'dark:bg-white/[0.06] bg-black/[0.04] dark:hover:bg-white/10 hover:bg-black/10',
-                                    'text-zinc-500 dark:text-zinc-400 disabled:opacity-20 disabled:pointer-events-none'
-                                  )}
-                                  onClick={e => {
-                                    e.stopPropagation();
-                                    moveTableDisplayColumn(col.id, 'left');
-                                  }}
-                                >
-                                  <ChevronLeft size={12} strokeWidth={2.5} aria-hidden />
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={colIdx >= tableDisplayColumns.length - 1}
-                                  aria-label={`Mover coluna ${col.id} para a direita`}
-                                  title="Mover coluna para a direita"
-                                  className={cn(
-                                    'p-0.5 rounded-md border dark:border-white/10 border-black/10',
-                                    'dark:bg-white/[0.06] bg-black/[0.04] dark:hover:bg-white/10 hover:bg-black/10',
-                                    'text-zinc-500 dark:text-zinc-400 disabled:opacity-20 disabled:pointer-events-none'
-                                  )}
-                                  onClick={e => {
-                                    e.stopPropagation();
-                                    moveTableDisplayColumn(col.id, 'right');
-                                  }}
-                                >
-                                  <ChevronRight size={12} strokeWidth={2.5} aria-hidden />
-                                </button>
-                              </div>
-                              <span className="truncate max-w-[min(9rem,42vw)] sm:max-w-[min(11rem,28vw)] lg:max-w-[min(14rem,20vw)] xl:max-w-xs" title={col.id}>
-                                {col.id.startsWith('Lookup_') ? col.id.replace('Lookup_', '') : 
-                                 col.id.startsWith('LookupC_') ? col.id.replace('LookupC_', '') : 
-                                 col.id.startsWith('Status_') ? (col.id === 'Status_B' ? 'Enc. em B' : col.id === 'Status_C' ? 'Enc. em C' : 'Enc. em Ambos') :
-                                 col.id}
+                              'group/header border border-solid border-zinc-300 bg-zinc-100 px-3 py-3 align-top text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 sm:px-4',
+                              pairHighlightClasses(col.id, pairColumnMeta)
+                            )}
+                          >
+                            <div className="flex min-w-0 flex-col gap-2">
+                              <span className="text-[10px] font-semibold uppercase leading-none tracking-wider text-zinc-500 dark:text-zinc-400">
+                                {resultTableHeaderKindLabel(col.id)}
                               </span>
-                              {sortConfig?.colId === col.id && (
-                                sortConfig.direction === 'asc' ? <SortAsc size={12} className="text-blue-500" /> : <SortDesc size={12} className="text-blue-500" />
-                              )}
-                              {col.id.startsWith('Lookup_') && (
-                                <span className="rounded-md border border-white/20 bg-gradient-to-br from-blue-500/35 via-blue-600/20 to-blue-400/10 px-1.5 py-0.5 text-[10px] font-bold leading-tight text-blue-100 shadow-inner dark:border-blue-400/25 dark:from-blue-500/40 dark:via-blue-600/25 dark:to-blue-500/10 dark:text-blue-50">
-                                  FONTE B
-                                </span>
-                              )}
-                              {col.id.startsWith('LookupC_') && (
-                                <span className="rounded-md border border-white/15 bg-gradient-to-br from-purple-500/35 via-fuchsia-600/20 to-purple-400/10 px-1.5 py-0.5 text-[10px] font-bold leading-tight text-purple-50 shadow-inner dark:border-purple-400/25 dark:from-purple-500/35 dark:via-fuchsia-600/22 dark:to-purple-600/10">
-                                  FONTE C
-                                </span>
-                              )}
-                              {col.id.startsWith('Status_') && (
-                                <span className="rounded-md border border-white/20 bg-gradient-to-br from-emerald-500/30 via-teal-600/18 to-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold leading-tight text-emerald-50 shadow-inner dark:border-emerald-400/25 dark:from-emerald-500/32 dark:via-teal-600/20 dark:to-emerald-700/10">
-                                  STATUS
-                                </span>
-                              )}
-                              {!col.id.startsWith('Lookup') && !col.id.startsWith('Status_') && (
-                                <span className="rounded-md border border-black/10 bg-gradient-to-br from-zinc-200/90 via-zinc-300/50 to-zinc-400/20 px-1.5 py-0.5 text-[10px] font-bold leading-tight text-zinc-700 shadow-inner dark:border-white/10 dark:from-zinc-600/35 dark:via-zinc-700/25 dark:to-zinc-900/30 dark:text-zinc-200">
-                                  BASE
-                                </span>
-                              )}
+                              <div className="flex min-w-0 items-start gap-2">
+                                <p
+                                  className="min-w-0 flex-1 break-words text-sm font-semibold leading-snug"
+                                  title={col.id}
+                                >
+                                  {resultColumnDisplayName(col.id)}
+                                </p>
+                                <div className="flex shrink-0 items-center gap-1">
+                                  {sortConfig?.colId === col.id &&
+                                    (sortConfig.direction === 'asc' ? (
+                                      <SortAsc size={14} className="text-zinc-600 dark:text-zinc-300" aria-hidden />
+                                    ) : (
+                                      <SortDesc size={14} className="text-zinc-600 dark:text-zinc-300" aria-hidden />
+                                    ))}
+                                  <div className="flex items-center gap-0.5 opacity-60 transition-opacity group-hover/header:opacity-100">
+                                    <button
+                                      type="button"
+                                      disabled={colIdx === 0}
+                                      aria-label={`Mover coluna ${col.id} para a esquerda`}
+                                      title="Mover coluna para a esquerda"
+                                      className={cn(
+                                        'rounded border border-solid border-zinc-300 bg-zinc-50 p-0.5 text-zinc-600 hover:bg-zinc-200/80 dark:border-zinc-500 dark:bg-zinc-700/80 dark:text-zinc-300 dark:hover:bg-zinc-600',
+                                        'disabled:pointer-events-none disabled:opacity-25'
+                                      )}
+                                      onClick={e => {
+                                        e.stopPropagation();
+                                        moveTableDisplayColumn(col.id, 'left');
+                                      }}
+                                    >
+                                      <ChevronLeft size={12} strokeWidth={2.5} aria-hidden />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={colIdx >= tableDisplayColumns.length - 1}
+                                      aria-label={`Mover coluna ${col.id} para a direita`}
+                                      title="Mover coluna para a direita"
+                                      className={cn(
+                                        'rounded border border-solid border-zinc-300 bg-zinc-50 p-0.5 text-zinc-600 hover:bg-zinc-200/80 dark:border-zinc-500 dark:bg-zinc-700/80 dark:text-zinc-300 dark:hover:bg-zinc-600',
+                                        'disabled:pointer-events-none disabled:opacity-25'
+                                      )}
+                                      onClick={e => {
+                                        e.stopPropagation();
+                                        moveTableDisplayColumn(col.id, 'right');
+                                      }}
+                                    >
+                                      <ChevronRight size={12} strokeWidth={2.5} aria-hidden />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           </th>
                         ))}
                       </tr>
-                      <tr className="border-b border-black/[0.06] bg-white/55 backdrop-blur-xl dark:border-white/10 dark:bg-zinc-950/55">
+                      <tr className="border-b border-solid border-zinc-300 bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800">
                         <th
-                          className="sticky left-0 z-30 border-r border-black/[0.05] bg-white/60 shadow-[1px_0_0_0_rgba(0,0,0,0.04)] backdrop-blur-xl dark:border-white/10 dark:bg-zinc-950/65 dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]"
+                          className="sticky left-0 z-30 border border-solid border-zinc-300 bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800"
                           style={{ width: RESULT_INDEX_COL_WIDTH_PX, minWidth: RESULT_INDEX_COL_WIDTH_PX }}
                         />
                         {tableDisplayColumns.map(col => (
@@ -2135,33 +2136,27 @@ export default function App() {
                               minWidth: getResultColDisplayWidthPx(col),
                             }}
                             className={cn(
-                            'relative px-2 py-2 sm:px-3',
-                            col.id.startsWith('Lookup_')
-                              ? 'bg-gradient-to-b from-blue-500/[0.08] to-transparent dark:from-blue-500/12'
-                              : col.id.startsWith('LookupC_')
-                                ? 'bg-gradient-to-b from-purple-500/[0.08] to-transparent dark:from-purple-500/12'
-                                : col.id.startsWith('Status_')
-                                  ? 'bg-gradient-to-b from-emerald-500/[0.07] to-transparent dark:from-emerald-500/10'
-                                  : '',
-                            pairHighlightClasses(col.id, pairColumnMeta)
-                          )}>
+                              'relative border border-solid border-zinc-300 bg-zinc-100 py-2 pl-2 pr-3 dark:border-zinc-600 dark:bg-zinc-800 sm:pl-3 sm:pr-3.5',
+                              pairHighlightClasses(col.id, pairColumnMeta)
+                            )}
+                          >
                             <button
                               type="button"
                               ref={openFilterCol === col.id ? columnFilterAnchorRef : undefined}
                               onClick={() => setOpenFilterCol(openFilterCol === col.id ? null : col.id)}
                               className={cn(
-                                "w-full min-h-[36px] flex items-center justify-between gap-1 px-2 py-2 pr-3 rounded-lg text-xs font-bold transition-all",
+                                'flex min-h-[36px] w-full items-center justify-between gap-2 rounded border border-solid px-2 py-2 text-left text-xs font-semibold transition-colors',
                                 columnFilters[col.id]?.size > 0
-                                  ? "bg-blue-500/15 border border-blue-500/40 text-blue-400"
-                                  : "dark:bg-white/5 bg-black/5 border dark:border-white/10 border-black/10 text-zinc-500 dark:hover:border-white/20 hover:border-black/20 dark:hover:text-zinc-300 hover:text-zinc-700"
+                                  ? 'border-blue-500/50 bg-blue-500/10 text-blue-700 dark:text-blue-300'
+                                  : 'border-zinc-300 bg-zinc-50 text-zinc-600 hover:border-zinc-400 hover:bg-zinc-100 dark:border-zinc-500 dark:bg-zinc-700/50 dark:text-zinc-300 dark:hover:border-zinc-400 dark:hover:bg-zinc-700'
                               )}
                             >
-                              <span className="truncate">
+                              <span className="min-w-0 flex-1 break-words pr-1">
                                 {columnFilters[col.id]?.size > 0
                                   ? `${columnFilters[col.id].size} selecionado${columnFilters[col.id].size > 1 ? 's' : ''}`
                                   : 'Filtrar...'}
                               </span>
-                              <Filter size={12} className="shrink-0" aria-hidden />
+                              <Filter size={14} className="shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
                             </button>
                             <button
                               type="button"
