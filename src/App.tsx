@@ -118,6 +118,40 @@ function resultColumnDisplayName(colId: string): string {
   return colId;
 }
 
+/** Fundo ~5% e borda superior colorida (Excel moderno — Fonte B/C / status). */
+function resultHeaderColAccentClasses(colId: string): string {
+  if (colId.startsWith('Lookup_')) {
+    return 'border-t-2 border-blue-500/50 bg-blue-500/[0.05] dark:border-blue-400/45 dark:bg-blue-500/[0.05]';
+  }
+  if (colId.startsWith('LookupC_')) {
+    return 'border-t-2 border-purple-500/50 bg-purple-500/[0.05] dark:border-purple-400/45 dark:bg-purple-500/[0.05]';
+  }
+  if (colId.startsWith('Status_')) {
+    return 'border-t-2 border-emerald-500/45 bg-emerald-500/[0.05] dark:border-emerald-400/40 dark:bg-emerald-500/[0.05]';
+  }
+  return '';
+}
+
+function resultHeaderTitleColorClasses(colId: string): string {
+  if (colId.startsWith('Lookup_')) return 'text-blue-700 dark:text-blue-300';
+  if (colId.startsWith('LookupC_')) return 'text-purple-700 dark:text-purple-300';
+  if (colId.startsWith('Status_')) return 'text-emerald-700 dark:text-emerald-300';
+  return 'text-zinc-900 dark:text-zinc-50';
+}
+
+function resultBodyColTintClasses(colId: string): string {
+  if (colId.startsWith('Lookup_')) {
+    return 'bg-blue-500/[0.05] text-blue-700 dark:text-blue-300';
+  }
+  if (colId.startsWith('LookupC_')) {
+    return 'bg-purple-500/[0.05] text-purple-700 dark:text-purple-300';
+  }
+  if (colId.startsWith('Status_')) {
+    return 'bg-emerald-500/[0.05]';
+  }
+  return 'text-zinc-700 dark:text-zinc-300';
+}
+
 /** `Object.entries` perde o tipo dos valores; aqui preservamos `Set<string>`. */
 function columnFilterEntries(filters: Record<string, Set<string>>): [string, Set<string>][] {
   return Object.entries(filters) as [string, Set<string>][];
@@ -1656,11 +1690,11 @@ export default function App() {
       </div>
 
       {/* Main Window Container */}
-      <div className="relative z-10 min-h-dvh flex flex-col p-2 sm:p-3 md:p-4 lg:p-5 xl:p-6 pb-safe">
+      <div className="relative z-10 min-h-dvh flex flex-col px-4 py-3 sm:px-5 sm:py-4 md:px-6 md:py-5 lg:px-8 lg:py-6 pb-safe">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="windows-window flex flex-col w-full max-w-[1920px] mx-auto flex-1 min-h-0"
+          className="windows-window flex flex-col w-full max-w-[1920px] mx-auto flex-1 min-h-0 min-w-0"
         >
           {/* App Header (Inside Window) */}
           <header className="bg-white/5 dark:bg-zinc-900/5 border-b border-white/10 dark:border-white/5">
@@ -1686,7 +1720,7 @@ export default function App() {
                 <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-2xl border border-black/5 dark:border-white/5">
                   <button 
                     onClick={() => setIsDarkMode(!isDarkMode)}
-                    className="p-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-all text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 active:scale-90"
+                    className="p-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-all text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 active:scale-90"
                     aria-label={isDarkMode ? "Ativar tema claro" : "Ativar tema escuro"}
                     title={isDarkMode ? "Ativar tema claro" : "Ativar tema escuro"}
                   >
@@ -1694,7 +1728,7 @@ export default function App() {
                   </button>
                   <button 
                     onClick={reset}
-                    className="p-2.5 rounded-xl hover:bg-red-500/10 transition-all text-zinc-500 dark:text-zinc-400 hover:text-red-500 active:scale-90"
+                    className="p-2.5 rounded-xl hover:bg-red-500/10 transition-all text-zinc-600 dark:text-zinc-400 hover:text-red-500 active:scale-90"
                   >
                     <X size={18} />
                   </button>
@@ -1709,7 +1743,7 @@ export default function App() {
           </header>
 
           {/* Main Content Area — flex-1 para o passo Resultado preencher altura útil */}
-          <div className="flex flex-1 flex-col min-h-0 p-3 sm:p-4 md:p-5 lg:px-6 xl:px-8 pb-safe">
+          <div className="flex flex-1 flex-col min-h-0 px-4 py-3 sm:px-5 sm:py-4 md:px-6 md:py-5 lg:px-8 xl:px-10 pb-safe min-w-0">
             <div className="flex flex-1 flex-col min-h-0">
               <AnimatePresence mode="wait">
                 {activeTask.resultData && stats && (
@@ -1739,7 +1773,7 @@ export default function App() {
                     </div>
                     <div className="flex flex-col sm:items-center w-full">
                       <span className="text-lg sm:text-xl font-black leading-tight">{stat.value}</span>
-                      <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider leading-tight">{stat.label}</span>
+                      <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider leading-tight">{stat.label}</span>
                       {i === 3 && (
                         <div className="w-full h-1 rounded-full bg-violet-500/20 mt-2">
                           <div
@@ -1754,15 +1788,17 @@ export default function App() {
               </div>
 
               <div className="fluent-card flex min-h-0 flex-1 flex-col overflow-hidden">
-                <div className="p-3 sm:p-4 border-b dark:border-white/5 border-black/10 space-y-2 shrink-0">
+                <div className="space-y-3 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800 sm:p-4 shrink-0">
                   {/* Linha principal: filtros + ações */}
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    {/* Título + tabs de filtro com scroll horizontal em mobile */}
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    {/* Título + barra de ações com scroll horizontal no mobile */}
                     <div className="flex flex-col gap-2 min-w-0">
-                      <div className="flex items-center justify-between sm:justify-start gap-2">
-                        <h2 className="text-lg sm:text-xl font-black tracking-tight shrink-0">Resultados</h2>
-                        {/* Botões de ação — visíveis somente em mobile aqui */}
-                        <div className="flex items-center gap-1.5 sm:hidden shrink-0">
+                      <h2 className="text-lg sm:text-xl font-black tracking-tight">Resultados</h2>
+                      <div className="sm:hidden -mx-1 min-w-0">
+                        <div
+                          className="flex flex-nowrap items-stretch gap-2 overflow-x-auto px-1 pb-2 pt-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                          style={{ WebkitOverflowScrolling: 'touch' }}
+                        >
                           {(columnFilterValueSets(columnFilters).some(s => s.size > 0) ||
                             activeTask.duplicateKeyFilterEnabled) && (
                             <button
@@ -1770,7 +1806,7 @@ export default function App() {
                                 setColumnFilters({});
                                 updateActiveTask({ duplicateKeyFilterEnabled: false });
                               }}
-                              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-xs font-bold text-amber-400 hover:bg-amber-500/10 border border-amber-500/20 transition-all active:scale-95"
+                              className="shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-xs font-bold text-amber-400 hover:bg-amber-500/10 border border-amber-500/20 transition-all active:scale-95"
                               aria-label="Limpar filtros de colunas"
                               title="Limpar filtros"
                             >
@@ -1779,7 +1815,7 @@ export default function App() {
                           )}
                           <button
                             onClick={() => setStep('configure')}
-                            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-zinc-500 dark:hover:bg-white/5 hover:bg-black/5 border dark:border-white/10 border-black/10 transition-all active:scale-95"
+                            className="shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-zinc-600 dark:text-zinc-400 dark:hover:bg-white/5 hover:bg-black/5 border dark:border-white/10 border-black/10 transition-all active:scale-95"
                             aria-label="Editar configurações"
                             title="Editar configurações"
                           >
@@ -1788,7 +1824,7 @@ export default function App() {
                           <button
                             type="button"
                             onClick={() => setShowPivotModal(true)}
-                            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-emerald-400 hover:bg-emerald-500/10 border border-emerald-500/25 transition-all active:scale-95"
+                            className="shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-emerald-400 hover:bg-emerald-500/10 border border-emerald-500/25 transition-all active:scale-95"
                             aria-label="Tabela dinâmica"
                             title="Tabela dinâmica"
                           >
@@ -1797,7 +1833,7 @@ export default function App() {
                           <FluentPressableButton
                             type="button"
                             onClick={downloadResult}
-                            className="fluent-button-primary flex min-h-[44px] items-center gap-1.5 px-3 py-2 text-xs"
+                            className="fluent-button-primary flex shrink-0 min-h-[44px] items-center gap-1.5 px-3 py-2 text-xs"
                             aria-label="Baixar resultado em Excel"
                             title="Baixar Excel"
                           >
@@ -1807,7 +1843,7 @@ export default function App() {
                           <button
                             type="button"
                             onClick={downloadResultJson}
-                            className="min-h-[44px] px-3 py-2 text-xs font-bold flex items-center gap-1.5 rounded-xl border dark:border-white/10 border-black/10 text-zinc-600 dark:text-zinc-300 hover:bg-black/5 dark:hover:bg-white/10 transition-all active:scale-95"
+                            className="shrink-0 min-h-[44px] px-3 py-2 text-xs font-bold flex items-center gap-1.5 rounded-xl border dark:border-white/10 border-black/10 text-zinc-600 dark:text-zinc-300 hover:bg-black/5 dark:hover:bg-white/10 transition-all active:scale-95"
                             aria-label="Baixar resultado em JSON"
                             title="Baixar JSON"
                           >
@@ -1833,7 +1869,7 @@ export default function App() {
                                   ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20"
                                   : activeTask.resultFilter === f.id
                                   ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
-                                  : "text-zinc-500 dark:hover:text-zinc-200 hover:text-zinc-800"
+                                  : "text-zinc-600 dark:text-zinc-400 dark:hover:text-zinc-200 hover:text-zinc-800"
                               )}
                             >
                               <f.icon size={14} className="shrink-0" />{' '}
@@ -1849,7 +1885,7 @@ export default function App() {
                               ? "bg-orange-500/15 text-orange-400 border-orange-500/30"
                               : activeTask.divergentPairs.length > 0
                               ? "text-orange-400 border-orange-500/30 hover:bg-orange-500/10"
-                              : "text-zinc-500 dark:border-white/10 border-black/10 dark:hover:bg-white/5 hover:bg-black/5 dark:hover:text-zinc-200 hover:text-zinc-800"
+                              : "text-zinc-600 dark:text-zinc-400 dark:border-white/10 border-black/10 dark:hover:bg-white/5 hover:bg-black/5 dark:hover:text-zinc-200 hover:text-zinc-800"
                           )}
                           title="Configurar pares de divergência"
                         >
@@ -1881,7 +1917,7 @@ export default function App() {
                             'flex items-center gap-1.5 min-h-[44px] px-3 py-2 rounded-lg text-xs font-bold transition-all border whitespace-nowrap shrink-0',
                             activeTask.duplicateKeyFilterEnabled
                               ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/25 border-violet-500/40'
-                              : 'text-zinc-500 dark:border-white/10 border-black/10 dark:hover:bg-white/5 hover:bg-black/5 dark:hover:text-zinc-200 hover:text-zinc-800'
+                              : 'text-zinc-600 dark:text-zinc-400 dark:border-white/10 border-black/10 dark:hover:bg-white/5 hover:bg-black/5 dark:hover:text-zinc-200 hover:text-zinc-800'
                           )}
                           title="Mostrar só linhas em que o valor da coluna escolhida se repete (ex.: mesmo CPF em guias diferentes)"
                         >
@@ -1909,7 +1945,7 @@ export default function App() {
                             ))}
                         </select>
                         {activeTask.duplicateKeyFilterEnabled && (
-                          <span className="text-[10px] text-zinc-500 dark:text-zinc-400 max-w-sm leading-snug">
+                          <span className="text-[10px] text-zinc-600 dark:text-zinc-400 max-w-sm leading-snug">
                             Mesma normalização da busca (espaços, maiúsculas, especiais). Para igualar CPF com e sem
                             pontuação, ative &quot;Remover caracteres especiais&quot; em Ajustes finos.
                           </span>
@@ -1933,7 +1969,7 @@ export default function App() {
                       )}
                       <button
                         onClick={() => setStep('configure')}
-                        className="min-h-[44px] flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-500 dark:hover:text-zinc-100 hover:text-zinc-900 dark:hover:bg-white/5 hover:bg-black/5 border dark:border-white/10 border-black/10 transition-all active:scale-95"
+                        className="min-h-[44px] flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-600 dark:text-zinc-400 dark:hover:text-zinc-100 hover:text-zinc-900 dark:hover:bg-white/5 hover:bg-black/5 border dark:border-white/10 border-black/10 transition-all active:scale-95"
                       >
                         <Settings2 size={14} /> Editar Config.
                       </button>
@@ -1966,7 +2002,7 @@ export default function App() {
                   {/* Painel de configuração de pares — linha separada */}
                   {showDivergentConfig && (
                     <div className="pt-2 border-t dark:border-white/5 border-black/10 space-y-2">
-                      <p className="text-xs font-black uppercase tracking-widest text-zinc-500">
+                      <p className="text-xs font-black uppercase tracking-widest text-zinc-600 dark:text-zinc-400">
                         Pares de colunas para comparação de divergências
                       </p>
                       {activeTask.divergentPairs.map((pair, idx) => (
@@ -1987,7 +2023,7 @@ export default function App() {
                                 .map(k => <option key={k} value={k}>{k}</option>)
                             }
                           </select>
-                          <span className="text-zinc-500 text-xs font-bold shrink-0">↔</span>
+                          <span className="text-zinc-600 dark:text-zinc-400 text-xs font-bold shrink-0">↔</span>
                           <select
                             value={pair.colLookup}
                             onChange={e => {
@@ -2006,7 +2042,7 @@ export default function App() {
                           </select>
                           <button
                             onClick={() => updateActiveTask({ divergentPairs: activeTask.divergentPairs.filter((_, i) => i !== idx) })}
-                            className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-all shrink-0"
+                            className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-red-400 hover:bg-red-500/10 transition-all shrink-0"
                             aria-label="Remover par"
                             title="Remover par"
                           >
@@ -2025,7 +2061,7 @@ export default function App() {
                 </div>
 
                 {/* Dica de scroll horizontal — visível apenas em mobile */}
-                <div className="sm:hidden flex items-center justify-center gap-2 py-2 px-2 text-xs text-zinc-500 dark:text-zinc-400 font-medium text-center shrink-0">
+                <div className="sm:hidden flex items-center justify-center gap-2 py-2 px-2 text-xs text-zinc-600 dark:text-zinc-400 font-medium text-center shrink-0">
                   <ChevronRight size={14} className="rotate-180 opacity-60 shrink-0" aria-hidden />
                   <span>Deslize para os lados para ver mais colunas</span>
                   <ChevronRight size={14} className="opacity-60 shrink-0" aria-hidden />
@@ -2033,11 +2069,11 @@ export default function App() {
 
                 <div
                   className={cn(
-                    'flex-1 min-h-0 overflow-auto rounded-[32px] border dark:border-white/10 border-black/10 dark:bg-black/40 bg-white/60 shadow-inner backdrop-blur-xl custom-scrollbar',
+                    'flex-1 min-h-0 overflow-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 custom-scrollbar',
                     columnResizePreview && 'select-none'
                   )}
                 >
-                  <table className="w-full min-w-[600px] table-fixed text-left border-collapse">
+                  <table className="w-full min-w-[600px] table-fixed border-collapse text-left">
                     <colgroup>
                       <col style={{ width: RESULT_INDEX_COL_WIDTH_PX, minWidth: RESULT_INDEX_COL_WIDTH_PX }} />
                       {tableDisplayColumns.map(col => {
@@ -2046,9 +2082,9 @@ export default function App() {
                       })}
                     </colgroup>
                     <thead className="sticky top-0 z-20">
-                      <tr className="border-b border-solid border-zinc-300 bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800">
+                      <tr className="bg-zinc-50 dark:bg-zinc-900">
                         <th
-                          className="sticky left-0 z-30 border border-solid border-zinc-300 bg-zinc-100 px-3 py-3 text-center text-xs font-bold uppercase tracking-wide text-zinc-600 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                          className="sticky left-0 z-30 border border-solid border-zinc-200 bg-zinc-50 px-3 py-3 text-center text-[10px] font-semibold text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400"
                           style={{ width: RESULT_INDEX_COL_WIDTH_PX, minWidth: RESULT_INDEX_COL_WIDTH_PX }}
                         >
                           #
@@ -2061,29 +2097,33 @@ export default function App() {
                               minWidth: getResultColDisplayWidthPx(col),
                             }}
                             className={cn(
-                              'group/header border border-solid border-zinc-300 bg-zinc-100 px-3 py-3 align-top text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 sm:px-4',
+                              'group/header border border-solid border-zinc-200 bg-zinc-50 px-3 py-2.5 align-top dark:border-zinc-800 dark:bg-zinc-900',
+                              resultHeaderColAccentClasses(col.id),
                               pairHighlightClasses(col.id, pairColumnMeta)
                             )}
                           >
-                            <div className="flex min-w-0 flex-col gap-2">
-                              <span className="text-[10px] font-semibold uppercase leading-none tracking-wider text-zinc-500 dark:text-zinc-400">
-                                {resultTableHeaderKindLabel(col.id)}
+                            <div className="flex min-w-0 flex-col gap-1.5">
+                              <span className="text-[10px] font-normal lowercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                {resultTableHeaderKindLabel(col.id).toLowerCase()}
                               </span>
-                              <div className="flex min-w-0 items-start gap-2">
+                              <div className="flex min-w-0 items-start justify-between gap-2">
                                 <p
-                                  className="min-w-0 flex-1 break-words text-sm font-semibold leading-snug"
+                                  className={cn(
+                                    'min-w-0 flex-1 break-words text-sm font-bold leading-snug',
+                                    resultHeaderTitleColorClasses(col.id)
+                                  )}
                                   title={col.id}
                                 >
                                   {resultColumnDisplayName(col.id)}
                                 </p>
-                                <div className="flex shrink-0 items-center gap-1">
+                                <div className="flex shrink-0 items-center gap-1 pt-0.5">
                                   {sortConfig?.colId === col.id &&
                                     (sortConfig.direction === 'asc' ? (
                                       <SortAsc size={14} className="text-zinc-600 dark:text-zinc-300" aria-hidden />
                                     ) : (
                                       <SortDesc size={14} className="text-zinc-600 dark:text-zinc-300" aria-hidden />
                                     ))}
-                                  <div className="flex items-center gap-0.5 opacity-60 transition-opacity group-hover/header:opacity-100">
+                                  <div className="flex items-center gap-0.5 opacity-70 transition-opacity group-hover/header:opacity-100">
                                     <button
                                       type="button"
                                       disabled={colIdx === 0}
@@ -2123,9 +2163,9 @@ export default function App() {
                           </th>
                         ))}
                       </tr>
-                      <tr className="border-b border-solid border-zinc-300 bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800">
+                      <tr className="bg-zinc-50 dark:bg-zinc-900">
                         <th
-                          className="sticky left-0 z-30 border border-solid border-zinc-300 bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800"
+                          className="sticky left-0 z-30 border border-solid border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900"
                           style={{ width: RESULT_INDEX_COL_WIDTH_PX, minWidth: RESULT_INDEX_COL_WIDTH_PX }}
                         />
                         {tableDisplayColumns.map(col => (
@@ -2136,7 +2176,8 @@ export default function App() {
                               minWidth: getResultColDisplayWidthPx(col),
                             }}
                             className={cn(
-                              'relative border border-solid border-zinc-300 bg-zinc-100 py-2 pl-2 pr-3 dark:border-zinc-600 dark:bg-zinc-800 sm:pl-3 sm:pr-3.5',
+                              'relative border border-solid border-zinc-200 bg-zinc-50 py-2 pl-2 pr-3 dark:border-zinc-800 dark:bg-zinc-900 sm:pl-3 sm:pr-3.5',
+                              resultHeaderColAccentClasses(col.id),
                               pairHighlightClasses(col.id, pairColumnMeta)
                             )}
                           >
@@ -2145,18 +2186,18 @@ export default function App() {
                               ref={openFilterCol === col.id ? columnFilterAnchorRef : undefined}
                               onClick={() => setOpenFilterCol(openFilterCol === col.id ? null : col.id)}
                               className={cn(
-                                'flex min-h-[36px] w-full items-center justify-between gap-2 rounded border border-solid px-2 py-2 text-left text-xs font-semibold transition-colors',
+                                'flex min-h-[32px] w-full items-center justify-between gap-2 rounded border border-solid px-2 py-1 text-left text-[11px] font-medium transition-colors',
                                 columnFilters[col.id]?.size > 0
-                                  ? 'border-blue-500/50 bg-blue-500/10 text-blue-700 dark:text-blue-300'
-                                  : 'border-zinc-300 bg-zinc-50 text-zinc-600 hover:border-zinc-400 hover:bg-zinc-100 dark:border-zinc-500 dark:bg-zinc-700/50 dark:text-zinc-300 dark:hover:border-zinc-400 dark:hover:bg-zinc-700'
+                                  ? 'border-blue-500 bg-blue-50 text-blue-800 dark:border-blue-400 dark:bg-blue-950/50 dark:text-blue-200'
+                                  : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-400 dark:hover:border-zinc-600'
                               )}
                             >
-                              <span className="min-w-0 flex-1 break-words pr-1">
+                              <span className="min-w-0 flex-1 break-words pr-1 text-left">
                                 {columnFilters[col.id]?.size > 0
                                   ? `${columnFilters[col.id].size} selecionado${columnFilters[col.id].size > 1 ? 's' : ''}`
                                   : 'Filtrar...'}
                               </span>
-                              <Filter size={14} className="shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
+                              <Filter size={14} className="shrink-0 text-zinc-600 dark:text-zinc-400" aria-hidden />
                             </button>
                             <button
                               type="button"
@@ -2196,7 +2237,7 @@ export default function App() {
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y dark:divide-white/5 divide-black/5">
+                    <tbody>
                       {filteredResultData.slice(0, visibleRows).map((row, i) => {
                         const isRowSelected = selectedRowIndex === i;
                         return (
@@ -2204,18 +2245,15 @@ export default function App() {
                           key={i}
                           onClick={() => setSelectedRowIndex(i)}
                           className={cn(
-                            'transition-all group cursor-pointer dark:hover:bg-white/5 hover:bg-black/5',
-                            i % 2 === 0 && !isRowSelected ? 'dark:bg-white/[0.02] bg-black/[0.02]' : '',
-                            isRowSelected && 'bg-blue-500/20 border-l-2 border-blue-500'
+                            'group cursor-pointer transition-colors',
+                            i % 2 === 0 && !isRowSelected
+                              ? 'bg-black/[0.02] dark:bg-white/[0.02]'
+                              : 'bg-white dark:bg-zinc-950',
+                            isRowSelected && 'border-l-2 border-l-blue-500 bg-blue-500/[0.12] dark:bg-blue-500/20'
                           )}
                         >
                           <td
-                            className={cn(
-                              'px-3 py-3 text-xs font-bold text-zinc-400 text-center sticky left-0 z-10 shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)] border-r dark:border-white/5 border-black/5',
-                              isRowSelected
-                                ? 'bg-blue-500/20 dark:bg-blue-500/20 group-hover:bg-blue-500/25 dark:group-hover:bg-blue-500/25'
-                                : 'dark:bg-[#0f0f10] bg-[#fcfcfc] group-hover:bg-inherit'
-                            )}
+                            className="sticky left-0 z-10 border border-solid border-zinc-200 bg-inherit px-2 py-2 text-center text-[10px] font-medium text-zinc-600 dark:border-zinc-800 dark:text-zinc-400"
                             style={{ width: RESULT_INDEX_COL_WIDTH_PX, minWidth: RESULT_INDEX_COL_WIDTH_PX }}
                           >
                             {i + 1}
@@ -2228,13 +2266,17 @@ export default function App() {
                                 key={col.id}
                                 style={{ width: cw, minWidth: cw }}
                                 className={cn(
-                                'px-4 sm:px-6 py-3 text-xs font-medium whitespace-nowrap transition-colors overflow-hidden text-ellipsis',
-                                col.id.startsWith('Lookup_') ? "bg-blue-400/5 dark:text-blue-300 text-blue-600 dark:group-hover:text-blue-200 group-hover:text-blue-700" : 
-                                col.id.startsWith('LookupC_') ? "bg-purple-400/5 dark:text-purple-300 text-purple-600 dark:group-hover:text-purple-200 group-hover:text-purple-700" : 
-                                col.id.startsWith('Status_') ? "bg-emerald-400/5 font-black " + (val === 'VERDADEIRO' ? 'text-emerald-400' : 'text-red-400') : "dark:text-zinc-400 text-zinc-600 dark:group-hover:text-zinc-100 group-hover:text-zinc-900",
-                                pairHighlightClasses(col.id, pairColumnMeta),
-                                isRowSelected && 'dark:!bg-blue-500/20 !bg-blue-500/20'
-                              )}>
+                                  'overflow-hidden text-ellipsis whitespace-nowrap border border-solid border-zinc-200 px-3 py-2 text-[11px] dark:border-zinc-800',
+                                  resultBodyColTintClasses(col.id),
+                                  col.id.startsWith('Status_') &&
+                                    (val === 'VERDADEIRO'
+                                      ? 'text-emerald-600 dark:text-emerald-400'
+                                      : 'text-red-600 dark:text-red-400'),
+                                  col.id.startsWith('Status_') && 'font-bold',
+                                  pairHighlightClasses(col.id, pairColumnMeta),
+                                  isRowSelected && 'dark:!bg-blue-500/15 !bg-blue-500/10'
+                                )}
+                              >
                                 {val === null || val === undefined 
                                   ? <span className="text-red-400/50 italic font-bold">#N/D</span> 
                                   : typeof val === 'boolean' 
@@ -2262,7 +2304,7 @@ export default function App() {
                   )}
                   {filteredResultData.length > visibleRows && (
                     <div className="p-4 flex flex-col items-center justify-center gap-2 bg-slate-50 dark:bg-slate-800/30 border-t dark:border-white/5 border-black/5">
-                      <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest">
+                      <p className="text-xs font-bold uppercase tracking-widest text-zinc-600 dark:text-zinc-400">
                         Exibindo {visibleRows} de {filteredResultData.length} linhas
                       </p>
                       <button 
