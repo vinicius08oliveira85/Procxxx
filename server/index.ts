@@ -39,6 +39,45 @@ if (!isProd) {
 
 app.use(express.json({ limit: '512kb' }));
 
+/**
+ * Limite simples por IP para os endpoints de IA (custo/abuso).
+ * Best-effort e por instância: não substitui um rate limiter distribuído.
+ */
+const AI_RATE_WINDOW_MS = 60_000;
+const AI_RATE_MAX = Number(process.env.AI_RATE_LIMIT_PER_MIN) || 20;
+const aiRateBuckets = new Map<string, { count: number; resetAt: number }>();
+
+function isAiRateLimited(ip: string): boolean {
+  const now = Date.now();
+  if (aiRateBuckets.size > 1000) {
+    for (const [key, bucket] of aiRateBuckets) {
+      if (bucket.resetAt <= now) aiRateBuckets.delete(key);
+    }
+  }
+  const bucket = aiRateBuckets.get(ip);
+  if (!bucket || bucket.resetAt <= now) {
+    aiRateBuckets.set(ip, { count: 1, resetAt: now + AI_RATE_WINDOW_MS });
+    return false;
+  }
+  bucket.count += 1;
+  return bucket.count > AI_RATE_MAX;
+}
+
+app.use('/api/ai', (req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    next();
+    return;
+  }
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  if (isAiRateLimited(ip)) {
+    res.status(429).json({
+      error: 'Muitos pedidos ao assistente de IA. Aguarde um minuto e tente de novo.',
+    });
+    return;
+  }
+  next();
+});
+
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, geminiConfigured: Boolean(process.env.GEMINI_API_KEY) });
 });

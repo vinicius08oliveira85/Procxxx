@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# PWA assets gerados em dev (vite-plugin-pwa)
+dev-dist/

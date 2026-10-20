@@ -19,8 +19,44 @@ export function detectDelimiter(lines: string[]): PasteDelimiter {
   return ',';
 }
 
+/**
+ * Divide uma linha respeitando campos entre aspas (CSV com `"Silva, Maria"`).
+ * `""` dentro do campo representa uma aspa literal.
+ */
 export function splitRow(line: string, delimiter: string): string[] {
-  return line.split(delimiter).map((c) => c.trim());
+  const out: string[] = [];
+  let cell = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') {
+          cell += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        cell += ch;
+      }
+      continue;
+    }
+    if (ch === '"' && cell.trim() === '') {
+      inQuotes = true;
+      cell = cell.trim() === '' ? '' : cell;
+      continue;
+    }
+    if (ch === delimiter) {
+      out.push(cell.trim());
+      cell = '';
+      continue;
+    }
+    cell += ch;
+  }
+  out.push(cell.trim());
+  return out;
 }
 
 export function uniquifyHeaders(raw: string[]): string[] {

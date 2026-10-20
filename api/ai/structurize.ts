@@ -92,6 +92,36 @@ export async function runStructurize(
   return { rows: validated.data.rows };
 }
 
+/**
+ * Limite simples por IP (best-effort, por instância da função).
+ * Evita que um único cliente esgote a cota do Gemini.
+ */
+const AI_RATE_WINDOW_MS = 60_000;
+const AI_RATE_MAX = Number(process.env.AI_RATE_LIMIT_PER_MIN) || 20;
+const aiRateBuckets = new Map<string, { count: number; resetAt: number }>();
+
+function clientIp(req: VercelRequest): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+  return (raw?.split(',')[0] ?? req.socket?.remoteAddress ?? 'unknown').trim();
+}
+
+function isAiRateLimited(ip: string): boolean {
+  const now = Date.now();
+  if (aiRateBuckets.size > 1000) {
+    for (const [key, bucket] of aiRateBuckets) {
+      if (bucket.resetAt <= now) aiRateBuckets.delete(key);
+    }
+  }
+  const bucket = aiRateBuckets.get(ip);
+  if (!bucket || bucket.resetAt <= now) {
+    aiRateBuckets.set(ip, { count: 1, resetAt: now + AI_RATE_WINDOW_MS });
+    return false;
+  }
+  bucket.count += 1;
+  return bucket.count > AI_RATE_MAX;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
@@ -101,6 +131,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     res.status(503).json({ error: 'API Key não configurada' });
+    return;
+  }
+
+  if (isAiRateLimited(clientIp(req))) {
+    res.status(429).json({
+      error: 'Muitos pedidos ao assistente de IA. Aguarde um minuto e tente de novo.',
+    });
     return;
   }
 

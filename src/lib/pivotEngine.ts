@@ -75,11 +75,51 @@ function filterPivotRows(
   return out;
 }
 
-function toNumber(val: unknown): number | null {
+/**
+ * Converte texto em número aceitando formatos pt-BR e en-US.
+ * `1.234,56`, `1,234.56` e `1.234` (milhar) são tratados sem virar 0/NaN.
+ */
+export function parsePivotNumber(val: unknown): number | null {
   if (val === null || val === undefined || val === '') return null;
-  if (typeof val === 'number' && !Number.isNaN(val)) return val;
-  const n = Number(String(val).replace(',', '.'));
-  return Number.isFinite(n) ? n : null;
+  if (typeof val === 'number') return Number.isNaN(val) ? null : val;
+  if (typeof val === 'boolean') return val ? 1 : 0;
+  if (typeof val !== 'string') return null;
+
+  let raw = val.trim();
+  if (!raw) return null;
+
+  const negative = /^\(.*\)$/.test(raw);
+  raw = raw.replace(/[()]/g, '').replace(/[\s\u00a0]/g, '').replace(/[^\d.,-]/g, '');
+  if (!raw || raw === '-' || raw === '.' || raw === ',') return null;
+
+  const lastComma = raw.lastIndexOf(',');
+  const lastDot = raw.lastIndexOf('.');
+  let normalized: string;
+
+  if (lastComma >= 0 && lastDot >= 0) {
+    // Ambos presentes: o último é o separador decimal.
+    normalized =
+      lastComma > lastDot
+        ? raw.replace(/\./g, '').replace(',', '.')
+        : raw.replace(/,/g, '');
+  } else if (lastComma >= 0) {
+    const parts = raw.split(',');
+    // Várias vírgulas (1,234,567) = separador de milhar.
+    normalized = parts.length > 2 ? parts.join('') : raw.replace(',', '.');
+  } else if (lastDot >= 0) {
+    const parts = raw.split('.');
+    normalized = parts.length > 2 ? parts.join('') : raw;
+  } else {
+    normalized = raw;
+  }
+
+  const n = Number(normalized);
+  if (!Number.isFinite(n)) return null;
+  return negative ? -Math.abs(n) : n;
+}
+
+function toNumber(val: unknown): number | null {
+  return parsePivotNumber(val);
 }
 
 function aggregateRows(
@@ -229,10 +269,6 @@ function computeValuesForSlice(
   return out;
 }
 
-function addVectors(a: number[], b: number[]): number[] {
-  return a.map((v, i) => v + (b[i] ?? 0));
-}
-
 /**
  * Converte valores agregados em % do total geral da medida (por índice de medida).
  */
@@ -307,14 +343,15 @@ function buildSiblings(
       };
     }
     const childSiblings = buildSiblings(subRows, layout, colKeys, depth + 1, path);
-    const w = childSiblings[0]?.aggregates.length ?? computeValuesForSlice([], layout, colKeys).length;
-    const sumAgg = childSiblings.reduce((acc, ch) => addVectors(acc, ch.aggregates), new Array(w).fill(0));
+    // Subtotais são recalculados sobre o grupo inteiro: somar os filhos só
+    // funciona para `sum`/`count` (média, mínimo e máximo davam valores errados).
+    const aggregates = computeValuesForSlice(subRows, layout, colKeys);
     return {
       path,
       segmentLabel: key,
       rowField: field,
       depth,
-      aggregates: sumAgg,
+      aggregates,
       children: childSiblings,
     };
   });

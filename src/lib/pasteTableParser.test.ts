@@ -8,9 +8,29 @@ import {
   normalizeSquadPastedValue,
   parsePastedTable,
   splitEven,
+  splitRow,
   tryHomeAwayTwoGroupLayout,
   uniquifyHeaders,
 } from './pasteTableParser';
+
+describe('splitRow', () => {
+  it('divide por tab e ponto e vírgula', () => {
+    expect(splitRow('a\tb', '\t')).toEqual(['a', 'b']);
+    expect(splitRow('a; b', ';')).toEqual(['a', 'b']);
+  });
+
+  it('respeita aspas com o delimitador dentro', () => {
+    expect(splitRow('Ana,"Silva, Maria",10', ',')).toEqual(['Ana', 'Silva, Maria', '10']);
+  });
+
+  it('trata aspas duplicadas como aspa literal', () => {
+    expect(splitRow('1,"diz \""oi\"""', ',')).toEqual(['1', 'diz "oi"']);
+  });
+
+  it('mantém aspas no meio do texto como caractere comum', () => {
+    expect(splitRow('5" tela,x', ',')).toEqual(['5" tela', 'x']);
+  });
+});
 
 describe('detectDelimiter', () => {
   it('prioriza tab', () => {
@@ -103,6 +123,11 @@ describe('parsePastedTable', () => {
     const r = parsePastedTable('A\tB\n1\t2', true);
     expect(r.status).toBe('ready');
     expect(r.rows).toEqual([{ A: '1', B: '2' }]);
+  });
+
+  it('CSV colado com vírgula dentro de aspas mantém as colunas alinhadas', () => {
+    const r = parsePastedTable('Nome,Obs\nAna,"Silva, Maria"', true);
+    expect(r.rows).toEqual([{ Nome: 'Ana', Obs: 'Silva, Maria' }]);
   });
 
   it('sem cabeçalho gera Coluna N', () => {

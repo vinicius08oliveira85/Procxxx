@@ -22,6 +22,22 @@ export type AutoDetectLookupResult = {
   selectedColsB: string[];
 };
 
+function normHeader(header: string): string {
+  return header.toLowerCase().trim();
+}
+
+/**
+ * `true` quando a chave aparece como palavra inteira no cabeçalho.
+ * Evita que `id` case com "Cidade" ou "Identificador" no meio de outra palavra.
+ */
+function headerContainsKey(header: string, key: string): boolean {
+  const h = normHeader(header);
+  if (!h) return false;
+  if (h === key) return true;
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, 'i').test(h);
+}
+
 export function computeAutoDetectLookup(headersA: string[], headersB: string[]): AutoDetectLookupResult {
   const out: AutoDetectLookupResult = { keyA: '', keyB: '', selectedColsB: [] };
   if (!headersA.length || !headersB.length) return out;
@@ -30,18 +46,18 @@ export function computeAutoDetectLookup(headersA: string[], headersB: string[]):
   let bestKeyB = '';
 
   for (const hA of headersA) {
-    const normalizedA = hA.toLowerCase().trim();
-    if (headersB.some(hB => hB.toLowerCase().trim() === normalizedA)) {
+    const normalizedA = normHeader(hA);
+    if (headersB.some(hB => normHeader(hB) === normalizedA)) {
       bestKeyA = hA;
-      bestKeyB = headersB.find(hB => hB.toLowerCase().trim() === normalizedA) || '';
+      bestKeyB = headersB.find(hB => normHeader(hB) === normalizedA) || '';
       break;
     }
   }
 
   if (!bestKeyA) {
     for (const key of COMMON_KEYS) {
-      const foundA = headersA.find(h => h.toLowerCase().includes(key));
-      const foundB = headersB.find(h => h.toLowerCase().includes(key));
+      const foundA = headersA.find(h => headerContainsKey(h, key));
+      const foundB = headersB.find(h => headerContainsKey(h, key));
       if (foundA && foundB) {
         bestKeyA = foundA;
         bestKeyB = foundB;
@@ -54,7 +70,7 @@ export function computeAutoDetectLookup(headersA: string[], headersB: string[]):
   out.keyB = bestKeyB;
 
   const suggestedCols = headersB.filter(
-    hB => hB !== bestKeyB && !headersA.some(hA => hA.toLowerCase().trim() === hB.toLowerCase().trim())
+    hB => hB !== bestKeyB && !headersA.some(hA => normHeader(hA) === normHeader(hB))
   );
 
   if (suggestedCols.length > 0) {

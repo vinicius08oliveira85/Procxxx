@@ -51,6 +51,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { FluentPressableButton, FluentPressableDiv } from './lib/fluentMotion';
 import { computeAutoDetectLookup } from './lib/autoDetectLookupConfig';
+import { normalizeKeyValue, type LookupPayload, type LookupWorkerMessage } from './lib/lookupEngine';
 import {
   type SortConfig,
   compareResultCellAsc,
@@ -157,252 +158,11 @@ function columnFilterEntries(filters: Record<string, Set<string>>): [string, Set
   return Object.entries(filters) as [string, Set<string>][];
 }
 
-function columnFilterValueSets(filters: Record<string, Set<string>>): Set<string>[] {
-  return Object.values(filters) as Set<string>[];
+/** Qualquer coluna com filtro aplicado — inclusive `Set` vazio ("nada selecionado"). */
+function hasActiveColumnFilters(filters: Record<string, Set<string>>): boolean {
+  return Object.keys(filters).length > 0;
 }
 
-/** Mesma ideia do `clean` do worker: chave estável para detectar duplicados no resultado. */
-function normalizeDuplicateKeyCell(
-  val: unknown,
-  opts: Pick<LookupTask, 'trimSpaces' | 'ignoreCase' | 'removeSpecialChars'>
-): string {
-  if (val === undefined || val === null) return '';
-  let s = String(val);
-  if (opts.trimSpaces) s = s.trim();
-  if (opts.ignoreCase) s = s.toLowerCase();
-  if (opts.removeSpecialChars) s = s.replace(/[^a-z0-9]/gi, '');
-  return s;
-}
-
-// Web Worker Code extracted to a constant for better performance and maintainability
-// Optimized Levenshtein algorithm to use O(min(m,n)) space instead of O(m*n)
-const WORKER_CODE = `
-  self.onmessage = function(e) {
-    const { 
-      dataA: rawDataA, dataB, keyA, keyB, selectedColsA, selectedColsB,
-      dataC, keyA_C, keyC, selectedColsC,
-      exactMatch, trimSpaces, ignoreCase, removeSpecialChars, duplicateStrategy, fuzzyThreshold,
-      ifNotFound, ifNotFoundC, matchMode, searchDirection, includeStatusCols
-    } = e.data;
-
-    // Se o usuário selecionou colunas específicas de A, filtra cada linha
-    const dataA = (selectedColsA && selectedColsA.length > 0)
-      ? rawDataA.map(row => {
-          const filtered = {};
-          selectedColsA.forEach(col => { filtered[col] = row[col]; });
-          return filtered;
-        })
-      : rawDataA;
-
-    if (!dataA || !dataB) {
-      self.postMessage({ error: "Dados ausentes" });
-      return;
-    }
-
-    function clean(val) {
-      if (val === undefined || val === null) return "";
-      let s = String(val);
-      if (trimSpaces) s = s.trim();
-      if (ignoreCase) s = s.toLowerCase();
-      if (removeSpecialChars) s = s.replace(/[^a-z0-9]/gi, '');
-      return s;
-    }
-
-    // Optimized Levenshtein (Wagner-Fischer with two rows) to save memory
-    function levenshtein(s, t) {
-      if (s === t) return 0;
-      if (s.length === 0) return t.length;
-      if (t.length === 0) return s.length;
-
-      // Swap to ensure we use the smaller array for memory efficiency
-      if (s.length > t.length) [s, t] = [t, s];
-
-      const sLen = s.length;
-      const tLen = t.length;
-      
-      let v0 = new Uint16Array(sLen + 1);
-      let v1 = new Uint16Array(sLen + 1);
-
-      for (let i = 0; i <= sLen; i++) v0[i] = i;
-
-      for (let i = 0; i < tLen; i++) {
-        v1[0] = i + 1;
-        for (let j = 0; j < sLen; j++) {
-          const cost = s[j] === t[i] ? 0 : 1;
-          v1[j + 1] = Math.min(v1[j] + 1, v0[j + 1] + 1, v0[j] + cost);
-        }
-        // Swap arrays for next iteration
-        let temp = v0; v0 = v1; v1 = temp;
-      }
-      return v0[sLen];
-    }
-
-    function similarity(a, b) {
-      const longer = a.length > b.length ? a : b;
-      const shorter = a.length > b.length ? b : a;
-      if (longer.length === 0) return 1.0;
-      return (longer.length - levenshtein(longer, shorter)) / parseFloat(longer.length);
-    }
-
-    function createLookupMap(data, key, selectedCols) {
-      const lookupMap = new Map();
-      data.forEach(row => {
-        const keyValue = clean(row[key]);
-        if (keyValue !== "") {
-          if (duplicateStrategy === 'first' && lookupMap.has(keyValue)) return;
-          
-          if (duplicateStrategy === 'concatenate' && lookupMap.has(keyValue)) {
-            const existing = lookupMap.get(keyValue);
-            const merged = { ...existing };
-            selectedCols.forEach(col => {
-              if (row[col] !== undefined && row[col] !== null) {
-                merged[col] = String(merged[col]) + "; " + String(row[col]);
-              }
-            });
-            lookupMap.set(keyValue, merged);
-          } else {
-            lookupMap.set(keyValue, row);
-          }
-        }
-      });
-      return lookupMap;
-    }
-
-    function findMatch(valA, data, key) {
-      const cleanA = clean(valA);
-      if (cleanA === "") return null;
-      const searchData = searchDirection === -1 ? [...data].reverse() : data;
-
-      if (matchMode === 0) {
-        return searchData.find(row => clean(row[key]) === cleanA);
-      } else if (matchMode === -1 || matchMode === 1) {
-        let bestMatch = null;
-        let bestDiff = Infinity;
-        for (const row of searchData) {
-          const valB = row[key];
-          const cleanB = clean(valB);
-          if (cleanB === cleanA) return row;
-          const numA = parseFloat(valA);
-          const numB = parseFloat(valB);
-          if (!isNaN(numA) && !isNaN(numB)) {
-            const diff = numA - numB;
-            if (matchMode === -1 && diff > 0 && diff < bestDiff) { bestDiff = diff; bestMatch = row; }
-            else if (matchMode === 1 && diff < 0 && Math.abs(diff) < bestDiff) { bestDiff = Math.abs(diff); bestMatch = row; }
-          } else {
-            if (matchMode === -1 && cleanB < cleanA) { if (bestMatch === null || cleanB > clean(bestMatch[key])) { bestMatch = row; } }
-            else if (matchMode === 1 && cleanB > cleanA) { if (bestMatch === null || cleanB < clean(bestMatch[key])) { bestMatch = row; } }
-          }
-        }
-        return bestMatch;
-      } else if (matchMode === 2) {
-        const escaped = cleanA.replace(new RegExp("[.+^" + "$" + "{}()|\\\\[\\\\]\\\\\\\\\\\\]", "g"), "\\\\$&");
-        const regexStr = "^" + escaped.replace(/[?]/g, ".").replace(/[*]/g, ".*") + "$";
-        try { const regex = new RegExp(regexStr, ignoreCase ? "i" : ""); return searchData.find(row => regex.test(String(row[key]))); } catch (e) { return null; }
-      }
-      return null;
-    }
-
-    let result;
-
-    if (exactMatch) {
-      if (matchMode === 0) {
-        const searchDataB = searchDirection === -1 ? [...dataB].reverse() : dataB;
-        const lookupMapB = createLookupMap(searchDataB, keyB, selectedColsB);
-        const searchDataC = dataC && searchDirection === -1 ? [...dataC].reverse() : dataC;
-        const lookupMapC = dataC ? createLookupMap(searchDataC, keyC, selectedColsC) : null;
-        result = dataA.map(rowA => {
-          const keyValueA = clean(rowA[keyA]);
-          const matchB = lookupMapB.get(keyValueA);
-          const newRow = { ...rowA };
-          selectedColsB.forEach(col => { newRow['Lookup_' + col] = matchB ? matchB[col] : ifNotFound; });
-          newRow['_match_found_B'] = !!matchB;
-          if (includeStatusCols) newRow['Status_B'] = matchB ? "VERDADEIRO" : "FALSO";
-          let matchFoundC = false;
-          if (lookupMapC) {
-            const keyValueA_C = clean(rowA[keyA_C]);
-            const matchC = lookupMapC.get(keyValueA_C);
-            selectedColsC.forEach(col => { newRow['LookupC_' + col] = matchC ? matchC[col] : ifNotFoundC; });
-            matchFoundC = !!matchC;
-            newRow['_match_found_C'] = matchFoundC;
-            if (includeStatusCols) newRow['Status_C'] = matchFoundC ? "VERDADEIRO" : "FALSO";
-          }
-          newRow['_match_found'] = !!matchB || matchFoundC;
-          if (includeStatusCols && lookupMapC) newRow['Status_Ambas'] = (!!matchB && matchFoundC) ? "VERDADEIRO" : "FALSO";
-          return newRow;
-        });
-      } else {
-        result = dataA.map(rowA => {
-          const matchB = findMatch(rowA[keyA], dataB, keyB);
-          const newRow = { ...rowA };
-          selectedColsB.forEach(col => { newRow['Lookup_' + col] = matchB ? matchB[col] : ifNotFound; });
-          newRow['_match_found_B'] = !!matchB;
-          if (includeStatusCols) newRow['Status_B'] = matchB ? "VERDADEIRO" : "FALSO";
-          let matchFoundC = false;
-          if (dataC) {
-            const matchC = findMatch(rowA[keyA_C], dataC, keyC);
-            selectedColsC.forEach(col => { newRow['LookupC_' + col] = matchC ? matchC[col] : ifNotFoundC; });
-            matchFoundC = !!matchC;
-            newRow['_match_found_C'] = matchFoundC;
-            if (includeStatusCols) newRow['Status_C'] = matchFoundC ? "VERDADEIRO" : "FALSO";
-          }
-          newRow['_match_found'] = !!matchB || matchFoundC;
-          if (includeStatusCols && dataC) newRow['Status_Ambas'] = (!!matchB && matchFoundC) ? "VERDADEIRO" : "FALSO";
-          return newRow;
-        });
-      }
-    } else {
-      result = dataA.map(rowA => {
-        const strA = clean(rowA[keyA]);
-        const newRow = { ...rowA };
-        if (strA === "") {
-          selectedColsB.forEach(col => newRow['Lookup_' + col] = ifNotFound);
-          newRow['_match_found_B'] = false;
-        } else {
-          let bestMatchB = null;
-          let highestSimB = 0;
-          for (const rowB of dataB) {
-            const strB = clean(rowB[keyB]);
-            if (strB === "") continue;
-            const sim = similarity(strA, strB);
-            if (sim > highestSimB && sim >= fuzzyThreshold) { highestSimB = sim; bestMatchB = rowB; }
-            if (highestSimB === 1) break;
-          }
-          selectedColsB.forEach(col => { newRow['Lookup_' + col] = bestMatchB ? bestMatchB[col] : ifNotFound; });
-          newRow['_match_found_B'] = !!bestMatchB;
-          if (includeStatusCols) newRow['Status_B'] = bestMatchB ? "VERDADEIRO" : "FALSO";
-        }
-        let matchFoundC = false;
-        if (dataC) {
-          const strA_C = clean(rowA[keyA_C]);
-          if (strA_C === "") {
-            selectedColsC.forEach(col => newRow['LookupC_' + col] = ifNotFoundC);
-            matchFoundC = false;
-            newRow['_match_found_C'] = false;
-            if (includeStatusCols) newRow['Status_C'] = "FALSO";
-          } else {
-            let bestMatchC = null;
-            let highestSimC = 0;
-            for (const rowC of dataC) {
-              const strC = clean(rowC[keyC]);
-              if (strC === "") continue;
-              const sim = similarity(strA_C, strC);
-              if (sim > highestSimC && sim >= fuzzyThreshold) { highestSimC = sim; bestMatchC = rowC; }
-              if (highestSimC === 1) break;
-            }
-            selectedColsC.forEach(col => { newRow['LookupC_' + col] = bestMatchC ? bestMatchC[col] : ifNotFoundC; });
-            matchFoundC = !!bestMatchC;
-            newRow['_match_found_C'] = matchFoundC;
-            if (includeStatusCols) newRow['Status_C'] = matchFoundC ? "VERDADEIRO" : "FALSO";
-          }
-        }
-        newRow['_match_found'] = newRow['_match_found_B'] || matchFoundC;
-        if (includeStatusCols && dataC) newRow['Status_Ambas'] = (newRow['_match_found_B'] && matchFoundC) ? "VERDADEIRO" : "FALSO";
-        return newRow;
-      });
-    }
-    self.postMessage(result);
-  };
-`;
 
 export default function App() {
   const [tasks, setTasks] = useState<LookupTask[]>([
@@ -632,8 +392,10 @@ export default function App() {
       try {
         // cellDates: true converte seriais de data do Excel em objetos Date do JS,
         // garantindo formatação correta independente do locale do arquivo.
+        // O BOM do UTF-8 entraria no nome da primeira coluna ("\uFEFFNome") e
+        // impediria o casamento com a chave homônima da outra tabela.
         const wb = isText
-          ? XLSX.read(result as string, { type: 'string' })
+          ? XLSX.read(String(result ?? '').replace(/^\uFEFF/, ''), { type: 'string' })
           : XLSX.read(result as ArrayBuffer, { type: 'array', cellDates: true });
 
         if (!wb.SheetNames.length) {
@@ -721,14 +483,20 @@ export default function App() {
   }, [activeTask.fileB]);
 
   /**
+   * Tabela C só conta como configurada depois de um ficheiro/colagem real.
+   * O placeholder criado por "Adicionar Tabela C" ({ name: '' }) não deve bloquear a execução.
+   */
+  const hasTableC = Boolean(activeTask.fileC?.name && activeTask.fileC.selectedSheet);
+
+  /**
    * Cabeçalhos extraídos da Tabela C (planilha selecionada).
    */
   const headersC = useMemo(() => {
-    if (!activeTask.fileC || !activeTask.fileC.selectedSheet) return [];
+    if (!hasTableC || !activeTask.fileC || !activeTask.fileC.selectedSheet) return [];
     const data = activeTask.fileC.sheets[activeTask.fileC.selectedSheet];
     if (!data) return [];
     return data.length > 0 ? Object.keys(data[0]) : [];
-  }, [activeTask.fileC]);
+  }, [activeTask.fileC, hasTableC]);
 
   // Real-time validation
   /**
@@ -743,7 +511,7 @@ export default function App() {
     if (!activeTask.keyB) errors.push("Selecione a coluna chave da Tabela B.");
     if (activeTask.selectedColsB.length === 0) errors.push("Selecione ao menos uma coluna de retorno da Tabela B.");
 
-    if (activeTask.fileC) {
+    if (hasTableC) {
       if (!activeTask.keyA_C) errors.push("Selecione a coluna chave da Tabela A para busca na Tabela C.");
       if (!activeTask.keyC) errors.push("Selecione a coluna chave da Tabela C.");
       if (activeTask.selectedColsC.length === 0) errors.push("Selecione ao menos uma coluna de retorno da Tabela C.");
@@ -757,7 +525,7 @@ export default function App() {
       }
     }
 
-    if (activeTask.fileC && activeTask.lookupType === 'vlookup' && activeTask.keyC) {
+    if (hasTableC && activeTask.lookupType === 'vlookup' && activeTask.keyC) {
       const keyIndex = headersC.indexOf(activeTask.keyC);
       const invalidCols = activeTask.selectedColsC.filter(col => headersC.indexOf(col) < keyIndex);
       if (invalidCols.length > 0) {
@@ -770,7 +538,7 @@ export default function App() {
       errors, 
       warnings 
     };
-  }, [activeTask.keyA, activeTask.keyB, activeTask.selectedColsB, activeTask.keyA_C, activeTask.keyC, activeTask.selectedColsC, activeTask.fileC, activeTask.lookupType, headersB, headersC]);
+  }, [activeTask.keyA, activeTask.keyB, activeTask.selectedColsB, activeTask.keyA_C, activeTask.keyC, activeTask.selectedColsC, hasTableC, activeTask.lookupType, headersB, headersC]);
 
   /** Métricas rápidas na etapa Configurar (amostra limitada para taxa de match). */
   const configureKeyMetrics = useMemo(() => {
@@ -865,9 +633,9 @@ export default function App() {
     let data = activeTask.resultData;
 
     if (activeTask.resultFilter === 'matched') {
-      data = data.filter(r => r._match_found_B || (activeTask.fileC ? r._match_found_C : false));
+      data = data.filter(r => r._match_found_B || (hasTableC ? r._match_found_C : false));
     } else if (activeTask.resultFilter === 'orphans') {
-      data = data.filter(r => !r._match_found_B && (activeTask.fileC ? !r._match_found_C : true));
+      data = data.filter(r => !r._match_found_B && (hasTableC ? !r._match_found_C : true));
     } else if (activeTask.resultFilter === 'divergent') {
       const normDivergent = (val: unknown): string =>
         String(val ?? '')
@@ -879,14 +647,18 @@ export default function App() {
 
       const pairs = activeTask.divergentPairs;
       if (pairs.length > 0) {
-        // Usa os pares configurados manualmente pelo usuário
-        data = data.filter(r =>
-          pairs.some(p => normDivergent(r[p.colA]) !== normDivergent(r[p.colLookup]))
+        // Usa os pares configurados manualmente pelo usuário.
+        // Só compara linhas que tiveram correspondência — sem isso, o valor
+        // "não encontrado" seria contado como divergência.
+        data = data.filter(
+          r =>
+            (r._match_found_B || (hasTableC ? r._match_found_C : false)) &&
+            pairs.some(p => normDivergent(r[p.colA]) !== normDivergent(r[p.colLookup]))
         );
       } else {
         // Fallback: auto-detecta por prefixo Lookup_ / LookupC_
         data = data.filter(r => {
-          if (!r._match_found_B && !(activeTask.fileC ? r._match_found_C : false)) return false;
+          if (!r._match_found_B && !(hasTableC ? r._match_found_C : false)) return false;
           return Object.keys(r).some(key => {
             const originalKey = key.startsWith('Lookup_') ? key.slice('Lookup_'.length)
               : key.startsWith('LookupC_') ? key.slice('LookupC_'.length)
@@ -908,12 +680,12 @@ export default function App() {
       };
       const counts = new Map<string, number>();
       for (const row of data) {
-        let k = normalizeDuplicateKeyCell(row[dupCol], normOpts);
+        let k = normalizeKeyValue(row[dupCol], normOpts);
         if (!k) k = '__EMPTY__';
         counts.set(k, (counts.get(k) || 0) + 1);
       }
       data = data.filter(row => {
-        let k = normalizeDuplicateKeyCell(row[dupCol], normOpts);
+        let k = normalizeKeyValue(row[dupCol], normOpts);
         if (!k) k = '__EMPTY__';
         return (counts.get(k) || 0) > 1;
       });
@@ -943,7 +715,7 @@ export default function App() {
   }, [
     activeTask.resultData,
     activeTask.resultFilter,
-    activeTask.fileC,
+    hasTableC,
     activeTask.divergentPairs,
     activeTask.duplicateKeyFilterEnabled,
     activeTask.duplicateKeyColumnId,
@@ -958,6 +730,20 @@ export default function App() {
     setSelectedRowIndex(null);
   }, [activeTask.resultData, activeTaskId]);
 
+  /** Ao trocar de operação, filtros/ordenação da anterior não se aplicam. */
+  useEffect(() => {
+    setColumnFilters({});
+    setSortConfig(null);
+    setVisibleRows(50);
+    setSelectedRowIndex(null);
+    setOpenFilterCol(null);
+  }, [activeTaskId]);
+
+  /** O índice destacado aponta para a lista filtrada: qualquer filtro/ordem invalida. */
+  useEffect(() => {
+    setSelectedRowIndex(null);
+  }, [columnFilters, sortConfig, activeTask.resultFilter]);
+
   useEffect(() => {
     if (selectedRowIndex !== null && selectedRowIndex >= filteredResultData.length) {
       setSelectedRowIndex(null);
@@ -970,11 +756,11 @@ export default function App() {
   const stats = useMemo(() => {
     if (!activeTask.resultData) return null;
     const total = activeTask.resultData.length;
-    const matched = activeTask.resultData.filter(r => r._match_found_B || (activeTask.fileC ? r._match_found_C : false)).length;
+    const matched = activeTask.resultData.filter(r => r._match_found_B || (hasTableC ? r._match_found_C : false)).length;
     const orphans = total - matched;
     const rate = total > 0 ? (matched / total) * 100 : 0;
     return { total, matched, orphans, rate };
-  }, [activeTask.resultData, activeTask.fileC]);
+  }, [activeTask.resultData, hasTableC]);
 
   /**
    * Define a ordem e visibilidade das colunas para exibição na tabela de resultados.
@@ -1069,7 +855,7 @@ export default function App() {
     }
 
     // Validação da Tabela C (opcional)
-    if (activeTask.fileC && (!activeTask.keyA_C || !activeTask.keyC || activeTask.selectedColsC.length === 0)) {
+    if (hasTableC && (!activeTask.keyA_C || !activeTask.keyC || activeTask.selectedColsC.length === 0)) {
       setError("Por favor, preencha as configurações da Tabela C.");
       return;
     }
@@ -1094,22 +880,23 @@ export default function App() {
 
     setLoading(true);
 
-    const blob = new Blob([WORKER_CODE], { type: 'application/javascript' });
-    const workerUrl = URL.createObjectURL(blob);
-    const worker = new Worker(workerUrl);
-    URL.revokeObjectURL(workerUrl);
+    // Worker empacotado pelo Vite (módulo real, testável) — sem blob/URL temporária.
+    const worker = new Worker(new URL('./workers/lookup.worker.ts', import.meta.url), {
+      type: 'module',
+    });
 
     /**
      * Callback acionado quando o Worker termina o processamento com sucesso.
      */
-    worker.onmessage = (e) => {
-      if (e.data.error) {
-        setError(e.data.error);
+    worker.onmessage = (e: MessageEvent<LookupWorkerMessage>) => {
+      const payload = e.data;
+      if (!Array.isArray(payload)) {
+        setError(payload.error);
         setLoading(false);
         worker.terminate();
         return;
       }
-      const resultData = e.data;
+      const resultData = payload;
       const firstRow = resultData[0] || {};
       const columnSettings = Object.keys(firstRow).map(key => ({
         id: key,
@@ -1121,9 +908,15 @@ export default function App() {
         keyA && Object.prototype.hasOwnProperty.call(firstRow, keyA)
           ? keyA
           : Object.keys(firstRow).find(k => !k.startsWith('_')) ?? '';
+      // Filtros/ordenação/linhas visíveis da execução anterior deixariam de fazer sentido.
+      setColumnFilters({});
+      setSortConfig(null);
+      setSelectedRowIndex(null);
+      setVisibleRows(50);
       updateActiveTask({
         resultData,
         columnSettings,
+        resultFilter: 'all',
         duplicateKeyFilterEnabled: false,
         duplicateKeyColumnId: defaultDupCol,
       });
@@ -1149,7 +942,9 @@ export default function App() {
       keyB: activeTask.keyB,
       selectedColsA: activeTask.selectedColsA,
       selectedColsB: activeTask.selectedColsB,
-      dataC: activeTask.fileC ? activeTask.fileC.sheets[activeTask.fileC.selectedSheet] : null,
+      dataC: hasTableC && activeTask.fileC
+        ? activeTask.fileC.sheets[activeTask.fileC.selectedSheet] ?? null
+        : null,
       keyA_C: activeTask.keyA_C,
       keyC: activeTask.keyC,
       selectedColsC: activeTask.selectedColsC,
@@ -1799,7 +1594,7 @@ export default function App() {
                           className="flex flex-nowrap items-stretch gap-2 overflow-x-auto px-1 pb-2 pt-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
                           style={{ WebkitOverflowScrolling: 'touch' }}
                         >
-                          {(columnFilterValueSets(columnFilters).some(s => s.size > 0) ||
+                          {(hasActiveColumnFilters(columnFilters) ||
                             activeTask.duplicateKeyFilterEnabled) && (
                             <button
                               onClick={() => {
@@ -1955,7 +1750,7 @@ export default function App() {
 
                     {/* Direita: botões de ação — ocultos em mobile (exibidos acima) */}
                     <div className="hidden sm:flex items-center gap-2 shrink-0">
-                      {(columnFilterValueSets(columnFilters).some(s => s.size > 0) ||
+                      {(hasActiveColumnFilters(columnFilters) ||
                         activeTask.duplicateKeyFilterEnabled) && (
                         <button
                           onClick={() => {
@@ -2187,14 +1982,14 @@ export default function App() {
                               onClick={() => setOpenFilterCol(openFilterCol === col.id ? null : col.id)}
                               className={cn(
                                 'flex min-h-[32px] w-full items-center justify-between gap-2 rounded border border-solid px-2 py-1 text-left text-[11px] font-medium transition-colors',
-                                columnFilters[col.id]?.size > 0
+                                columnFilters[col.id] !== undefined
                                   ? 'border-blue-500 bg-blue-50 text-blue-800 dark:border-blue-400 dark:bg-blue-950/50 dark:text-blue-200'
                                   : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-400 dark:hover:border-zinc-600'
                               )}
                             >
                               <span className="min-w-0 flex-1 break-words pr-1 text-left">
-                                {columnFilters[col.id]?.size > 0
-                                  ? `${columnFilters[col.id].size} selecionado${columnFilters[col.id].size > 1 ? 's' : ''}`
+                                {columnFilters[col.id] !== undefined
+                                  ? `${columnFilters[col.id]!.size} selecionado${columnFilters[col.id]!.size === 1 ? '' : 's'}`
                                   : 'Filtrar...'}
                               </span>
                               <Filter size={14} className="shrink-0 text-zinc-600 dark:text-zinc-400" aria-hidden />
@@ -2927,6 +2722,7 @@ function ColumnFilterDropdown({
         <button
           type="button"
           onClick={() => onApply(new Set())}
+          title="Mostra a coluna sem nenhum valor — limpe o filtro em Limpar Filtros"
           className="text-xs font-bold text-zinc-500 dark:hover:text-zinc-300 hover:text-zinc-700 transition-colors px-2 py-2 rounded-lg min-h-[40px]"
         >
           Desmarcar Tudo
