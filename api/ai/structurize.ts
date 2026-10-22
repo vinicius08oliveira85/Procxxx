@@ -3,6 +3,7 @@
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { z, ZodError } from 'zod';
+import { clientIpFromHeaders, createRateLimiter, rateLimitMaxFromEnv } from '../_lib/rateLimit';
 
 const SYSTEM_INSTRUCTION = `Você é um especialista em estruturação de dados. 
 Sua tarefa é receber um texto bruto (que pode ser uma lista, log, extrato ou dados colados de um PDF/Excel) e convertê-lo em um array de objetos JSON estruturado.
@@ -92,35 +93,8 @@ export async function runStructurize(
   return { rows: validated.data.rows };
 }
 
-/**
- * Limite simples por IP (best-effort, por instância da função).
- * Evita que um único cliente esgote a cota do Gemini.
- */
-const AI_RATE_WINDOW_MS = 60_000;
-const AI_RATE_MAX = Number(process.env.AI_RATE_LIMIT_PER_MIN) || 20;
-const aiRateBuckets = new Map<string, { count: number; resetAt: number }>();
-
-function clientIp(req: VercelRequest): string {
-  const forwarded = req.headers['x-forwarded-for'];
-  const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded;
-  return (raw?.split(',')[0] ?? req.socket?.remoteAddress ?? 'unknown').trim();
-}
-
-function isAiRateLimited(ip: string): boolean {
-  const now = Date.now();
-  if (aiRateBuckets.size > 1000) {
-    for (const [key, bucket] of aiRateBuckets) {
-      if (bucket.resetAt <= now) aiRateBuckets.delete(key);
-    }
-  }
-  const bucket = aiRateBuckets.get(ip);
-  if (!bucket || bucket.resetAt <= now) {
-    aiRateBuckets.set(ip, { count: 1, resetAt: now + AI_RATE_WINDOW_MS });
-    return false;
-  }
-  bucket.count += 1;
-  return bucket.count > AI_RATE_MAX;
-}
+/** Limite por IP (em memória) — travão de custo, não limite distribuído. */
+const aiRateLimiter = createRateLimiter({ max: rateLimitMaxFromEnv() });
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -134,7 +108,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  if (isAiRateLimited(clientIp(req))) {
+  const rate = aiRateLimiter.check(
+    clientIpFromHeaders(req.headers, req.socket?.remoteAddress ?? 'unknown')
+  );
+  if (rate.limited) {
+    res.setHeader('Retry-After', String(rate.retryAfterSeconds));
     res.status(429).json({
       error: 'Muitos pedidos ao assistente de IA. Aguarde um minuto e tente de novo.',
     });

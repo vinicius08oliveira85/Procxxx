@@ -3,6 +3,7 @@
  */
 
 import type { AiSuggestContextPayload } from '../lib/buildAiSuggestContext';
+import { maskSensitiveValue } from '../lib/maskSensitive';
 
 export type { AiSuggestContextPayload } from '../lib/buildAiSuggestContext';
 
@@ -44,6 +45,8 @@ export class AiSuggestError extends Error {
 }
 
 export const MAX_USER_INTENT_LEN = 500;
+/** Teto de espera da sugestão (Vercel: maxDuration 60s). */
+export const AI_SUGGEST_TIMEOUT_MS = 60_000;
 
 function suggestConfigUrl(): string {
   const path = '/api/ai/suggest-config';
@@ -79,13 +82,37 @@ function httpErrorMessage(status: number): string {
 }
 
 export async function fetchSuggestConfig(
-  payload: SuggestConfigPayload
+  payload: SuggestConfigPayload,
+  options: { signal?: AbortSignal; timeoutMs?: number } = {}
 ): Promise<SuggestConfigApiResponse> {
-  const res = await fetch(suggestConfigUrl(), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
+  const timeoutMs = options.timeoutMs ?? AI_SUGGEST_TIMEOUT_MS;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const onExternalAbort = () => controller.abort();
+  options.signal?.addEventListener('abort', onExternalAbort);
+
+  let res: Response;
+  try {
+    res = await fetch(suggestConfigUrl(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+  } catch {
+    if (options.signal?.aborted) throw new AiSuggestError('Pedido cancelado.');
+    if (controller.signal.aborted) {
+      throw new AiSuggestError(
+        `A sugestão demorou mais de ${Math.round(timeoutMs / 1000)}s e foi interrompida. Tente de novo.`
+      );
+    }
+    throw new AiSuggestError(
+      'Não foi possível contactar a API do assistente. Verifique a ligação e se o servidor está a correr.'
+    );
+  } finally {
+    clearTimeout(timeoutId);
+    options.signal?.removeEventListener('abort', onExternalAbort);
+  }
 
   const data = (await res.json().catch(() => ({}))) as {
     error?: string;
@@ -115,7 +142,10 @@ export async function fetchSuggestConfig(
 const MAX_ROWS = 12;
 const MAX_CELL = 120;
 
-/** Amostra linhas da planilha para enviar ao modelo (valores truncados como string). */
+/**
+ * Amostra de linhas para enviar ao modelo: valores truncados e com dados
+ * pessoais mascarados (CPF/CNPJ/telefone/e-mail) antes de saírem do browser.
+ */
 export function buildSampleRowsForAi(
   rows: Record<string, unknown>[] | undefined,
   maxRows = MAX_ROWS,
@@ -127,7 +157,7 @@ export function buildSampleRowsForAi(
     for (const [k, v] of Object.entries(row)) {
       let s = v === null || v === undefined ? '' : String(v);
       if (s.length > maxCellLen) s = `${s.slice(0, maxCellLen)}…`;
-      out[k] = s;
+      out[k] = maskSensitiveValue(s);
     }
     return out;
   });

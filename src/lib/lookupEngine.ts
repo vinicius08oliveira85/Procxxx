@@ -44,13 +44,22 @@ export type LookupPayload = {
 /** Mensagem enviada pelo worker de volta ao App. */
 export type LookupWorkerMessage = LookupRow[] | { error: string };
 
+/**
+ * Remove acentos decompondo em NFD (José → Jose, AÇÃO → ACAO).
+ * Sem isto, "remover caracteres especiais" apagava as letras acentuadas
+ * (`josé` → `jos`), quebrando o casamento com `jose`.
+ */
+export function stripDiacritics(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 /** Mesma normalização usada na busca e no filtro de duplicados. */
 export function normalizeKeyValue(val: unknown, opts: LookupOptions): string {
   if (val === undefined || val === null) return '';
   let s = String(val);
   if (opts.trimSpaces) s = s.trim();
   if (opts.ignoreCase) s = s.toLowerCase();
-  if (opts.removeSpecialChars) s = s.replace(/[^a-z0-9]/gi, '');
+  if (opts.removeSpecialChars) s = stripDiacritics(s).replace(/[^a-z0-9]/gi, '');
   return s;
 }
 

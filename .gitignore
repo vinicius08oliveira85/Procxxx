@@ -9,3 +9,6 @@ coverage/
 
 # PWA assets gerados em dev (vite-plugin-pwa)
 dev-dist/
+
+# logs e pids locais
+.run/

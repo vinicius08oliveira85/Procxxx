@@ -1,48 +1,92 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Excel Lookup Master
 
-# Run and deploy your AI Studio app
+Cruzamento de planilhas no navegador, no espírito do PROCV/XLOOKUP: importe a tabela base (A), a tabela de busca (B) e, opcionalmente, uma terceira fonte (C); escolha as chaves, traga as colunas de retorno, filtre, gere tabela dinâmica e exporte em Excel/JSON.
 
-This contains everything you need to run your app locally.
+Todo o processamento das planilhas acontece no browser. Só o assistente de IA envia dados a um servidor, e a chave da API nunca vai para o bundle.
 
-View your app in AI Studio: https://ai.studio/apps/3a39bb1b-adca-416d-a6f0-c648f6f760eb
+## Requisitos
 
-## Run Locally
+- Node.js >= 20
+- Chave do Google AI Studio (`GEMINI_API_KEY`) apenas se quiser usar o assistente de IA
 
-**Prerequisites:** Node.js
+## Rodar localmente
 
-1. Install dependencies: `npm install`
-2. Copy [.env.example](.env.example) to `.env` or `.env.local` and set **`GEMINI_API_KEY`** (used only by the Express API, not exposed in the Vite bundle).
-3. Start **API + front** together: `npm run dev`  
-   - Express serves `POST /api/ai/suggest-config` on port **3001**  
-   - Vite serves the UI on port **3000** and proxies `/api` → 3001  
-4. Só o front (`npm run dev:web`): rode em outro terminal `npm run dev:api` **e** defina no `.env.local` do projeto `VITE_API_ORIGIN=http://localhost:3001` (reinicie o Vite), ou use `npm run dev` que sobe os dois.
-5. `npm run preview`: exige a API em execução na 3001 (o proxy de `/api` está configurado no Vite).
+```bash
+npm install
+cp .env.example .env.local   # preencha GEMINI_API_KEY para o assistente
+npm run dev                  # API (3001) + Vite (3000)
+```
 
-### Produção (Node único)
+- `npm run dev` → Vite em `http://localhost:3000` com proxy de `/api` para `http://localhost:3001`
+- `npm run dev:web` sozinho exige a API a correr e `VITE_API_ORIGIN=http://localhost:3001` no `.env.local`
+- `npm run preview` também depende da API na 3001 (o proxy está configurado no Vite)
 
-1. `npm run build`
-2. `npm start` — serve `dist/` e as rotas `/api` na mesma porta (`PORT` ou padrão 3001).
+### Produção (processo Node único)
 
-### Deploy na Vercel
+```bash
+npm run build
+npm start        # serve dist/ e /api na mesma porta (PORT, padrão 3001)
+```
 
-O repositório inclui [vercel.json](vercel.json) e funções em [api/](api/):
+O `npm start` usa `tsx` em tempo de execução, portanto o processo precisa das dependências de desenvolvimento instaladas.
 
-- **Build:** `npm run build` (preset Vite / `outputDirectory`: `dist`).
-- **Assistente IA:** `POST /api/ai/suggest-config` está todo em [api/ai/suggest-config.ts](api/ai/suggest-config.ts) (lógica + handler no mesmo ficheiro, para a Vercel não depender de imports relativos entre módulos em `api/`). O Express local importa `runSuggestConfig` desse mesmo ficheiro. Chamada ao Gemini via **HTTP (`fetch`)**, sem SDK `@google/genai`.
-- **Health:** `GET /api/health` ([api/health.ts](api/health.ts)).
+## Scripts
 
-No painel da Vercel (**Settings → Environment Variables**), defina pelo menos **`GEMINI_API_KEY`**. Opcional: **`GEMINI_MODEL`** (se não existir, o código usa **`gemini-2.5-flash`**). Não é necessário `VITE_API_ORIGIN` quando front e API estão no mesmo deploy.
+| Script | O que faz |
+| --- | --- |
+| `npm run dev` | API Express + Vite em paralelo |
+| `npm run build` | Build do front (`dist/`) |
+| `npm run typecheck` | `tsc --noEmit` (modo `strict`) |
+| `npm run lint` | ESLint (TypeScript + regras de hooks) |
+| `npm test` | Vitest (motores puros, parser, rate limit) |
+| `npm run check` | typecheck + lint + testes |
+| `npm start` | Servidor Express que serve `dist/` e `/api` |
 
-**429 / cota:** mensagens como `free_tier` e `limit: 0` vêm do Google (plano gratuito esgotado ou RPM). Ative faturação no projeto da chave ou aguarde o retry. Se nos **logs** o campo `model` for `gemini-2.0-flash` mas esperas 2.5, apaga **`GEMINI_MODEL`** na Vercel ou define `gemini-2.5-flash` e faz **Redeploy** — um valor antigo na env sobrescreve o default do repositório.
+CI em [.github/workflows/ci.yml](.github/workflows/ci.yml) corre typecheck, lint, testes e build em cada push/PR.
 
-**Limites:** `maxDuration` das funções está em 60s em [vercel.json](vercel.json); no plano Hobby da Vercel o máximo pode ser menor — ajuste se o deploy falhar na validação.
+## Arquitetura
 
-Fluxo: importe o repo na Vercel, confirme Framework **Vite**, faça deploy e teste **Sugerir com IA** na etapa de configuração.
+- `src/App.tsx` — orquestra as etapas (upload → configuração → resultado) e o estado das operações
+- `src/lib/lookupEngine.ts` — motor PROCV/XLOOKUP, puro e testado; roda no Web Worker `src/workers/lookup.worker.ts`
+- `src/lib/workbookParser.ts` — leitura de planilhas, pura; roda no Web Worker `src/workers/parse.worker.ts`
+- `src/lib/pivotEngine.ts` — agregação da tabela dinâmica
+- `src/lib/configureMetrics.ts` — métricas do ecrã Configurar (duplicados, taxa de match)
+- `src/services/aiSuggest.ts` — cliente do assistente (timeout, cancelamento e mascaramento de CPF/CNPJ/telefone/e-mail)
+- `server/index.ts` — API Express de desenvolvimento/produção, com rate limit e CORS restrito a loopback
+- `api/ai/*.ts` — funções serverless da Vercel; código partilhado em `api/_lib/`
 
-Se os logs citarem módulos em falta (`server/...`, `api/lib/...`) após atualizar o código, faça **Redeploy** com **Clear build cache**.
+### Limites e privacidade
 
-Em falhas do assistente IA (502), nos **logs da função** procure o prefixo **`[suggest-config][gemini]`** — lá aparecem `httpStatus`, `googleMessage`, `model`, etc., sem expor `GEMINI_API_KEY`.
+- Upload de até **50 MB** por ficheiro (`.xlsx`, `.xls`, `.xlsb`, `.xlsm`, `.ods`, `.csv`, `.tsv`), validado antes da leitura.
+- O assistente envia cabeçalhos, estatísticas e no máximo 12 linhas de amostra; valores com formato de CPF/CNPJ/telefone (9–14 dígitos) e o nome local de e-mails são mascarados antes do envio.
+- O rate limit da IA (20 pedidos/min por IP, `AI_RATE_LIMIT_PER_MIN`) é em memória e por instância: é um travão de custo, não um limite distribuído. Num deploy com várias instâncias, use um store partilhado.
 
-Se o **manifest** ou outros assets retornarem **401** em URLs `*.vercel.app`, revise **Settings → Deployment Protection** (previews protegidos exigem login e podem bloquear o `fetch` do manifest pelo navegador).
+## Deploy na Vercel
+
+O repositório inclui [vercel.json](vercel.json) e as funções em [api/](api/):
+
+- Build: `npm run build` (preset Vite, `outputDirectory: dist`)
+- Funções: `api/ai/suggest-config.ts` e `api/ai/structurize.ts` (chamadas ao Gemini por `fetch`, sem SDK)
+- Health: `GET /api/health`
+
+Em **Settings → Environment Variables** defina:
+
+| Variável | Obrigatória | Descrição |
+| --- | --- | --- |
+| `GEMINI_API_KEY` | para o assistente | chave do Google AI Studio |
+| `GEMINI_MODEL` | não | padrão `gemini-2.5-flash` |
+| `AI_RATE_LIMIT_PER_MIN` | não | padrão 20 |
+
+Não defina `VITE_API_ORIGIN` no mesmo deploy: o front chama `/api` na mesma origem.
+
+`maxDuration` das funções está em 60s no `vercel.json`; no plano Hobby o máximo pode ser menor.
+
+### Dependência do SheetJS
+
+`xlsx` é instalado a partir do registo do SheetJS (`https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`), e não do npm: a versão publicada no npm (0.18.5) tem vulnerabilidades conhecidas sem correção no registo. O `npm ci` precisa de acesso a `cdn.sheetjs.com`.
+
+## Diagnóstico do assistente
+
+Erros 502/429 aparecem no front com mensagem amigável. Nos logs, procure os prefixos `[suggest-config][gemini]` e `[structurize][gemini]`: eles mostram `httpStatus`, `model` e a mensagem do Google, sem expor a chave.
+
+Se aparecer `free_tier` ou `limit: 0`, a cota do plano gratuito acabou — ative faturação ou aguarde. Se o campo `model` nos logs não for o esperado, apague `GEMINI_MODEL` na Vercel e faça Redeploy (um valor antigo na env sobrepõe-se ao default).

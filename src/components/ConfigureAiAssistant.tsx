@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Sparkles, Loader2, Check, X, Wand2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { computeAutoDetectLookup } from '../lib/autoDetectLookupConfig';
@@ -58,6 +58,10 @@ export function ConfigureAiAssistant({
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<SuggestConfigApiResponse | null>(null);
   const [userIntent, setUserIntent] = useState('');
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Cancela o pedido em curso se o painel desaparecer (troca de passo/operação).
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   const canRun = Boolean(fileA && fileB && headersA.length && headersB.length);
 
@@ -71,6 +75,8 @@ export function ConfigureAiAssistant({
     setLoading(true);
     setError(null);
     setPreview(null);
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       const sheetA = fileA.sheets[fileA.selectedSheet] ?? [];
       const sheetB = fileB.sheets[fileB.selectedSheet] ?? [];
@@ -91,7 +97,7 @@ export function ConfigureAiAssistant({
         context: buildAiSuggestContext(sheetA, sheetB, headersA, headersB),
       };
 
-      const result = await fetchSuggestConfig(payload);
+      const result = await fetchSuggestConfig(payload, { signal: controller.signal });
       setPreview(result);
     } catch (e) {
       const msg =
@@ -100,10 +106,16 @@ export function ConfigureAiAssistant({
           : e instanceof Error
             ? e.message
             : 'Falha ao obter sugestão.';
-      setError(msg);
+      // Cancelamento pedido pelo utilizador não é erro a mostrar.
+      if (!controller.signal.aborted) setError(msg);
     } finally {
+      if (abortRef.current === controller) abortRef.current = null;
       setLoading(false);
     }
+  };
+
+  const handleCancel = () => {
+    abortRef.current?.abort();
   };
 
   const handleConfirmApply = () => {
@@ -162,23 +174,26 @@ export function ConfigureAiAssistant({
               Útil quando os <strong className="text-zinc-600 dark:text-zinc-400">nomes das colunas diferem</strong>, há{' '}
               <strong className="text-zinc-600 dark:text-zinc-400">muitas colunas</strong> ou o botão{' '}
               <strong className="text-zinc-600 dark:text-zinc-400">Configuração Automática</strong> não acerta. A chave da
-              API fica só no servidor. Enviamos estatísticas leves e uma amostra de linhas.
+              API fica só no servidor. Enviamos estatísticas leves e uma amostra de linhas, com CPF, CNPJ,
+              telefone e e-mail mascarados.
             </p>
           </div>
         </div>
         <button
           type="button"
-          onClick={handleRequest}
-          disabled={!canRun || loading}
+          onClick={loading ? handleCancel : handleRequest}
+          disabled={!canRun || (loading && !abortRef.current)}
           className={cn(
             'shrink-0 flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 rounded-xl text-sm font-bold transition-all border w-full sm:w-auto',
-            canRun && !loading
-              ? 'bg-violet-600 text-white border-violet-500 hover:bg-violet-500 shadow-lg shadow-violet-500/20'
-              : 'opacity-50 cursor-not-allowed border-zinc-200 dark:border-zinc-700 text-zinc-500'
+            loading
+              ? 'bg-zinc-700 text-white border-zinc-600 hover:bg-zinc-600'
+              : canRun
+                ? 'bg-violet-600 text-white border-violet-500 hover:bg-violet-500 shadow-lg shadow-violet-500/20'
+                : 'opacity-50 cursor-not-allowed border-zinc-200 dark:border-zinc-700 text-zinc-500'
           )}
         >
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-          {loading ? 'Consultando…' : 'Sugerir com IA'}
+          {loading ? 'Cancelar' : 'Sugerir com IA'}
         </button>
       </div>
 

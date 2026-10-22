@@ -24,7 +24,7 @@ describe('splitRow', () => {
   });
 
   it('trata aspas duplicadas como aspa literal', () => {
-    expect(splitRow('1,"diz \""oi\"""', ',')).toEqual(['1', 'diz "oi"']);
+    expect(splitRow('1,"diz ""oi"""', ',')).toEqual(['1', 'diz "oi"']);
   });
 
   it('mantém aspas no meio do texto como caractere comum', () => {

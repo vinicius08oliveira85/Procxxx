@@ -10,6 +10,7 @@ import { fileURLToPath } from 'url';
 import { ZodError } from 'zod';
 import { runSuggestConfig } from '../api/ai/suggest-config.ts';
 import { runStructurize, structurizeBodySchema } from '../api/ai/structurize.ts';
+import { clientIpFromHeaders, createRateLimiter, rateLimitMaxFromEnv } from '../api/_lib/rateLimit.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,11 +23,29 @@ const app = express();
 
 const isProd = process.env.NODE_ENV === 'production';
 
-/** Em dev, permite chamar a API direto de outra origem (ex.: só Vite na 3000 + API na 3001). */
+/**
+ * Em dev, permite chamar a API direto de outra origem (ex.: só Vite na 3000 + API na 3001).
+ * Só origens loopback: refletir qualquer `Origin` deixava qualquer site aberto no
+ * browser gastar a quota do Gemini usando o teu `localhost`.
+ */
+const DEV_LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
+
+function isDevLoopbackOrigin(origin: string): boolean {
+  try {
+    const url = new URL(origin);
+    return DEV_LOOPBACK_HOSTS.has(url.hostname) && (url.protocol === 'http:' || url.protocol === 'https:');
+  } catch {
+    return false;
+  }
+}
+
 if (!isProd) {
   app.use((req, res, next) => {
     const origin = req.headers.origin;
-    res.header('Access-Control-Allow-Origin', origin || '*');
+    if (origin && isDevLoopbackOrigin(origin)) {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Vary', 'Origin');
+    }
     res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type');
     if (req.method === 'OPTIONS') {
@@ -40,36 +59,20 @@ if (!isProd) {
 app.use(express.json({ limit: '512kb' }));
 
 /**
- * Limite simples por IP para os endpoints de IA (custo/abuso).
+ * Limite por IP para os endpoints de IA (custo/abuso).
  * Best-effort e por instância: não substitui um rate limiter distribuído.
  */
-const AI_RATE_WINDOW_MS = 60_000;
-const AI_RATE_MAX = Number(process.env.AI_RATE_LIMIT_PER_MIN) || 20;
-const aiRateBuckets = new Map<string, { count: number; resetAt: number }>();
-
-function isAiRateLimited(ip: string): boolean {
-  const now = Date.now();
-  if (aiRateBuckets.size > 1000) {
-    for (const [key, bucket] of aiRateBuckets) {
-      if (bucket.resetAt <= now) aiRateBuckets.delete(key);
-    }
-  }
-  const bucket = aiRateBuckets.get(ip);
-  if (!bucket || bucket.resetAt <= now) {
-    aiRateBuckets.set(ip, { count: 1, resetAt: now + AI_RATE_WINDOW_MS });
-    return false;
-  }
-  bucket.count += 1;
-  return bucket.count > AI_RATE_MAX;
-}
+const aiRateLimiter = createRateLimiter({ max: rateLimitMaxFromEnv() });
 
 app.use('/api/ai', (req, res, next) => {
   if (req.method === 'OPTIONS') {
     next();
     return;
   }
-  const ip = req.ip || req.socket.remoteAddress || 'unknown';
-  if (isAiRateLimited(ip)) {
+  const ip = clientIpFromHeaders(req.headers, req.ip || req.socket.remoteAddress || 'unknown');
+  const rate = aiRateLimiter.check(ip);
+  if (rate.limited) {
+    res.header('Retry-After', String(rate.retryAfterSeconds));
     res.status(429).json({
       error: 'Muitos pedidos ao assistente de IA. Aguarde um minuto e tente de novo.',
     });

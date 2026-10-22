@@ -44,6 +44,32 @@ describe('normalizeKeyValue', () => {
     ).toBe('abc1');
     expect(normalizeKeyValue(null, opts)).toBe('');
   });
+
+  it('remove acentos em vez de apagar a letra (removeSpecialChars)', () => {
+    const strip = { trimSpaces: true, ignoreCase: true, removeSpecialChars: true };
+    expect(normalizeKeyValue('José', strip)).toBe(normalizeKeyValue('Jose', strip));
+    expect(normalizeKeyValue('São Paulo', strip)).toBe(normalizeKeyValue('Sao Paulo', strip));
+    expect(normalizeKeyValue('AÇÃO', strip)).toBe(normalizeKeyValue('ACAO', strip));
+    expect(normalizeKeyValue('João', strip)).toBe('joao');
+  });
+
+  it('mantém acentos quando removeSpecialChars está desligado', () => {
+    expect(normalizeKeyValue('José', opts)).toBe('josé');
+  });
+});
+
+describe('casamento de chaves com acentos', () => {
+  it('encontra a linha de B com acento quando a opção está ligada', () => {
+    const rows = applyLookup(
+      payload({
+        dataA: [{ chave: 'José' }],
+        dataB: [{ chave: 'Jose', valor: 10 }],
+        removeSpecialChars: true,
+      })
+    );
+    expect(rows[0]!['Lookup_valor']).toBe(10);
+    expect(rows[0]!['_match_found_B']).toBe(true);
+  });
 });
 
 describe('similarity', () => {

@@ -1,11 +1,14 @@
 /**
  * Modelo de dados da tarefa de lookup e ficheiros carregados.
  */
+import type { LookupRow } from '../lib/lookupEngine';
+
+export type { LookupRow };
 
 export interface ExcelData {
   name: string;
   sheets: {
-    [sheetName: string]: any[];
+    [sheetName: string]: LookupRow[];
   };
   selectedSheet: string;
 }
@@ -43,7 +46,7 @@ export interface LookupTask {
   matchMode: 0 | -1 | 1 | 2;
   searchDirection: 1 | -1;
   includeStatusCols: boolean;
-  resultData: any[] | null;
+  resultData: LookupRow[] | null;
   resultFilter: 'all' | 'matched' | 'orphans' | 'divergent';
   /** Quando true, mantém só linhas cuja coluna `duplicateKeyColumnId` aparece mais de uma vez (após demais filtros). */
   duplicateKeyFilterEnabled: boolean;

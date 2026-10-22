@@ -3,9 +3,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
+import React, {
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  startTransition,
+} from 'react';
 import { createPortal } from 'react-dom';
-import * as XLSX from 'xlsx';
 import { 
   FileUp, 
   ArrowRight, 
@@ -17,7 +24,6 @@ import {
   X,
   Search,
   Database,
-  Columns,
   Sparkles,
   Moon,
   Sun,
@@ -25,10 +31,7 @@ import {
   Activity,
   Filter,
   Layers,
-  Zap,
   Settings,
-  HelpCircle,
-  Target,
   ArrowUpDown,
   FileSpreadsheet,
   Upload,
@@ -51,7 +54,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { FluentPressableButton, FluentPressableDiv } from './lib/fluentMotion';
 import { computeAutoDetectLookup } from './lib/autoDetectLookupConfig';
-import { normalizeKeyValue, type LookupPayload, type LookupWorkerMessage } from './lib/lookupEngine';
+import {
+  normalizeKeyValue,
+  type LookupRow,
+  type LookupWorkerMessage,
+} from './lib/lookupEngine';
 import {
   type SortConfig,
   compareResultCellAsc,
@@ -62,7 +69,13 @@ import { ConfigureTabPanels } from './components/ConfigureTabPanels';
 import { ConfigureStepShell, ConfigureWizardStepper } from './components/ConfigureStepShell';
 import { PivotTableModal } from './components/PivotTableModal';
 import { PasteDataModal } from './components/PasteDataModal';
-import { normalizeExcelRow } from './lib/excelRowNormalize';
+import {
+  computeConfigureKeyMetrics,
+  EMPTY_CONFIGURE_METRICS,
+  type ConfigureKeyMetrics,
+} from './lib/configureMetrics';
+import { parseWorkbookFile, WorkbookParseError } from './services/parseWorkbook';
+import { UPLOAD_ACCEPT, UPLOAD_FORMATS_LABEL } from './lib/uploadLimits';
 import {
   buildResultExportRows,
   buildResultExportRowsForJson,
@@ -79,6 +92,8 @@ const RESULT_INDEX_COL_WIDTH_PX = 48;
 const DEFAULT_RESULT_COL_WIDTH_PX = 140;
 const MIN_RESULT_COL_WIDTH_PX = 64;
 const MAX_RESULT_COL_WIDTH_PX = 600;
+/** Valores de filtro renderizados de cada vez (resto fica acessível pela busca). */
+const FILTER_VALUE_RENDER_LIMIT = 300;
 
 function getResultColWidthPx(c: ColumnSetting): number {
   return c.widthPx ?? DEFAULT_RESULT_COL_WIDTH_PX;
@@ -205,7 +220,6 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
-  const [showColumnSettings, setShowColumnSettings] = useState(false);
   const [configTab, setConfigTab] = useState<'keys' | 'columns' | 'advanced'>('keys');
   const [columnFilters, setColumnFilters] = useState<{ [col: string]: Set<string> }>({});
   const [openFilterCol, setOpenFilterCol] = useState<string | null>(null);
@@ -318,62 +332,6 @@ export default function App() {
   );
 
   /**
-   * Adiciona uma nova operação (task) à lista de tarefas.
-   */
-  const addTask = () => {
-    const newTask: LookupTask = {
-      id: Math.random().toString(36).substring(2, 11),
-      name: `Operação ${tasks.length + 1}`,
-      fileA: null,
-      fileB: null,
-      keyA: '',
-      keyB: '',
-      selectedColsA: [],
-      selectedColsB: [],
-      fileC: null,
-      keyA_C: '',
-      keyC: '',
-      selectedColsC: [],
-      lookupType: 'xlookup',
-      exactMatch: true,
-      trimSpaces: true,
-      ignoreCase: true,
-      removeSpecialChars: false,
-      duplicateStrategy: 'first',
-      fuzzyThreshold: 0.8,
-      ifNotFound: '#N/D',
-      ifNotFoundC: '#N/D',
-      matchMode: 0,
-      searchDirection: 1,
-      includeStatusCols: true,
-      resultData: null,
-      resultFilter: 'all',
-      duplicateKeyFilterEnabled: false,
-      duplicateKeyColumnId: '',
-      divergentPairs: [],
-      showAdvanced: false,
-      columnSettings: [],
-    };
-    setTasks(prev => [...prev, newTask]);
-    setActiveTaskId(newTask.id);
-    setStep('upload');
-    setColumnFilters({});
-  };
-
-  /**
-   * Remove uma operação da lista de tarefas.
-   * @param id ID da tarefa a ser removida.
-   */
-  const removeTask = (id: string) => {
-    if (tasks.length === 1) return;
-    const newTasks = tasks.filter(t => t.id !== id);
-    setTasks(newTasks);
-    if (activeTaskId === id) {
-      setActiveTaskId(newTasks[0].id);
-    }
-  };
-
-  /**
    * Processa o upload de arquivos Excel e extrai os dados das planilhas.
    * @param e Evento de mudança do input de arquivo.
    * @param type Identificador da tabela ('A', 'B' ou 'C').
@@ -385,60 +343,22 @@ export default function App() {
     setLoading(true);
     setError(null);
 
-    const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
-    const isText = ext === 'csv' || ext === 'tsv';
-
-    const parseAndUpdate = (result: string | ArrayBuffer | null) => {
-      try {
-        // cellDates: true converte seriais de data do Excel em objetos Date do JS,
-        // garantindo formatação correta independente do locale do arquivo.
-        // O BOM do UTF-8 entraria no nome da primeira coluna ("\uFEFFNome") e
-        // impediria o casamento com a chave homônima da outra tabela.
-        const wb = isText
-          ? XLSX.read(String(result ?? '').replace(/^\uFEFF/, ''), { type: 'string' })
-          : XLSX.read(result as ArrayBuffer, { type: 'array', cellDates: true });
-
-        if (!wb.SheetNames.length) {
-          setError("O arquivo não contém planilhas ou está vazio.");
-          return;
-        }
-
-        const sheets: { [key: string]: any[] } = {};
-        wb.SheetNames.forEach(name => {
-          const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(
-            wb.Sheets[name],
-            { defval: '' }
-          );
-          sheets[name] = raw.map(normalizeExcelRow);
-        });
-
-        const data: ExcelData = {
-          name: file.name,
-          sheets,
-          selectedSheet: wb.SheetNames[0]
-        };
-
-        if (type === 'A') updateActiveTask({ fileA: data });
-        else if (type === 'B') updateActiveTask({ fileB: data });
-        else updateActiveTask({ fileC: data });
-      } catch (err) {
-        setError(`Não foi possível ler o arquivo "${file.name}" (${ext.toUpperCase()}). Verifique se o formato é suportado e se o arquivo não está corrompido.`);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    const reader = new FileReader();
-    reader.onload = (evt) => parseAndUpdate(evt.target?.result ?? null);
-    reader.onerror = () => {
-      setError("Erro ao ler o arquivo. Verifique se ele não está corrompido ou bloqueado.");
+    try {
+      // O parsing roda num Worker: ficheiros grandes deixavam a UI parada.
+      const data = await parseWorkbookFile(file);
+      if (type === 'A') updateActiveTask({ fileA: data });
+      else if (type === 'B') updateActiveTask({ fileB: data });
+      else updateActiveTask({ fileC: data });
+    } catch (err) {
+      setError(
+        err instanceof WorkbookParseError
+          ? err.message
+          : `Não foi possível ler o arquivo "${file.name}". Verifique se o formato é suportado e se o arquivo não está corrompido.`
+      );
+    } finally {
       setLoading(false);
-    };
-
-    if (isText) {
-      reader.readAsText(file, 'UTF-8');
-    } else {
-      reader.readAsArrayBuffer(file);
+      // Permite escolher o mesmo ficheiro outra vez (o input guarda o valor anterior).
+      e.target.value = '';
     }
   };
 
@@ -540,80 +460,40 @@ export default function App() {
     };
   }, [activeTask.keyA, activeTask.keyB, activeTask.selectedColsB, activeTask.keyA_C, activeTask.keyC, activeTask.selectedColsC, hasTableC, activeTask.lookupType, headersB, headersC]);
 
-  /** Métricas rápidas na etapa Configurar (amostra limitada para taxa de match). */
-  const configureKeyMetrics = useMemo(() => {
-    const empty = {
-      totalRows: 0,
-      dupInB: 0,
-      matchApprox: null as number | null,
-      valueFormat: '—' as string,
-    };
-    if (!activeTask.fileA || !activeTask.fileB) return empty;
-    const sheetA = activeTask.fileA.sheets[activeTask.fileA.selectedSheet] ?? [];
-    const sheetB = activeTask.fileB.sheets[activeTask.fileB.selectedSheet] ?? [];
-    const totalRows = sheetA.length;
+  /**
+   * Métricas da etapa Configurar: calculadas fora do caminho de render, com
+   * debounce, para que varrer a tabela B não bloqueie cliques e digitação.
+   */
+  const [configureKeyMetrics, setConfigureKeyMetrics] =
+    useState<ConfigureKeyMetrics>(EMPTY_CONFIGURE_METRICS);
 
-    const norm = (v: unknown) => {
-      let s = String(v ?? '');
-      if (activeTask.trimSpaces) s = s.trim();
-      if (activeTask.ignoreCase) s = s.toLowerCase();
-      if (activeTask.removeSpecialChars) s = s.replace(/[^a-z0-9]/gi, '');
-      return s;
-    };
-
-    let dupInB = 0;
-    if (activeTask.keyB) {
-      const counts = new Map<string, number>();
-      const maxScan = Math.min(sheetB.length, 200_000);
-      for (let i = 0; i < maxScan; i++) {
-        const k = norm(sheetB[i][activeTask.keyB]);
-        if (!k) continue;
-        counts.set(k, (counts.get(k) ?? 0) + 1);
-      }
-      for (const n of counts.values()) {
-        if (n > 1) dupInB += n - 1;
-      }
+  useEffect(() => {
+    const fileA = activeTask.fileA;
+    const fileB = activeTask.fileB;
+    if (!fileA || !fileB) {
+      setConfigureKeyMetrics(EMPTY_CONFIGURE_METRICS);
+      return;
     }
 
-    let matchApprox: number | null = null;
-    if (activeTask.keyA && activeTask.keyB && sheetA.length && sheetB.length) {
-      const bSet = new Set<string>();
-      const maxB = Math.min(sheetB.length, 200_000);
-      for (let i = 0; i < maxB; i++) {
-        const k = norm(sheetB[i][activeTask.keyB]);
-        if (k) bSet.add(k);
-      }
-      const cap = Math.min(3000, sheetA.length);
-      let hits = 0;
-      let nonEmpty = 0;
-      for (let i = 0; i < cap; i++) {
-        const k = norm(sheetA[i][activeTask.keyA]);
-        if (!k) continue;
-        nonEmpty++;
-        if (bSet.has(k)) hits++;
-      }
-      matchApprox = nonEmpty > 0 ? Math.round((hits / nonEmpty) * 100) : 0;
-    }
+    const sheetA = fileA.sheets[fileA.selectedSheet] ?? [];
+    const sheetB = fileB.sheets[fileB.selectedSheet] ?? [];
+    const normalization = {
+      trimSpaces: activeTask.trimSpaces,
+      ignoreCase: activeTask.ignoreCase,
+      removeSpecialChars: activeTask.removeSpecialChars,
+    };
+    const keyA = activeTask.keyA;
+    const keyB = activeTask.keyB;
 
-    let valueFormat = '—';
-    if (activeTask.keyA && sheetA.length) {
-      const samples: unknown[] = [];
-      for (let i = 0; i < Math.min(80, sheetA.length); i++) {
-        const v = sheetA[i][activeTask.keyA];
-        if (v !== '' && v != null) samples.push(v);
-        if (samples.length >= 10) break;
-      }
-      if (samples.length) {
-        const allNum = samples.every(
-          (v) =>
-            typeof v === 'number' ||
-            (typeof v === 'string' && String(v).trim() !== '' && !Number.isNaN(Number(String(v).trim())))
+    const timer = window.setTimeout(() => {
+      startTransition(() => {
+        setConfigureKeyMetrics(
+          computeConfigureKeyMetrics({ sheetA, sheetB, keyA, keyB, normalization })
         );
-        valueFormat = allNum ? 'Número' : 'Texto';
-      }
-    }
+      });
+    }, 250);
 
-    return { totalRows, dupInB, matchApprox, valueFormat };
+    return () => window.clearTimeout(timer);
   }, [
     activeTask.fileA,
     activeTask.fileB,
@@ -984,28 +864,35 @@ export default function App() {
   /**
    * Gera um arquivo Excel com os resultados do cruzamento e inicia o download.
    */
-  const downloadResult = () => {
+  const downloadResult = async () => {
     if (!filteredResultData || filteredResultData.length === 0) return;
 
     const exportData = buildResultExportRows(
       activeTask.columnSettings,
-      filteredResultData as Record<string, unknown>[]
+      filteredResultData
     );
     const visibleCols = getResultExportVisibleColumnIds(activeTask.columnSettings);
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const widthById = new Map<string, number>(
-      activeTask.columnSettings.map((c): [string, number] => [c.id, getResultColWidthPx(c)])
-    );
-    const sheet = ws as import('xlsx').WorkSheet;
-    sheet['!cols'] = visibleCols.map((colId) => {
-      const px = widthById.get(colId) ?? DEFAULT_RESULT_COL_WIDTH_PX;
-      return { wch: Math.max(8, Math.min(60, Math.round(px / 7))) };
-    });
-    const wb = XLSX.utils.book_new();
-    const fileName = `${resultExportBaseFileName(activeTask)}.xlsx`;
-    XLSX.utils.book_append_sheet(wb, ws, 'Resultado');
-    XLSX.writeFile(wb, fileName);
+    try {
+      // Import dinâmico: o `xlsx` só entra no bundle quando o utilizador exporta
+      // (o parsing já corre no worker, sem duplicar o peso no arranque).
+      const XLSX = await import('xlsx');
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const widthById = new Map<string, number>(
+        activeTask.columnSettings.map((c): [string, number] => [c.id, getResultColWidthPx(c)])
+      );
+      const sheet = ws as import('xlsx').WorkSheet;
+      sheet['!cols'] = visibleCols.map((colId) => {
+        const px = widthById.get(colId) ?? DEFAULT_RESULT_COL_WIDTH_PX;
+        return { wch: Math.max(8, Math.min(60, Math.round(px / 7))) };
+      });
+      const wb = XLSX.utils.book_new();
+      const fileName = `${resultExportBaseFileName(activeTask)}.xlsx`;
+      XLSX.utils.book_append_sheet(wb, ws, 'Resultado');
+      XLSX.writeFile(wb, fileName);
+    } catch {
+      setError('Não foi possível gerar o ficheiro Excel. Tente novamente.');
+    }
   };
 
   const downloadResultJson = () => {
@@ -1015,41 +902,6 @@ export default function App() {
       filteredResultData as Record<string, unknown>[]
     );
     downloadJsonFile(exportData, `${resultExportBaseFileName(activeTask)}.json`);
-  };
-
-  /**
-   * Move uma coluna para cima ou para baixo na ordem de exibição.
-   * @param index Índice atual da coluna.
-   * @param direction Direção do movimento ('up' ou 'down').
-   */
-  const moveColumn = (index: number, direction: 'up' | 'down') => {
-    const newSettings = [...activeTask.columnSettings];
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= newSettings.length) return;
-    [newSettings[index], newSettings[targetIndex]] = [newSettings[targetIndex], newSettings[index]];
-    updateActiveTask({ columnSettings: newSettings });
-  };
-
-  /**
-   * Alterna a visibilidade de uma coluna.
-   * @param id ID da coluna.
-   */
-  const toggleColumnVisibility = (id: string) => {
-    const newSettings = activeTask.columnSettings.map(c => 
-      c.id === id ? { ...c, visible: !c.visible } : c
-    );
-    updateActiveTask({ columnSettings: newSettings });
-  };
-
-  /**
-   * Alterna o estado de fixação (pin) de uma coluna.
-   * @param id ID da coluna.
-   */
-  const toggleColumnPin = (id: string) => {
-    const newSettings = activeTask.columnSettings.map(c => 
-      c.id === id ? { ...c, pinned: !c.pinned } : c
-    );
-    updateActiveTask({ columnSettings: newSettings });
   };
 
   /**
@@ -1303,7 +1155,7 @@ export default function App() {
                   <ArrowRight size={20} className="relative shrink-0" />
                 </motion.button>
                 <p className="font-jakarta text-[10px] uppercase tracking-[0.12em] text-[#8d90a0]">
-                  Formatos: .xlsx, .xls, .csv, .tsv, .ods (até 50MB)
+                  Formatos: {UPLOAD_FORMATS_LABEL} (até 50 MB)
                 </p>
                 <p className="max-w-md px-2 text-center text-xs text-[#8d90a0]">
                   {!activeTask.fileA || !activeTask.fileB
@@ -1879,6 +1731,7 @@ export default function App() {
                     <thead className="sticky top-0 z-20">
                       <tr className="bg-zinc-50 dark:bg-zinc-900">
                         <th
+                          scope="col"
                           className="sticky left-0 z-30 border border-solid border-zinc-200 bg-zinc-50 px-3 py-3 text-center text-[10px] font-semibold text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400"
                           style={{ width: RESULT_INDEX_COL_WIDTH_PX, minWidth: RESULT_INDEX_COL_WIDTH_PX }}
                         >
@@ -1887,6 +1740,7 @@ export default function App() {
                         {tableDisplayColumns.map((col, colIdx) => (
                           <th
                             key={col.id}
+                            scope="col"
                             style={{
                               width: getResultColDisplayWidthPx(col),
                               minWidth: getResultColDisplayWidthPx(col),
@@ -1960,12 +1814,14 @@ export default function App() {
                       </tr>
                       <tr className="bg-zinc-50 dark:bg-zinc-900">
                         <th
+                          scope="col"
                           className="sticky left-0 z-30 border border-solid border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900"
                           style={{ width: RESULT_INDEX_COL_WIDTH_PX, minWidth: RESULT_INDEX_COL_WIDTH_PX }}
                         />
                         {tableDisplayColumns.map(col => (
                           <th
                             key={col.id}
+                            scope="col"
                             style={{
                               width: getResultColDisplayWidthPx(col),
                               minWidth: getResultColDisplayWidthPx(col),
@@ -2244,7 +2100,6 @@ function UploadHowItWorksDetails() {
   );
 }
 
-const UPLOAD_ACCEPT = '.xlsx,.xls,.xlsb,.xlsm,.ods,.csv,.tsv';
 
 /**
  * Componente de cartão para upload de arquivos Excel.
@@ -2541,7 +2396,7 @@ function ColumnFilterDropdown({
 }: {
   colId: string;
   anchorRef: React.RefObject<HTMLButtonElement | null>;
-  allData: any[];
+  allData: LookupRow[];
   selectedSet: Set<string> | null;
   sortConfig: SortConfig | null;
   onSort: (dir: 'asc' | 'desc') => void;
@@ -2572,6 +2427,10 @@ function ColumnFilterDropdown({
   const displayed = uniqueValues.filter(v =>
     v.toLowerCase().includes(search.toLowerCase())
   );
+
+  // Colunas de alta cardinalidade (ex.: CPF) geravam milhares de nós DOM de uma vez.
+  const visibleValues = displayed.slice(0, FILTER_VALUE_RENDER_LIMIT);
+  const hiddenValueCount = displayed.length - visibleValues.length;
 
   const isAllSelected = selectedSet === null;
 
@@ -2636,6 +2495,18 @@ function ColumnFilterDropdown({
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [onClose, anchorRef]);
+
+  /** Teclado: Escape fecha o menu (diálogo sem botão de fechar visível). */
+  React.useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
 
   React.useEffect(() => {
     window.addEventListener('resize', updatePlacement);
@@ -2733,7 +2604,7 @@ function ColumnFilterDropdown({
         {displayed.length === 0 ? (
           <p className="text-center text-zinc-500 text-xs py-4">Nenhum valor encontrado</p>
         ) : (
-          displayed.map(val => (
+          visibleValues.map(val => (
             <label
               key={val}
               className="flex items-center gap-2.5 px-3 py-2 min-h-[40px] dark:hover:bg-white/5 hover:bg-black/5 cursor-pointer group"
@@ -2761,6 +2632,12 @@ function ColumnFilterDropdown({
               </span>
             </label>
           ))
+        )}
+        {hiddenValueCount > 0 && (
+          <p className="px-3 py-2 text-[11px] leading-snug text-zinc-500">
+            A mostrar {visibleValues.length} de {displayed.length} valores. Use a busca acima
+            para encontrar um valor específico.
+          </p>
         )}
       </div>
 

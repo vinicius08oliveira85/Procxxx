@@ -12,7 +12,7 @@ export default defineConfig({
         registerType: 'autoUpdate',
         includeAssets: ['icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'],
         manifest: {
-          name: 'Lookup Master',
+          name: 'Excel Lookup Master',
           short_name: 'LookupMaster',
           description: 'Cruzamento de dados Excel de forma elegante. PROCX/XLOOKUP no navegador.',
           start_url: '/',
@@ -34,7 +34,9 @@ export default defineConfig({
           runtimeCaching: [],
         },
         devOptions: {
-          enabled: true,
+          // Service worker em desenvolvimento serve assets antigos e esconde
+          // alterações; o PWA só deve ser registado no build de produção.
+          enabled: false,
         },
       }),
     ],
@@ -63,6 +65,6 @@ export default defineConfig({
     },
     test: {
       environment: 'node',
-      include: ['src/**/*.test.ts'],
+      include: ['src/**/*.test.ts', 'api/**/*.test.ts'],
     },
 });

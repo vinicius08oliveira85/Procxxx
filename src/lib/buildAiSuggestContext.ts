@@ -1,6 +1,8 @@
 /**
  * Contexto leve (amostra limitada) para enriquecer o pedido ao assistente IA.
+ * Os exemplos de valores passam por mascaramento antes de sair do browser.
  */
+import { maskSensitiveValue } from './maskSensitive';
 
 export const AI_CONTEXT_SAMPLE_MAX_ROWS = 500;
 export const AI_CONTEXT_MAX_COLUMNS_PER_TABLE = 20;
@@ -35,10 +37,6 @@ function normHeader(s: string): string {
 function cellToString(v: unknown): string {
   if (v === null || v === undefined) return '';
   return String(v).trim();
-}
-
-function isEmptyCell(v: unknown): boolean {
-  return cellToString(v) === '';
 }
 
 function computeColumnStatsForTable(
@@ -100,7 +98,8 @@ function buildKeyAlignmentHints(
       if (s === '') continue;
       if (!setB.has(s)) {
         const clipped = s.length > AI_CONTEXT_VALUE_MAX_LEN ? `${s.slice(0, AI_CONTEXT_VALUE_MAX_LEN)}…` : s;
-        if (!examples.includes(clipped)) examples.push(clipped);
+        const masked = maskSensitiveValue(clipped);
+        if (!examples.includes(masked)) examples.push(masked);
       }
     }
 
