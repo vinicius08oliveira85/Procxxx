@@ -33,9 +33,22 @@ export async function parseWorkbookFile(file: File): Promise<ExcelData> {
     type: 'module',
   });
 
+  // Timeout de segurança: se o worker não responder em 2 minutos, desiste.
+  const PARSE_TIMEOUT_MS = 120_000;
+  const timeoutId = setTimeout(() => {
+    worker.terminate();
+    rejectTimeout(new WorkbookParseError(`O arquivo "${file.name}" demorou demais para ser lido.`));
+  }, PARSE_TIMEOUT_MS);
+
+  let rejectTimeout = (_err: Error) => {
+    /* definido acima */
+  };
+
   try {
     return await new Promise<ExcelData>((resolve, reject) => {
+      rejectTimeout = reject;
       worker.onmessage = (event: MessageEvent<ParseResponse>) => {
+        clearTimeout(timeoutId);
         const message = event.data;
         if ('data' in message) {
           resolve(message.data);
@@ -49,13 +62,17 @@ export async function parseWorkbookFile(file: File): Promise<ExcelData> {
           )
         );
       };
-      worker.onerror = () => reject(new WorkbookParseError(unreadableMessage(file.name)));
+      worker.onerror = () => {
+        clearTimeout(timeoutId);
+        reject(new WorkbookParseError(unreadableMessage(file.name)));
+      };
 
       const request: ParseRequest = { id: 1, input: { fileName: file.name, text, buffer } };
       // Transfere o buffer para o worker (evita uma cópia de até 50 MB).
       worker.postMessage(request, buffer ? [buffer] : []);
     });
   } finally {
+    clearTimeout(timeoutId);
     worker.terminate();
   }
 }

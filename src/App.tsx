@@ -220,6 +220,9 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
+  const [downloadingExcel, setDownloadingExcel] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [configTab, setConfigTab] = useState<'keys' | 'columns' | 'advanced'>('keys');
   const [columnFilters, setColumnFilters] = useState<{ [col: string]: Set<string> }>({});
   const [openFilterCol, setOpenFilterCol] = useState<string | null>(null);
@@ -251,6 +254,26 @@ export default function App() {
   }, [isDarkMode]);
 
   const activeTask = useMemo(() => tasks.find(t => t.id === activeTaskId)!, [tasks, activeTaskId]);
+
+  /**
+   * Alerta o usuário se houver dados carregados e ele tentar fechar/recarregar
+   * a página, evitando perda de trabalho não exportado.
+   */
+  useEffect(() => {
+    const hasUnsavedData =
+      activeTask.fileA ||
+      activeTask.fileB ||
+      activeTask.fileC ||
+      activeTask.resultData;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedData) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [activeTask.fileA, activeTask.fileB, activeTask.fileC, activeTask.resultData]);
 
   /**
    * Atualiza o estado da tarefa ativa com os novos valores fornecidos.
@@ -873,6 +896,7 @@ export default function App() {
     );
     const visibleCols = getResultExportVisibleColumnIds(activeTask.columnSettings);
 
+    setDownloadingExcel(true);
     try {
       // Import dinâmico: o `xlsx` só entra no bundle quando o utilizador exporta
       // (o parsing já corre no worker, sem duplicar o peso no arranque).
@@ -892,6 +916,8 @@ export default function App() {
       XLSX.writeFile(wb, fileName);
     } catch {
       setError('Não foi possível gerar o ficheiro Excel. Tente novamente.');
+    } finally {
+      setDownloadingExcel(false);
     }
   };
 
@@ -906,8 +932,13 @@ export default function App() {
 
   /**
    * Reinicia todo o estado da aplicação para o padrão inicial.
+   * @param force Quando true, ignora o dialog de confirmação.
    */
-  const reset = () => {
+  const reset = (force = false) => {
+    if (!force) {
+      setShowResetConfirm(true);
+      return;
+    }
     const freshTask: LookupTask = {
       id: Math.random().toString(36).substring(2, 11),
       name: 'Operação 1',
@@ -946,6 +977,7 @@ export default function App() {
     setStep('upload');
     setConfigTab('keys');
     setColumnFilters({});
+    setShowResetConfirm(false);
   };
 
   return (
@@ -1480,12 +1512,19 @@ export default function App() {
                           <FluentPressableButton
                             type="button"
                             onClick={downloadResult}
+                            disabled={downloadingExcel}
                             className="fluent-button-primary flex shrink-0 min-h-[44px] items-center gap-1.5 px-3 py-2 text-xs"
                             aria-label="Baixar resultado em Excel"
                             title="Baixar Excel"
                           >
-                            <Download size={16} />
-                            <span className="font-bold">Excel</span>
+                            {downloadingExcel ? (
+                              <span className="animate-pulse text-zinc-400">A processar…</span>
+                            ) : (
+                              <>
+                                <Download size={16} />
+                                <span className="font-bold">Excel</span>
+                              </>
+                            )}
                           </FluentPressableButton>
                           <button
                             type="button"
@@ -1630,9 +1669,16 @@ export default function App() {
                       <FluentPressableButton
                         type="button"
                         onClick={downloadResult}
+                        disabled={downloadingExcel}
                         className="fluent-button-primary flex min-h-[44px] items-center gap-1.5 px-4 py-2 text-xs"
                       >
-                        <Download size={14} /> Baixar Excel
+                        {downloadingExcel ? (
+                          <span className="animate-pulse text-zinc-400">A processar…</span>
+                        ) : (
+                          <>
+                            <Download size={14} /> Baixar Excel
+                          </>
+                        )}
                       </FluentPressableButton>
                       <button
                         type="button"

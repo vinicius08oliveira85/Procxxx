@@ -16,15 +16,19 @@ export type ParseResponse =
   | { id: number; data: ExcelData }
   | { id: number; errorCode: 'EMPTY_WORKBOOK' | 'UNREADABLE' };
 
-const ctx = self as unknown as DedicatedWorkerGlobalScope;
+declare const self: DedicatedWorkerGlobalScope;
 
-ctx.onmessage = (event: MessageEvent<ParseRequest>) => {
+self.addEventListener('error', (_event: ErrorEvent) => {
+  self.postMessage({ id: 0, errorCode: 'UNREADABLE' } satisfies ParseResponse);
+});
+
+self.onmessage = (event: MessageEvent<ParseRequest>) => {
   const { id, input } = event.data;
   try {
-    ctx.postMessage({ id, data: parseWorkbook(input) } satisfies ParseResponse);
+    self.postMessage({ id, data: parseWorkbook(input) } satisfies ParseResponse);
   } catch (err) {
     const errorCode: 'EMPTY_WORKBOOK' | 'UNREADABLE' =
       err instanceof EmptyWorkbookError ? 'EMPTY_WORKBOOK' : 'UNREADABLE';
-    ctx.postMessage({ id, errorCode } satisfies ParseResponse);
+    self.postMessage({ id, errorCode } satisfies ParseResponse);
   }
 };
