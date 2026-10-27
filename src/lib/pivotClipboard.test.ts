@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { buildPivotTableTsv } from './pivotClipboard';
+import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest';
+import { buildPivotTableTsv, copyPivotTableTsvAndHtml } from './pivotClipboard';
 import type { PivotColumnHeader, PivotTreeNode } from './pivotEngine';
 
 describe('buildPivotTableTsv', () => {
@@ -35,5 +35,57 @@ describe('buildPivotTableTsv', () => {
     ];
     const tsv = buildPivotTableTsv(headers, flatRows, [1], (v) => String(v));
     expect(tsv).toMatch(/"linha\tcom tab"/);
+  });
+});
+
+describe('copyPivotTableTsvAndHtml', () => {
+  let mockAppendChild: ReturnType<typeof vi.spyOn>;
+  let mockRemoveChild: ReturnType<typeof vi.spyOn>;
+  let mockExecCommand: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    // Mock do navigator sem Clipboard API para forçar o fallback
+    const mockNavigator = {} as Navigator;
+    vi.stubGlobal('navigator', mockNavigator);
+
+    // Mock do document para ambiente Node
+    const mockDocument = {
+      createElement: vi.fn(() => ({
+        style: {},
+        select: vi.fn(),
+        value: '',
+      })),
+      body: {
+        appendChild: vi.fn(),
+        removeChild: vi.fn(),
+      },
+      execCommand: vi.fn(() => true),
+    };
+    vi.stubGlobal('document', mockDocument);
+    mockAppendChild = vi.spyOn(mockDocument.body, 'appendChild');
+    mockRemoveChild = vi.spyOn(mockDocument.body, 'removeChild');
+    mockExecCommand = vi.spyOn(mockDocument, 'execCommand');
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('usa fallback de textarea quando Clipboard API não está disponível', async () => {
+    await copyPivotTableTsvAndHtml('a\tb\n1\t2', '<table></table>');
+
+    expect(mockAppendChild).toHaveBeenCalled();
+    expect(mockRemoveChild).toHaveBeenCalled();
+    expect(mockExecCommand).toHaveBeenCalledWith('copy');
+  });
+
+  it('lança erro quando nem clipboard nem execCommand estão disponíveis', async () => {
+    mockExecCommand.mockImplementation(() => {
+      throw new Error('not supported');
+    });
+
+    await expect(copyPivotTableTsvAndHtml('a\tb', '<table></table>')).rejects.toThrow(
+      'Clipboard não disponível neste ambiente.'
+    );
   });
 });

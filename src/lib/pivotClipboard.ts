@@ -108,5 +108,25 @@ export async function copyPivotTableTsvAndHtml(tsv: string, html: string): Promi
     return;
   }
 
+  // Fallback para ambientes sem Clipboard API (ex.: iframe sem permissão,
+  // navegadores antigos): textarea temporário + execCommand.
+  if (typeof document !== 'undefined' && document.createElement) {
+    const textarea = document.createElement('textarea');
+    textarea.value = tsv;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+      document.execCommand('copy');
+      return;
+    } catch {
+      /* ignorado */
+    } finally {
+      document.body.removeChild(textarea);
+    }
+  }
+
   throw new Error('Clipboard não disponível neste ambiente.');
 }
