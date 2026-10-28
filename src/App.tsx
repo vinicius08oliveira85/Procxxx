@@ -67,6 +67,7 @@ import {
 import { ConfigureAiAssistant } from './components/ConfigureAiAssistant';
 import { ConfigureTabPanels } from './components/ConfigureTabPanels';
 import { ConfigureStepShell, ConfigureWizardStepper } from './components/ConfigureStepShell';
+import { UiPreferencesMenu } from './components/UiPreferencesMenu';
 import { PivotTableModal } from './components/PivotTableModal';
 import { PasteDataModal } from './components/PasteDataModal';
 import {
@@ -1015,6 +1016,7 @@ export default function App() {
               <LandingStepStrip currentStep={step} />
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
+              <UiPreferencesMenu tone="dark" />
               <button
                 type="button"
                 onClick={() => setIsDarkMode(!isDarkMode)}
@@ -1177,7 +1179,6 @@ export default function App() {
                   type="button"
                   disabled={!activeTask.fileA || !activeTask.fileB}
                   onClick={() => setStep('configure')}
-                  whileHover={!activeTask.fileA || !activeTask.fileB ? undefined : { scale: 1.01 }}
                   whileTap={!activeTask.fileA || !activeTask.fileB ? undefined : { scale: 0.98 }}
                   transition={{ type: 'spring', stiffness: 420, damping: 26 }}
                   className="group relative flex min-h-[52px] items-center gap-3 overflow-hidden rounded-full bg-gradient-to-r from-[#2563eb] via-[#4f46e5] to-[#7c3aed] px-12 py-4 font-jakarta text-base font-extrabold tracking-tight text-white shadow-[0_20px_40px_rgba(37,99,235,0.22)] transition-shadow hover:shadow-[0_24px_48px_rgba(37,99,235,0.28)] disabled:pointer-events-none disabled:opacity-40"
@@ -1397,6 +1398,7 @@ export default function App() {
 
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-2xl border border-black/5 dark:border-white/5">
+                  <UiPreferencesMenu />
                   <button 
                     onClick={() => setIsDarkMode(!isDarkMode)}
                     className="p-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-all text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 active:scale-90"
@@ -1442,7 +1444,6 @@ export default function App() {
                 ].map((stat, i) => (
                   <motion.div
                     key={i}
-                    whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
                     transition={{ type: 'spring', stiffness: 420, damping: 26 }}
                     className="fluent-card flex flex-row items-center gap-3 p-3 sm:flex-col sm:gap-1.5 sm:p-4 sm:text-center"
@@ -1766,7 +1767,7 @@ export default function App() {
                     columnResizePreview && 'select-none'
                   )}
                 >
-                  <table className="w-full min-w-[600px] table-fixed border-collapse text-left">
+                  <table className="result-table w-full min-w-[600px] table-fixed border-collapse text-left">
                     <colgroup>
                       <col style={{ width: RESULT_INDEX_COL_WIDTH_PX, minWidth: RESULT_INDEX_COL_WIDTH_PX }} />
                       {tableDisplayColumns.map(col => {
@@ -1975,7 +1976,7 @@ export default function App() {
                                 )}
                               >
                                 {val === null || val === undefined 
-                                  ? <span className="text-red-400/50 italic font-bold">#N/D</span> 
+                                  ? <span className="italic font-medium text-zinc-500 dark:text-zinc-400">#N/D</span> 
                                   : typeof val === 'boolean' 
                                     ? (val ? 'SIM' : 'NÃO')
                                     : String(val)
@@ -2025,15 +2026,19 @@ export default function App() {
       )}
 
       {error && (
-        <div className="fixed right-4 sm:right-8 max-w-md z-[200] bg-red-50 border-l-4 border-red-500 p-4 rounded-lg shadow-2xl flex items-start gap-3 animate-bounce bottom-[max(1.5rem,env(safe-area-inset-bottom,0px))] sm:bottom-[max(2rem,env(safe-area-inset-bottom,0px))]">
-          <AlertCircle className="text-red-500 shrink-0" />
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="toast-in fixed right-4 sm:right-8 max-w-md z-[200] bg-red-50 dark:bg-red-950/80 border-l-4 border-red-500 dark:border-red-400 p-4 rounded-lg shadow-2xl flex items-start gap-3 bottom-[max(1.5rem,env(safe-area-inset-bottom,0px))] sm:bottom-[max(2rem,env(safe-area-inset-bottom,0px))]"
+        >
+          <AlertCircle className="shrink-0 text-red-600 dark:text-red-400" />
           <div>
-            <h4 className="font-bold text-red-800">Ops!</h4>
-            <p className="text-sm text-red-700">{error}</p>
+            <h4 className="font-bold text-red-800 dark:text-red-100">Ops!</h4>
+            <p className="text-sm text-red-700 dark:text-red-200">{error}</p>
           </div>
           <button 
             onClick={() => setError(null)} 
-            className="text-red-400 hover:text-red-600"
+            className="shrink-0 rounded p-0.5 text-red-500 transition-colors hover:text-red-700 dark:text-red-300 dark:hover:text-red-100"
             aria-label="Fechar mensagem de erro"
           >
             <X size={16} />
@@ -2302,7 +2307,7 @@ function UploadCard({
               </div>
               <div className="flex flex-col gap-2">
                 <label className="shrink-0 cursor-pointer">
-                  <input type="file" accept={UPLOAD_ACCEPT} onChange={onUpload} className="hidden" />
+                  <input type="file" accept={UPLOAD_ACCEPT} onChange={onUpload} className="sr-only" />
                   <span className={landingImportBtn}>Importar Arquivo</span>
                 </label>
                 {onPaste ? (
@@ -2410,9 +2415,8 @@ function UploadCard({
               </p>
             </div>
             <label className="shrink-0 cursor-pointer">
-              <input type="file" accept={UPLOAD_ACCEPT} onChange={onUpload} className="hidden" />
+              <input type="file" accept={UPLOAD_ACCEPT} onChange={onUpload} className="sr-only" />
               <motion.div
-                whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.98 }}
                 transition={{ type: 'spring', stiffness: 420, damping: 26 }}
                 className="fluent-button-primary flex min-h-[44px] cursor-pointer items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm font-bold"
@@ -2653,7 +2657,16 @@ function ColumnFilterDropdown({
           visibleValues.map(val => (
             <label
               key={val}
-              className="flex items-center gap-2.5 px-3 py-2 min-h-[40px] dark:hover:bg-white/5 hover:bg-black/5 cursor-pointer group"
+              role="checkbox"
+              aria-checked={isChecked(val)}
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  toggle(val);
+                }
+              }}
+              className="flex items-center gap-2.5 px-3 py-2 min-h-[40px] rounded-lg dark:hover:bg-white/5 hover:bg-black/5 cursor-pointer group"
             >
               <div
                 className={cn(

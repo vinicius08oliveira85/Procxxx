@@ -13,6 +13,7 @@ import {
   User,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { UiPreferencesMenu } from './UiPreferencesMenu';
 
 export interface ConfigureStepShellProps {
   children: React.ReactNode;
@@ -102,6 +103,7 @@ export function ConfigureStepShell({
           </nav>
         </div>
         <div className="flex shrink-0 items-center gap-2 sm:gap-4">
+          <UiPreferencesMenu tone="dark" />
           <button
             type="button"
             className="rounded-full p-2 text-[#c3c6d7] transition-all hover:bg-white/5"

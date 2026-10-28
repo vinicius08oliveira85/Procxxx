@@ -11,7 +11,52 @@
     @apply antialiased;
     font-family: var(--font-sans);
   }
+
+  /**
+   * Anel de foco consistente em todos os controlos. `:where()` mantém a
+   * especificidade em zero e o `!important` impede que utilitários como
+   * `outline-none` (usados para desenhar `ring`) apaguem o indicador.
+   */
+  :where(
+      a,
+      button,
+      input,
+      select,
+      textarea,
+      summary,
+      [role='button'],
+      [role='checkbox'],
+      [tabindex]:not([tabindex='-1'])
+    ):focus-visible {
+    outline: 2px solid #3b82f6 !important;
+    outline-offset: 2px !important;
+  }
+
+  /* O input de ficheiro é `sr-only`: o anel aparece no label que o embrulha. */
+  label:has(> input[type='file']:focus-visible) {
+    outline: 2px solid #3b82f6;
+    outline-offset: 3px;
+    border-radius: 9999px;
+  }
 }
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@layer utilities {
+  .toast-in {
+    animation: toast-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+
 
 /* Landing upload (mica / ghost border — alinhado ao design system do mock) */
 @utility upload-ghost-border {
@@ -210,4 +255,63 @@
 
 .animate-pulse-glow {
   animation: pulse-glow 6s ease-in-out infinite;
+}
+
+/**
+ * Movimento reduzido.
+ *
+ * `data-reduce-motion` no <html> é escrito pelo `ReducedMotionProvider` a partir
+ * de `prefers-reduced-motion` e da escolha feita em Preferências de interface.
+ * CSS e `MotionConfig` leem o mesmo estado: uma só fonte de verdade — e o modo
+ * "Completo" consegue sobrepor-se ao sistema, coisa que uma media query não
+ * permitiria.
+ *
+ * Os blobs recebem a opacidade final do keyframe, para não ficarem mais fortes
+ * do que o desenho original quando a animação pára.
+ */
+:root[data-reduce-motion='true'] *,
+:root[data-reduce-motion='true'] *::before,
+:root[data-reduce-motion='true'] *::after {
+  transition-duration: 0.01ms !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+}
+
+:root[data-reduce-motion='true'] .animate-bloom {
+  animation-name: none !important;
+  opacity: 0.12;
+}
+
+:root[data-reduce-motion='true'] .animate-pulse-glow {
+  animation-name: none !important;
+  opacity: 0.35;
+}
+
+:root[data-reduce-motion='true'] .animate-float,
+:root[data-reduce-motion='true'] .animate-pulse,
+:root[data-reduce-motion='true'] .toast-in {
+  animation-name: none !important;
+}
+
+:root[data-reduce-motion='true'] .fluent-button-primary::after {
+  display: none;
+}
+
+/* Feedback essencial (lendo arquivo / cruzando dados) continua a rodar. */
+:root[data-reduce-motion='true'] .animate-spin {
+  animation-duration: 1s !important;
+  animation-iteration-count: infinite !important;
+}
+
+/**
+ * Densidade da tabela de resultados. `data-density` é escrito pelo
+ * `UiPreferencesProvider`; "compacta" encurta a altura das linhas.
+ * A regra é intencionalmente sem `@layer` para ganhar aos utilitários `py-*`
+ * das células (estilos fora de camada têm precedência sobre `@layer utilities`).
+ */
+:root[data-density='compact'] .result-table th,
+:root[data-density='compact'] .result-table td {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
 }

@@ -146,6 +146,15 @@ export function ConfigureAiAssistant({
   const ia = preview?.suggestion;
 
   const isBento = variant === 'bento';
+  /**
+   * O cartão `bento` tem fundo escuro fixo (rgba(28,27,27,0.72)), mesmo no tema
+   * claro: tons `zinc-500/600/700` ficariam abaixo de 4.5:1 ou ilegíveis ali.
+   */
+  const titleText = isBento ? 'text-white' : 'text-zinc-900 dark:text-white';
+  const mutedText = isBento ? 'text-zinc-400' : 'text-zinc-500 dark:text-zinc-400';
+  const strongText = isBento ? 'text-zinc-300' : 'text-zinc-600 dark:text-zinc-400';
+  const bodyText = isBento ? 'text-zinc-200' : 'text-zinc-700 dark:text-zinc-300';
+  const subtleText = isBento ? 'text-zinc-400' : 'text-zinc-600 dark:text-zinc-400';
 
   return (
     <div
@@ -169,11 +178,11 @@ export function ConfigureAiAssistant({
             <Sparkles className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Assistente IA (Gemini)</h3>
-            <p className="text-xs text-zinc-500 leading-relaxed mt-0.5">
-              Útil quando os <strong className="text-zinc-600 dark:text-zinc-400">nomes das colunas diferem</strong>, há{' '}
-              <strong className="text-zinc-600 dark:text-zinc-400">muitas colunas</strong> ou o botão{' '}
-              <strong className="text-zinc-600 dark:text-zinc-400">Configuração Automática</strong> não acerta. A chave da
+            <h3 className={cn('text-sm font-bold', titleText)}>Assistente IA (Gemini)</h3>
+            <p className={cn('text-xs leading-relaxed mt-0.5', mutedText)}>
+              Útil quando os <strong className={strongText}>nomes das colunas diferem</strong>, há{' '}
+              <strong className={strongText}>muitas colunas</strong> ou o botão{' '}
+              <strong className={strongText}>Configuração Automática</strong> não acerta. A chave da
               API fica só no servidor. Enviamos estatísticas leves e uma amostra de linhas, com CPF, CNPJ,
               telefone e e-mail mascarados.
             </p>
@@ -209,12 +218,14 @@ export function ConfigureAiAssistant({
             rows={2}
             className="w-full text-xs rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/80 text-zinc-800 dark:text-zinc-200 px-3 py-2 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
           />
-          <p className="text-xs text-zinc-500">{userIntent.length}/{MAX_USER_INTENT_LEN}</p>
+          <p className={cn('text-xs', mutedText)}>{userIntent.length}/{MAX_USER_INTENT_LEN}</p>
         </div>
       )}
 
       {!canRun && (
-        <p className="text-xs text-zinc-500 mt-3 font-medium">Carregue as tabelas A e B para habilitar a sugestão.</p>
+        <p className={cn('text-xs mt-3 font-medium', mutedText)}>
+          Carregue as tabelas A e B para habilitar a sugestão.
+        </p>
       )}
 
       {error && (
@@ -230,13 +241,14 @@ export function ConfigureAiAssistant({
               <p className="text-xs font-bold uppercase tracking-wider text-zinc-400">Automático (local) vs IA</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                 <div className="rounded-lg border border-zinc-200/80 dark:border-white/10 px-2 py-2 bg-black/[0.02] dark:bg-white/[0.03]">
-                  <span className="font-bold text-zinc-500 block mb-1">Chaves</span>
-                  <p className="text-zinc-700 dark:text-zinc-300">
+                  <span className={cn('font-bold block mb-1', mutedText)}>Chaves</span>
+                  <p className={bodyText}>
                     {formatKeyPair(autoSuggestion.keyA, autoSuggestion.keyB)}
                   </p>
                   <p
                     className={cn(
-                      'mt-1 text-zinc-600 dark:text-zinc-400',
+                      'mt-1',
+                      subtleText,
                       (autoSuggestion.keyA !== ia.keyA || autoSuggestion.keyB !== ia.keyB) &&
                         'text-amber-700 dark:text-amber-400 font-semibold'
                     )}
@@ -245,11 +257,12 @@ export function ConfigureAiAssistant({
                   </p>
                 </div>
                 <div className="rounded-lg border border-zinc-200/80 dark:border-white/10 px-2 py-2 bg-black/[0.02] dark:bg-white/[0.03]">
-                  <span className="font-bold text-zinc-500 block mb-1">Colunas B sugeridas</span>
-                  <p className="text-zinc-700 dark:text-zinc-300">{autoSuggestion.selectedColsB.length} (automático)</p>
+                  <span className={cn('font-bold block mb-1', mutedText)}>Colunas B sugeridas</span>
+                  <p className={bodyText}>{autoSuggestion.selectedColsB.length} (automático)</p>
                   <p
                     className={cn(
-                      'mt-1 text-zinc-600 dark:text-zinc-400',
+                      'mt-1',
+                      subtleText,
                       autoSuggestion.selectedColsB.length !== (ia.selectedColsB?.length ?? 0) &&
                         'text-amber-700 dark:text-amber-400 font-semibold'
                     )}
@@ -258,8 +271,8 @@ export function ConfigureAiAssistant({
                   </p>
                 </div>
                 <div className="rounded-lg border border-zinc-200/80 dark:border-white/10 px-2 py-2 bg-black/[0.02] dark:bg-white/[0.03] sm:col-span-1">
-                  <span className="font-bold text-zinc-500 block mb-1">Tabela C</span>
-                  <p className="text-zinc-600 dark:text-zinc-400">
+                  <span className={cn('font-bold block mb-1', mutedText)}>Tabela C</span>
+                  <p className={subtleText}>
                     IA: {ia.keyA_C || ia.keyC ? `${ia.keyA_C ?? '—'} / ${ia.keyC ?? '—'}` : '—'}
                   </p>
                 </div>
@@ -267,9 +280,14 @@ export function ConfigureAiAssistant({
             </div>
           )}
           {preview.notes && (
-            <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">{preview.notes}</p>
+            <p className={cn('text-xs leading-relaxed', subtleText)}>{preview.notes}</p>
           )}
-          <pre className="text-[10px] font-mono p-3 rounded-xl bg-black/5 dark:bg-white/5 border dark:border-white/10 border-black/10 overflow-x-auto max-h-40 text-zinc-700 dark:text-zinc-300">
+          <pre
+            className={cn(
+              'text-[10px] font-mono p-3 rounded-xl bg-black/5 dark:bg-white/5 border dark:border-white/10 border-black/10 overflow-x-auto max-h-40',
+              bodyText
+            )}
+          >
             {JSON.stringify(preview.suggestion, null, 2)}
           </pre>
           {preview.warnings.length > 0 && (
