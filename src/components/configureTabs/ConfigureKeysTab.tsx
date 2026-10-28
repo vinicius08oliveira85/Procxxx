@@ -30,8 +30,8 @@ export function ConfigureKeysTab({
       className="space-y-6"
     >
       <div>
-        <h3 className="font-jakarta text-lg font-bold tracking-tight text-[#e5e2e1]">Mapeamento de chaves</h3>
-        <p className="mt-1 text-xs text-zinc-400">
+        <h3 className="font-jakarta text-lg font-bold tracking-tight text-zinc-900 dark:text-[#e5e2e1]">Mapeamento de chaves</h3>
+        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
           Escolha a coluna que liga a tabela principal à tabela de busca (ex.: CPF, código, e-mail).
         </p>
       </div>
@@ -55,7 +55,7 @@ export function ConfigureKeysTab({
           </select>
         </div>
         <div className="flex shrink-0 items-center justify-center md:pb-1">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#434655]/30 bg-[#141414] text-[#b4c5ff]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white text-blue-700 dark:border-[#434655]/30 dark:bg-[#141414] dark:text-[#b4c5ff]">
             <Link2 className="h-5 w-5" aria-hidden />
           </div>
         </div>
@@ -90,23 +90,23 @@ export function ConfigureKeysTab({
         ].map((m) => (
           <div
             key={m.label}
-            className="rounded-xl border border-white/10 bg-[#141414]/60 px-3 py-3 backdrop-blur-2xl"
+            className="rounded-xl border border-black/10 bg-white/70 px-3 py-3 backdrop-blur-2xl dark:border-white/10 dark:bg-[#141414]/60"
           >
             <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">{m.label}</p>
-            <p className="mt-1 font-jakarta text-lg font-bold text-[#e5e2e1]">{m.value}</p>
+            <p className="mt-1 font-jakarta text-lg font-bold text-zinc-900 dark:text-[#e5e2e1]">{m.value}</p>
           </div>
         ))}
       </div>
 
       {activeTask.fileC && (
-        <div className="rounded-xl border border-white/10 bg-[#141414]/45 p-4 backdrop-blur-2xl">
+        <div className="rounded-xl border border-black/10 bg-white/70 p-4 backdrop-blur-2xl dark:border-white/10 dark:bg-[#141414]/45">
           <div className="mb-3 flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/15 text-purple-400">
               <Target className="h-4 w-4" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-[#e5e2e1]">Tabela extra (C)</h4>
-              <p className="text-xs text-zinc-400">Segunda busca opcional ligada à principal.</p>
+              <h4 className="text-sm font-bold text-zinc-900 dark:text-[#e5e2e1]">Tabela extra (C)</h4>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">Segunda busca opcional ligada à principal.</p>
             </div>
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

@@ -40,6 +40,54 @@
   }
 }
 
+/**
+ * Superfícies das etapas Upload/Configurar. Antes eram escuras fixas — o botão
+ * de tema não tinha efeito nessas etapas. Agora seguem a mesma classe `dark`
+ * usada no Resultado.
+ */
+@layer base {
+  :root {
+    --chrome-panel: rgba(255, 255, 255, 0.72);
+    --chrome-card: rgba(255, 255, 255, 0.85);
+    --chrome-border: rgba(0, 0, 0, 0.08);
+    --chrome-text: #18181b;
+    --chrome-muted: #52525b;
+    --chrome-subtle: #71717a;
+  }
+
+  .dark {
+    --chrome-panel: rgba(28, 27, 27, 0.55);
+    --chrome-card: rgba(42, 42, 42, 0.8);
+    --chrome-border: rgba(255, 255, 255, 0.10);
+    --chrome-text: #e5e2e1;
+    --chrome-muted: #c3c6d7;
+    --chrome-subtle: #8d90a0;
+  }
+}
+
+@utility chrome-panel {
+  background-color: var(--chrome-panel);
+  border: 1px solid var(--chrome-border);
+  backdrop-filter: blur(24px) saturate(140%);
+}
+
+@utility chrome-card {
+  background-color: var(--chrome-card);
+  border: 1px solid var(--chrome-border);
+}
+
+@utility chrome-text {
+  color: var(--chrome-text);
+}
+
+@utility chrome-muted {
+  color: var(--chrome-muted);
+}
+
+@utility chrome-subtle {
+  color: var(--chrome-subtle);
+}
+
 @keyframes toast-in {
   from {
     opacity: 0;

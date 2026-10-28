@@ -150,27 +150,19 @@ export function ConfigureAiAssistant({
    * O cartão `bento` tem fundo escuro fixo (rgba(28,27,27,0.72)), mesmo no tema
    * claro: tons `zinc-500/600/700` ficariam abaixo de 4.5:1 ou ilegíveis ali.
    */
-  const titleText = isBento ? 'text-white' : 'text-zinc-900 dark:text-white';
-  const mutedText = isBento ? 'text-zinc-400' : 'text-zinc-500 dark:text-zinc-400';
-  const strongText = isBento ? 'text-zinc-300' : 'text-zinc-600 dark:text-zinc-400';
-  const bodyText = isBento ? 'text-zinc-200' : 'text-zinc-700 dark:text-zinc-300';
-  const subtleText = isBento ? 'text-zinc-400' : 'text-zinc-600 dark:text-zinc-400';
+  const titleText = 'text-zinc-900 dark:text-white';
+  const mutedText = 'text-zinc-500 dark:text-zinc-400';
+  const strongText = 'text-zinc-600 dark:text-zinc-300';
+  const bodyText = 'text-zinc-700 dark:text-zinc-200';
+  const subtleText = 'text-zinc-600 dark:text-zinc-400';
 
   return (
     <div
       className={cn(
         isBento
-          ? 'rounded-xl border border-[#434655]/15 p-5 backdrop-blur-xl shadow-[0_12px_32px_rgba(0,0,0,0.35)]'
+          ? 'rounded-xl border border-black/10 bg-white/80 p-5 backdrop-blur-xl shadow-[0_12px_32px_rgba(0,0,0,0.08)] dark:border-[#434655]/25 dark:bg-[rgba(28,27,27,0.72)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.35)]'
           : 'fluent-card p-4 border border-violet-500/20 dark:border-violet-400/15 bg-violet-500/[0.04] dark:bg-violet-500/[0.06]'
       )}
-      style={
-        isBento
-          ? {
-              background: 'rgba(28, 27, 27, 0.72)',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
-            }
-          : undefined
-      }
     >
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div className="flex items-start gap-3">

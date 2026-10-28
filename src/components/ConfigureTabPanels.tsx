@@ -33,8 +33,8 @@ export function ConfigureTabPanels({
 }: ConfigureTabPanelsProps) {
   return (
     <div className="space-y-1">
-      <div className="mb-5 border-b border-white/10 pb-3">
-        <p className="font-jakarta text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+      <div className="mb-5 border-b border-black/10 pb-3 dark:border-white/10">
+        <p className="font-jakarta text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
           Excel Lookup Master — ajuste chaves, colunas e opções antes de executar
         </p>
       </div>

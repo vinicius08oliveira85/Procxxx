@@ -31,10 +31,8 @@ import {
   Activity,
   Filter,
   Layers,
-  Settings,
   ArrowUpDown,
   FileSpreadsheet,
-  Upload,
   Plus,
   ChevronLeft,
   ChevronRight,
@@ -66,7 +64,8 @@ import {
 } from './lib/resultTableSort';
 import { ConfigureAiAssistant } from './components/ConfigureAiAssistant';
 import { ConfigureTabPanels } from './components/ConfigureTabPanels';
-import { ConfigureStepShell, ConfigureWizardStepper } from './components/ConfigureStepShell';
+import { ConfigureStepShell } from './components/ConfigureStepShell';
+import { StepIndicator } from './components/StepIndicator';
 import { UiPreferencesMenu } from './components/UiPreferencesMenu';
 import { useFocusTrap } from './lib/useFocusTrap';
 import { PivotTableModal } from './components/PivotTableModal';
@@ -986,11 +985,7 @@ export default function App() {
     <div
       className={cn(
         'min-h-dvh relative transition-colors duration-700 selection:bg-blue-500/30',
-        step === 'upload' || step === 'configure'
-          ? 'bg-[#131313] text-[#e5e2e1]'
-          : isDarkMode
-            ? 'bg-[#0a0a0a] text-zinc-100'
-            : 'bg-[#f3f3f3] text-zinc-900'
+        isDarkMode ? 'bg-[#0a0a0a] text-zinc-100' : 'bg-[#f3f3f3] text-zinc-900'
       )}
     >
       {step === 'upload' && (
@@ -1009,19 +1004,19 @@ export default function App() {
               aria-hidden
             />
           </div>
-          <nav className="fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between border-b border-white/10 bg-[#1c1b1b]/55 px-4 shadow-[0_20px_40px_rgba(0,0,0,0.35)] backdrop-blur-2xl sm:px-8">
-            <span className="font-jakarta text-lg font-bold tracking-tight text-white">
+          <nav className="chrome-panel fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between gap-3 border-x-0 border-t-0 px-4 sm:px-8">
+            <span className="truncate font-jakarta text-base font-bold tracking-tight sm:text-lg">
               Excel Lookup Master
             </span>
-            <div className="hidden items-center gap-8 md:flex">
-              <LandingStepStrip currentStep={step} />
+            <div className="hidden md:block">
+              <StepIndicator currentStep={step} />
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
               <UiPreferencesMenu tone="dark" />
               <button
                 type="button"
                 onClick={() => setIsDarkMode(!isDarkMode)}
-                className="rounded-full p-2 text-[#c3c6d7] transition-all hover:bg-white/10 hover:text-white active:scale-95"
+                className="rounded-full p-2 text-zinc-600 transition-all hover:bg-black/5 hover:text-zinc-900 active:scale-95 dark:text-[#c3c6d7] dark:hover:bg-white/10 dark:hover:text-white"
                 aria-label={isDarkMode ? 'Ativar tema claro' : 'Ativar tema escuro'}
                 title={isDarkMode ? 'Ativar tema claro' : 'Ativar tema escuro'}
               >
@@ -1030,7 +1025,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => reset()}
-                className="rounded-full p-2 text-[#c3c6d7] transition-all hover:bg-white/10 hover:text-white active:scale-95"
+                className="rounded-full p-2 text-zinc-600 transition-all hover:bg-black/5 hover:text-zinc-900 active:scale-95 dark:text-[#c3c6d7] dark:hover:bg-white/10 dark:hover:text-white"
                 aria-label="Reiniciar"
                 title="Reiniciar"
               >
@@ -1039,8 +1034,8 @@ export default function App() {
             </div>
             <div className="pointer-events-none absolute bottom-0 left-0 h-px w-full bg-gradient-to-b from-white/5 to-transparent" />
           </nav>
-          <div className="fixed top-16 left-0 right-0 z-40 flex justify-center border-b border-white/10 bg-[#1c1b1b]/50 px-2 py-2 backdrop-blur-2xl md:hidden">
-            <LandingStepStrip currentStep={step} compact />
+          <div className="fixed top-16 left-0 right-0 z-40 flex justify-center border-b border-black/[0.06] bg-white/70 px-2 py-2 backdrop-blur-2xl dark:border-white/10 dark:bg-[#1c1b1b]/60 md:hidden">
+            <StepIndicator currentStep={step} compact />
           </div>
           <main className="relative z-10 mx-auto flex min-h-dvh max-w-4xl flex-col gap-6 px-4 pb-10 pt-28 md:pt-20">
             <motion.div
@@ -1050,18 +1045,18 @@ export default function App() {
               className="flex flex-col gap-6"
             >
               <header className="flex flex-col items-center gap-2 text-center">
-                <h1 className="font-jakarta text-4xl font-extrabold tracking-tighter text-white md:text-5xl">
+                <h1 className="font-jakarta text-4xl font-extrabold tracking-tighter text-zinc-900 md:text-5xl dark:text-white">
                   Inicie seu{' '}
-                  <span className="bg-gradient-to-r from-[#b4c5ff] to-[#d0bcff] bg-clip-text text-transparent">
+                  <span className="bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent dark:from-[#b4c5ff] dark:to-[#d0bcff]">
                     Cruzamento
                   </span>
                 </h1>
-                <p className="max-w-lg text-base font-light leading-relaxed text-[#c3c6d7]">
+                <p className="max-w-lg text-base font-light leading-relaxed text-zinc-600 dark:text-[#c3c6d7]">
                   Importe suas planilhas para o mapeamento de dados com precisão atmosférica.
                 </p>
               </header>
               <UploadHowItWorksDetails />
-              <section className="upload-ghost-border mx-auto flex w-full max-w-xl flex-col gap-4 rounded-[28px] border border-white/10 bg-[#1c1b1b]/45 p-6 shadow-[0_20px_40px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
+              <section className="chrome-panel mx-auto flex w-full max-w-xl flex-col gap-4 rounded-[28px] p-6 shadow-[0_20px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_20px_40px_rgba(0,0,0,0.35)]">
                 <UploadCard
                   variant="landing"
                   landingAccent="blue"
@@ -1113,8 +1108,8 @@ export default function App() {
                     className={cn(
                       'flex min-h-[44px] items-center gap-2 rounded-full border border-dashed px-4 py-2 text-[11px] font-medium uppercase tracking-wide transition-all',
                       activeTask.fileC
-                        ? 'border-red-500/40 text-red-400 hover:bg-red-500/10'
-                        : 'border-[#434655]/40 text-[#c3c6d7] hover:border-white/20 hover:bg-white/5 hover:text-white'
+                        ? 'border-red-500/40 text-red-600 hover:bg-red-500/10 dark:text-red-400'
+                        : 'border-black/15 text-zinc-600 hover:border-black/25 hover:bg-black/5 hover:text-zinc-900 dark:border-[#434655]/40 dark:text-[#c3c6d7] dark:hover:border-white/20 dark:hover:bg-white/5 dark:hover:text-white'
                     )}
                   >
                     {activeTask.fileC ? <X size={14} /> : <Plus size={14} />}
@@ -1152,7 +1147,7 @@ export default function App() {
                   </motion.div>
                 )}
               </section>
-              <div className="flex flex-wrap items-center justify-center gap-3 text-[#c3c6d7]">
+              <div className="flex flex-wrap items-center justify-center gap-3 text-zinc-600 dark:text-[#c3c6d7]">
                 {[activeTask.fileA, activeTask.fileB].map((f, i) => (
                   <div key={i} className="flex items-center gap-1.5">
                     <div
@@ -1164,14 +1159,14 @@ export default function App() {
                     <span
                       className={cn(
                         'text-xs font-bold sm:text-sm',
-                        f ? 'text-blue-300' : 'text-[#8d90a0]'
+                        f ? 'text-blue-600 dark:text-blue-300' : 'text-zinc-500 dark:text-[#8d90a0]'
                       )}
                     >
                       {i === 0 ? 'Tabela A' : 'Tabela B'}
                     </span>
                   </div>
                 ))}
-                <span className="text-xs font-medium text-[#8d90a0] sm:text-sm">
+                <span className="text-xs font-medium text-zinc-500 dark:text-[#8d90a0] sm:text-sm">
                   — {[activeTask.fileA, activeTask.fileB].filter(Boolean).length} de 2 arquivos prontos
                 </span>
               </div>
@@ -1188,10 +1183,10 @@ export default function App() {
                   <span className="relative">Continuar para Configuração</span>
                   <ArrowRight size={20} className="relative shrink-0" />
                 </motion.button>
-                <p className="font-jakarta text-[10px] uppercase tracking-[0.12em] text-[#8d90a0]">
+                <p className="font-jakarta text-[10px] uppercase tracking-[0.12em] text-zinc-500 dark:text-[#8d90a0]">
                   Formatos: {UPLOAD_FORMATS_LABEL} (até 50 MB)
                 </p>
-                <p className="max-w-md px-2 text-center text-xs text-[#8d90a0]">
+                <p className="max-w-md px-2 text-center text-xs text-zinc-500 dark:text-[#8d90a0]">
                   {!activeTask.fileA || !activeTask.fileB
                     ? 'Carregue as duas primeiras planilhas para continuar.'
                     : 'Próximo passo: escolher como ligar as colunas.'}
@@ -1213,13 +1208,10 @@ export default function App() {
           isDarkMode={isDarkMode}
           onToggleDark={() => setIsDarkMode(!isDarkMode)}
           onReset={() => reset()}
-          onGoUpload={() => setStep('upload')}
-          onNavTables={() => setConfigTab('columns')}
-          onNavMapping={() => setConfigTab('keys')}
         >
-          <main className="relative z-10 mx-auto flex max-w-7xl flex-col gap-8 px-4 pb-40 pt-24 sm:px-8">
-            <div className="mx-auto flex w-full max-w-2xl justify-center">
-              <ConfigureWizardStepper />
+          <main className="relative z-10 mx-auto flex max-w-7xl flex-col gap-8 px-4 pb-40 pt-32 sm:px-8 md:pt-24">
+            <div className="mx-auto flex w-full justify-center">
+              <StepIndicator currentStep="configure" />
             </div>
             <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12">
               <div className="flex flex-col gap-8 lg:col-span-8">
@@ -1228,10 +1220,10 @@ export default function App() {
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-6"
                 >
-                  <div className="rounded-[28px] border border-white/10 bg-[#1c1b1b]/50 p-6 shadow-[0_20px_48px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
+                  <div className="chrome-panel rounded-[28px] p-6 shadow-[0_20px_48px_rgba(0,0,0,0.08)] dark:shadow-[0_20px_48px_rgba(0,0,0,0.35)]">
                     <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <div
-                        className="flex w-fit gap-1 rounded-full border border-white/10 bg-[#0e0e0e]/80 p-1 backdrop-blur-xl"
+                        className="flex w-fit gap-1 rounded-full border border-black/10 bg-black/5 p-1 backdrop-blur-xl dark:border-white/10 dark:bg-[#0e0e0e]/80"
                         style={{ scrollbarWidth: 'none' }}
                       >
                         {(
@@ -1251,8 +1243,8 @@ export default function App() {
                             className={cn(
                               'rounded-full px-5 py-2 text-sm font-medium tracking-tight transition-all',
                               configTab === tab.id
-                                ? 'bg-[#2a2a2a] text-[#b4c5ff] shadow-inner'
-                                : 'text-zinc-400 hover:text-[#e5e2e1]'
+                                ? 'bg-white text-blue-700 shadow-sm dark:bg-[#2a2a2a] dark:text-[#b4c5ff] dark:shadow-inner'
+                                : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-[#e5e2e1]'
                             )}
                           >
                             {tab.label}
@@ -1265,7 +1257,7 @@ export default function App() {
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.98 }}
                         transition={{ type: 'spring', stiffness: 420, damping: 26 }}
-                        className="flex min-h-[44px] items-center justify-center gap-2 rounded-full border border-white/10 px-4 py-2 text-xs font-bold text-[#b4c5ff] transition-colors hover:bg-white/5"
+                        className="flex min-h-[44px] items-center justify-center gap-2 rounded-full border border-black/10 px-4 py-2 text-xs font-bold text-blue-700 transition-colors hover:bg-black/5 dark:border-white/10 dark:text-[#b4c5ff] dark:hover:bg-white/5"
                       >
                         <Sparkles size={16} className="shrink-0" aria-hidden />
                         Configuração automática
@@ -1287,17 +1279,16 @@ export default function App() {
                     <motion.div
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="flex gap-4 rounded-xl border border-[#ffb4ab]/20 p-6 backdrop-blur-xl"
-                      style={{ background: 'rgba(147, 0, 10, 0.1)' }}
+                      className="flex gap-4 rounded-xl border border-red-500/25 bg-red-50 p-6 backdrop-blur-xl dark:border-[#ffb4ab]/20 dark:bg-[#93000a]/15"
                     >
-                      <div className="shrink-0 rounded-full bg-[#93000a] p-2">
-                        <AlertCircle className="h-5 w-5 text-[#ffdad6]" />
+                      <div className="shrink-0 rounded-full bg-red-600 p-2 dark:bg-[#93000a]">
+                        <AlertCircle className="h-5 w-5 text-white dark:text-[#ffdad6]" />
                       </div>
                       <div>
-                        <h4 className="font-jakarta text-base font-bold text-[#ffb4ab]">
+                        <h4 className="font-jakarta text-base font-bold text-red-700 dark:text-[#ffb4ab]">
                           Atenção: configuração pendente
                         </h4>
-                        <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-[#c3c6d7]">
+                        <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-zinc-600 dark:text-[#c3c6d7]">
                           {validation.errors.map((err, i) => (
                             <li key={i}>{err}</li>
                           ))}
@@ -1319,11 +1310,11 @@ export default function App() {
                   headersC={headersC}
                   onApply={(patch) => updateActiveTask(patch)}
                 />
-                <div className="rounded-[24px] border border-white/10 bg-[#1c1b1b]/45 p-6 backdrop-blur-2xl">
-                  <h4 className="mb-4 text-xs font-medium uppercase tracking-tight text-zinc-400">
+                <div className="rounded-[24px] border border-black/10 bg-white/70 p-6 backdrop-blur-2xl dark:border-white/10 dark:bg-[#1c1b1b]/45">
+                  <h4 className="mb-4 text-xs font-medium uppercase tracking-tight text-zinc-500 dark:text-zinc-400">
                     Amostra de dados
                   </h4>
-                  <div className="relative aspect-video overflow-hidden rounded-lg border border-[#434655]/10 bg-[#1c1b1b]">
+                  <div className="relative aspect-video overflow-hidden rounded-lg border border-black/10 bg-zinc-100 dark:border-[#434655]/10 dark:bg-[#1c1b1b]">
                     <div
                       className="absolute inset-0 opacity-40"
                       style={{
@@ -1331,9 +1322,9 @@ export default function App() {
                           'radial-gradient(circle at 30% 40%, rgba(37,99,235,0.35), transparent 50%), radial-gradient(circle at 70% 60%, rgba(87,27,193,0.3), transparent 45%)',
                       }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#1c1b1b] to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-zinc-100 to-transparent dark:from-[#1c1b1b]" />
                     <div className="absolute bottom-4 left-4 right-4">
-                      <p className="mb-1 text-[10px] text-[#b4c5ff]">
+                      <p className="mb-1 text-[10px] text-blue-700 dark:text-[#b4c5ff]">
                         {activeTask.fileA?.name ?? 'Tabela principal'}
                       </p>
                       <div className="h-1 w-full overflow-hidden rounded-full bg-white/10">
@@ -2116,49 +2107,16 @@ export default function App() {
   );
 }
 
-function LandingStepStrip({ currentStep, compact }: { currentStep: Step; compact?: boolean }) {
-  const items: { id: Step; label: string }[] = [
-    { id: 'upload', label: '1 Upload' },
-    { id: 'configure', label: '2 Configurar' },
-    { id: 'result', label: '3 Resultado' },
-  ];
-  const activeIndex = items.findIndex((x) => x.id === currentStep);
-  return (
-    <div className={cn('flex flex-wrap items-center justify-center gap-4 sm:gap-6', compact && 'gap-3')}>
-      {items.map((s, i) => {
-        const active = s.id === currentStep;
-        const done = i < activeIndex;
-        return (
-          <span
-            key={s.id}
-            className={cn(
-              'border-b-2 pb-1 text-[10px] font-bold uppercase tracking-[0.06em] transition-colors sm:text-[11px] sm:tracking-[0.05em]',
-              active
-                ? 'border-blue-500 text-blue-400'
-                : done
-                  ? 'border-transparent text-emerald-400/90'
-                  : 'border-transparent text-zinc-500 hover:text-zinc-200'
-            )}
-          >
-            {s.label}
-          </span>
-        );
-      })}
-    </div>
-  );
-}
-
 function UploadHowItWorksDetails() {
   return (
     <section className="mx-auto w-full max-w-2xl">
-      <details className="group upload-ghost-border overflow-hidden rounded-2xl bg-[#1c1b1b] transition-all [&_summary::-webkit-details-marker]:hidden">
+      <details className="group upload-ghost-border overflow-hidden rounded-2xl bg-white/70 transition-all dark:bg-[#1c1b1b] [&_summary::-webkit-details-marker]:hidden">
         <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-3 transition-colors hover:bg-white/5">
           <div className="flex items-center gap-3">
             <Info className="h-5 w-5 shrink-0 text-[#b4c5ff]" aria-hidden />
-            <span className="font-jakarta text-sm font-semibold text-white">Como funciona em 3 passos</span>
+            <span className="font-jakarta text-sm font-semibold text-zinc-900 dark:text-white">Como funciona em 3 passos</span>
           </div>
-          <ChevronDown
-            className="h-5 w-5 shrink-0 text-[#c3c6d7] transition-transform group-open:rotate-180"
+          <ChevronDown              className="h-5 w-5 shrink-0 text-zinc-500 transition-transform group-open:rotate-180 dark:text-[#c3c6d7]"
             aria-hidden
           />
         </summary>
@@ -2168,8 +2126,8 @@ function UploadHowItWorksDetails() {
               01
             </div>
             <div>
-              <p className="text-[13px] font-medium text-white">Importe</p>
-              <p className="text-[11px] text-[#c3c6d7]">Suba a base e a consulta.</p>
+              <p className="text-[13px] font-medium text-zinc-900 dark:text-white">Importe</p>
+              <p className="text-[11px] text-zinc-600 dark:text-[#c3c6d7]">Suba a base e a consulta.</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
@@ -2177,8 +2135,8 @@ function UploadHowItWorksDetails() {
               02
             </div>
             <div>
-              <p className="text-[13px] font-medium text-white">Mapeie</p>
-              <p className="text-[11px] text-[#c3c6d7]">Selecione as chaves e colunas.</p>
+              <p className="text-[13px] font-medium text-zinc-900 dark:text-white">Mapeie</p>
+              <p className="text-[11px] text-zinc-600 dark:text-[#c3c6d7]">Selecione as chaves e colunas.</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
@@ -2186,8 +2144,8 @@ function UploadHowItWorksDetails() {
               03
             </div>
             <div>
-              <p className="text-[13px] font-medium text-white">Resultado</p>
-              <p className="text-[11px] text-[#c3c6d7]">Baixe a planilha consolidada.</p>
+              <p className="text-[13px] font-medium text-zinc-900 dark:text-white">Resultado</p>
+              <p className="text-[11px] text-zinc-600 dark:text-[#c3c6d7]">Baixe a planilha consolidada.</p>
             </div>
           </div>
         </div>
@@ -2274,7 +2232,7 @@ function UploadCard({
     return (
       <FluentPressableDiv
         className={cn(
-          'upload-ghost-border relative overflow-hidden rounded-xl border border-white/10 bg-[#2a2a2a]/80 p-5 backdrop-blur-2xl transition-colors hover:bg-white/[0.04]',
+          'upload-ghost-border relative overflow-hidden rounded-xl border border-black/10 bg-white/80 p-5 backdrop-blur-2xl transition-colors hover:bg-white dark:border-white/10 dark:bg-[#2a2a2a]/80 dark:hover:bg-white/[0.04]',
           hasFile ? 'ring-2 ring-blue-400/35' : ''
         )}
       >
@@ -2309,7 +2267,7 @@ function UploadCard({
                     onClick={startEditing}
                     title="Clique para renomear"
                   >
-                    <span className="block truncate text-sm font-bold text-white">{file.name}</span>
+                    <span className="block truncate text-sm font-bold text-zinc-900 dark:text-white">{file.name}</span>
                     <Pencil
                       size={14}
                       className="shrink-0 text-zinc-500 opacity-60 group-hover/name:opacity-100"
@@ -2317,7 +2275,7 @@ function UploadCard({
                     />
                   </button>
                 )}
-                <span className="text-xs font-medium text-[#c3c6d7]">
+                <span className="text-xs font-medium text-zinc-500 dark:text-[#c3c6d7]">
                   {file.sheets[file.selectedSheet].length} registros
                 </span>
               </div>
@@ -2347,8 +2305,8 @@ function UploadCard({
           ) : (
             <>
               <div className="min-w-0 flex-1 text-center sm:text-left">
-                <h3 className="font-jakarta text-base font-bold tracking-tight text-white">{title}</h3>
-                <p className="mt-0.5 text-[12px] leading-snug text-zinc-400">{description}</p>
+                <h3 className="font-jakarta text-base font-bold tracking-tight text-zinc-900 dark:text-white">{title}</h3>
+                <p className="mt-0.5 text-[12px] leading-snug text-zinc-500 dark:text-zinc-400">{description}</p>
               </div>
               <div className="flex flex-col gap-2">
                 <label className="shrink-0 cursor-pointer">
@@ -2359,7 +2317,7 @@ function UploadCard({
                   <button
                     type="button"
                     onClick={onPaste}
-                    className="text-[10px] font-bold uppercase tracking-widest text-[#b4c5ff] transition-colors hover:text-white"
+                    className="text-[10px] font-bold uppercase tracking-widest text-blue-700 transition-colors hover:text-blue-900 dark:text-[#b4c5ff] dark:hover:text-white"
                   >
                     Ou Colar Texto Bruto
                   </button>
@@ -2758,50 +2716,4 @@ function ColumnFilterDropdown({
   );
 
   return createPortal(panel, document.body);
-}
-
-/**
- * Indicador visual de progresso dos passos da aplicação.
- */
-function StepIndicator({ currentStep }: { currentStep: Step }) {
-  const steps: { id: Step; label: string; labelShort: string; icon: LucideIcon }[] = [
-    { id: 'upload', label: 'Upload', labelShort: 'Upload', icon: Upload },
-    { id: 'configure', label: 'Configurar', labelShort: 'Config', icon: Settings },
-    { id: 'result', label: 'Resultado', labelShort: 'Resultado', icon: CheckCircle2 }
-  ];
-
-  return (
-    <div className="flex items-center justify-center">
-      <div className="flex items-center gap-1 sm:gap-1.5 p-1 sm:p-1.5 mica rounded-2xl sm:rounded-[24px] border border-white/10 shadow-xl">
-        {steps.map((s, i) => {
-          const isActive = s.id === currentStep;
-          const isCompleted = steps.findIndex(st => st.id === currentStep) > i;
-          
-          return (
-            <React.Fragment key={s.id}>
-              <div className={cn(
-                "flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-[18px] transition-all duration-500",
-                isActive ? "bg-blue-600 text-white shadow-lg shadow-blue-500/40 scale-105" : 
-                isCompleted ? "text-emerald-500 hover:bg-emerald-500/10" : "text-zinc-500 dark:hover:bg-white/5 hover:bg-black/5"
-              )}>
-                <div className={cn(
-                  "w-6 h-6 sm:w-7 sm:h-7 rounded-md sm:rounded-lg flex items-center justify-center text-xs font-black transition-all duration-500",
-                  isActive ? "bg-white/20" : isCompleted ? "bg-emerald-500/20" : "dark:bg-white/5 bg-black/5"
-                )}>
-                  {isCompleted ? <CheckCircle2 size={16} /> : i + 1}
-                </div>
-                <span className="text-[11px] sm:text-xs font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] max-w-[4.5rem] sm:max-w-none truncate sm:whitespace-normal">
-                  <span className="sm:hidden">{s.labelShort}</span>
-                  <span className="hidden sm:inline">{s.label}</span>
-                </span>
-              </div>
-              {i < steps.length - 1 && (
-                <ChevronRight size={14} className="mx-0.5 opacity-20 shrink-0" />
-              )}
-            </React.Fragment>
-          );
-        })}
-      </div>
-    </div>
-  );
 }

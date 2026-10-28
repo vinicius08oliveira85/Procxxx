@@ -41,7 +41,7 @@ export function ConfigureColumnsTab({
             </h2>
           </div>
           <div className="flex items-center gap-2">
-            <span className="bg-gradient-to-br from-zinc-500/20 to-zinc-600/10 text-zinc-300 border border-white/10 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">
+            <span className="bg-gradient-to-br from-zinc-500/20 to-zinc-600/10 text-zinc-700 border border-black/10 dark:text-zinc-300 dark:border-white/10 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">
               {activeTask.selectedColsA.length === 0
                 ? 'Todas'
                 : `${activeTask.selectedColsA.length} selecionadas`}
@@ -95,7 +95,7 @@ export function ConfigureColumnsTab({
                 className={cn(
                   'p-2.5 rounded-xl border-2 text-xs font-bold transition-all text-left flex items-center justify-between group relative overflow-hidden',
                   activeTask.selectedColsA.includes(h)
-                    ? 'border-zinc-500/50 bg-zinc-500/10 text-zinc-300 shadow-sm'
+                    ? 'border-zinc-500/50 bg-zinc-500/10 text-zinc-700 shadow-sm dark:text-zinc-300'
                     : 'dark:border-white/5 dark:bg-black/20 dark:hover:border-white/20 dark:hover:bg-white/5 border-black/10 bg-white/60 hover:border-black/20 hover:bg-black/5'
                 )}
               >
@@ -135,7 +135,7 @@ export function ConfigureColumnsTab({
             </h2>
           </div>
           <div className="flex items-center gap-2">
-            <span className="bg-gradient-to-br from-blue-600/25 via-blue-500/15 to-blue-700/10 text-blue-300 border border-white/10 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">
+            <span className="bg-gradient-to-br from-blue-600/25 via-blue-500/15 to-blue-700/10 text-blue-700 border border-black/10 dark:text-blue-300 dark:border-white/10 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">
               {activeTask.selectedColsB.length} selecionadas
             </span>
           </div>
@@ -156,7 +156,7 @@ export function ConfigureColumnsTab({
             <FluentPressableButton
               type="button"
               onClick={() => onTaskPatch({ selectedColsB: headersB })}
-              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-blue-400 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/10 border-black/10"
+              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-blue-700 dark:text-blue-400 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/10 border-black/10"
             >
               Selecionar tudo
             </FluentPressableButton>
@@ -190,7 +190,7 @@ export function ConfigureColumnsTab({
                     ? activeTask.lookupType === 'vlookup' &&
                       headersB.indexOf(h) < headersB.indexOf(activeTask.keyB)
                       ? 'border-red-500/50 bg-red-500/10 text-red-400 shadow-sm'
-                      : 'border-blue-500/50 bg-blue-500/10 text-blue-400 shadow-sm'
+                      : 'border-blue-500/50 bg-blue-500/10 text-blue-700 shadow-sm dark:text-blue-400'
                     : 'dark:border-white/5 dark:bg-black/20 dark:hover:border-white/20 dark:hover:bg-white/5 border-black/10 bg-white/60 hover:border-black/20 hover:bg-black/5'
                 )}
               >
@@ -228,7 +228,7 @@ export function ConfigureColumnsTab({
               </h2>
             </div>
             <div className="flex items-center gap-2">
-              <span className="bg-gradient-to-br from-purple-600/25 via-fuchsia-500/15 to-purple-800/10 text-purple-200 border border-white/10 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">
+              <span className="bg-gradient-to-br from-purple-600/25 via-fuchsia-500/15 to-purple-800/10 text-purple-700 border border-black/10 dark:text-purple-200 dark:border-white/10 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">
                 {activeTask.selectedColsC.length} selecionadas
               </span>
             </div>
@@ -249,7 +249,7 @@ export function ConfigureColumnsTab({
               <FluentPressableButton
                 type="button"
                 onClick={() => onTaskPatch({ selectedColsC: headersC })}
-                className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-purple-400 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/10 border-black/10"
+                className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-purple-700 dark:text-purple-400 dark:hover:bg-white/5 hover:bg-black/5 transition-all border dark:border-white/10 border-black/10"
               >
                 Selecionar tudo
               </FluentPressableButton>
@@ -283,7 +283,7 @@ export function ConfigureColumnsTab({
                       ? activeTask.lookupType === 'vlookup' &&
                         headersC.indexOf(h) < headersC.indexOf(activeTask.keyC)
                         ? 'border-red-500/50 bg-red-500/10 text-red-400 shadow-sm'
-                        : 'border-purple-500/50 bg-purple-500/10 text-purple-400 shadow-sm'
+                        : 'border-purple-500/50 bg-purple-500/10 text-purple-700 shadow-sm dark:text-purple-400'
                       : 'dark:border-white/5 dark:bg-black/20 dark:hover:border-white/20 dark:hover:bg-white/5 border-black/10 bg-white/60 hover:border-black/20 hover:bg-black/5'
                   )}
                 >
