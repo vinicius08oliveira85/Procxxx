@@ -68,6 +68,7 @@ import { ConfigureAiAssistant } from './components/ConfigureAiAssistant';
 import { ConfigureTabPanels } from './components/ConfigureTabPanels';
 import { ConfigureStepShell, ConfigureWizardStepper } from './components/ConfigureStepShell';
 import { UiPreferencesMenu } from './components/UiPreferencesMenu';
+import { useFocusTrap } from './lib/useFocusTrap';
 import { PivotTableModal } from './components/PivotTableModal';
 import { PasteDataModal } from './components/PasteDataModal';
 import {
@@ -223,6 +224,7 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
   const [downloadingExcel, setDownloadingExcel] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const resetDialogRef = useFocusTrap<HTMLDivElement>(showResetConfirm);
   const [configTab, setConfigTab] = useState<'keys' | 'columns' | 'advanced'>('keys');
   const [columnFilters, setColumnFilters] = useState<{ [col: string]: Set<string> }>({});
   const [openFilterCol, setOpenFilterCol] = useState<string | null>(null);
@@ -2064,6 +2066,8 @@ export default function App() {
           }}
         >
           <div
+            ref={resetDialogRef}
+            tabIndex={-1}
             role="dialog"
             aria-modal="true"
             aria-labelledby="reset-confirm-title"

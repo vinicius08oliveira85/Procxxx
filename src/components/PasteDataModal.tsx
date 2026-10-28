@@ -18,6 +18,7 @@ import {
   type PastePreviewState,
 } from '../lib/pasteTableParser';
 import type { ExcelData } from '../types/lookupTask';
+import { useFocusTrap } from '../lib/useFocusTrap';
 
 const PREVIEW_MAX_ROWS = 20;
 
@@ -36,6 +37,7 @@ export function PasteDataModal({ open, onClose, tableLabel, onAccept }: PasteDat
   const deferredText = useDeferredValue(text);
   const isProcessing = text !== deferredText;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const trapRef = useFocusTrap<HTMLDivElement>(open);
 
   useEffect(() => {
     if (!open) {
@@ -107,6 +109,8 @@ export function PasteDataModal({ open, onClose, tableLabel, onAccept }: PasteDat
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
+        ref={trapRef}
+        tabIndex={-1}
         className={cn(
           'windows-window w-full max-w-3xl max-h-[92vh] flex flex-col',
           'text-zinc-900 dark:text-zinc-100'

@@ -12,6 +12,7 @@ import {
   Copy,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { useFocusTrap } from '../lib/useFocusTrap';
 import {
   type PivotAgg,
   type PivotLayout,
@@ -367,6 +368,8 @@ export function PivotTableModal({ open, onClose, rows }: PivotTableModalProps) {
     effectiveLayout.measures,
   ]);
 
+  const trapRef = useFocusTrap<HTMLDivElement>(open);
+
   if (!open) return null;
 
   const zoneClass =
@@ -380,7 +383,11 @@ export function PivotTableModal({ open, onClose, rows }: PivotTableModalProps) {
       aria-labelledby="pivot-modal-title"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] border border-white/10 bg-zinc-950/55 text-zinc-100 shadow-2xl backdrop-blur-2xl">
+      <div
+        ref={trapRef}
+        tabIndex={-1}
+        className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] border border-white/10 bg-zinc-950/55 text-zinc-100 shadow-2xl backdrop-blur-2xl"
+      >
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 py-3 backdrop-blur-xl">
           <h2 id="pivot-modal-title" className="text-base font-bold tracking-tight">
             Campos da Tabela Dinâmica
