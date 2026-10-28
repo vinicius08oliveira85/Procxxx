@@ -223,7 +223,6 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
   const [downloadingExcel, setDownloadingExcel] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [configTab, setConfigTab] = useState<'keys' | 'columns' | 'advanced'>('keys');
   const [columnFilters, setColumnFilters] = useState<{ [col: string]: Set<string> }>({});
   const [openFilterCol, setOpenFilterCol] = useState<string | null>(null);
@@ -1028,7 +1027,7 @@ export default function App() {
               </button>
               <button
                 type="button"
-                onClick={reset}
+                onClick={() => reset()}
                 className="rounded-full p-2 text-[#c3c6d7] transition-all hover:bg-white/10 hover:text-white active:scale-95"
                 aria-label="Reiniciar"
                 title="Reiniciar"
@@ -1211,7 +1210,7 @@ export default function App() {
           executeLoading={loading}
           isDarkMode={isDarkMode}
           onToggleDark={() => setIsDarkMode(!isDarkMode)}
-          onReset={reset}
+          onReset={() => reset()}
           onGoUpload={() => setStep('upload')}
           onNavTables={() => setConfigTab('columns')}
           onNavMapping={() => setConfigTab('keys')}
@@ -1408,7 +1407,7 @@ export default function App() {
                     {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
                   </button>
                   <button 
-                    onClick={reset}
+                    onClick={() => reset()}
                     className="p-2.5 rounded-xl hover:bg-red-500/10 transition-all text-zinc-600 dark:text-zinc-400 hover:text-red-500 active:scale-90"
                   >
                     <X size={18} />
@@ -2052,6 +2051,48 @@ export default function App() {
           <p className="animate-pulse text-xl font-bold text-white">
             {step === 'upload' ? 'Lendo arquivo...' : 'Cruzando dados...'}
           </p>
+        </div>
+      )}
+
+      {showResetConfirm && (
+        <div
+          className="fixed inset-0 z-[260] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          role="presentation"
+          onMouseDown={(e) => e.target === e.currentTarget && setShowResetConfirm(false)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setShowResetConfirm(false);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reset-confirm-title"
+            className="w-full max-w-sm rounded-2xl border border-black/10 bg-white p-6 text-zinc-900 shadow-2xl dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-100"
+          >
+            <h2 id="reset-confirm-title" className="text-base font-bold">
+              Reiniciar a operação?
+            </h2>
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+              As planilhas carregadas e o resultado atual serão descartados. Exporte antes se precisar guardar.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                autoFocus
+                onClick={() => setShowResetConfirm(false)}
+                className="min-h-[44px] rounded-xl border border-black/10 px-4 py-2 text-sm font-bold text-zinc-700 transition-colors hover:bg-black/5 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-white/10"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => reset(true)}
+                className="min-h-[44px] rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-red-500"
+              >
+                Reiniciar
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
