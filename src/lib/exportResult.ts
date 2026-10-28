@@ -81,5 +81,19 @@ export function downloadJsonFile(data: unknown, filename: string): void {
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(url);
+  revokeObjectUrlLater(url);
+}
+
+/**
+ * Revoga o object URL fora do tick do clique: Safari/Firefox cancelam o download
+ * quando o blob é libertado imediatamente depois de `a.click()`.
+ */
+export function revokeObjectUrlLater(
+  url: string,
+  revoke: (url: string) => void = (value) => URL.revokeObjectURL(value),
+  schedule: (callback: () => void) => void = (callback) => {
+    setTimeout(callback, 0);
+  }
+): void {
+  schedule(() => revoke(url));
 }

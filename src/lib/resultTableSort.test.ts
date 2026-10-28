@@ -31,9 +31,24 @@ describe('parseResultDateString', () => {
     expect(d.getSeconds()).toBe(45);
   });
 
+  it('aceita ISO (AAAA-MM-DD), com ou sem hora', () => {
+    const date = parseResultDateString('2024-03-15');
+    expect(date).not.toBeNull();
+    expect(new Date(date!).getFullYear()).toBe(2024);
+    expect(new Date(date!).getMonth()).toBe(2);
+    expect(new Date(date!).getDate()).toBe(15);
+    expect(parseResultDateString('2024-03-15T09:30')).not.toBeNull();
+  });
+
+  it('aceita ano de dois dígitos com pivô 68/69', () => {
+    expect(new Date(parseResultDateString('15/03/24')!).getFullYear()).toBe(2024);
+    expect(new Date(parseResultDateString('15/03/85')!).getFullYear()).toBe(1985);
+  });
+
   it('retorna null para data inválida ou formato incorreto', () => {
     expect(parseResultDateString('31/02/2024')).toBeNull();
-    expect(parseResultDateString('2024-03-15')).toBeNull();
+    expect(parseResultDateString('2024-13-45')).toBeNull();
+    expect(parseResultDateString('15-03-2024')).toBeNull();
     expect(parseResultDateString('')).toBeNull();
     expect(parseResultDateString('texto')).toBeNull();
   });
@@ -66,6 +81,11 @@ describe('compareResultCellAsc', () => {
     expect(
       compareResultCellAsc('02/01/2024', '15/12/2023')
     ).toBeGreaterThan(0);
+  });
+
+  it('compara datas ISO e DD/MM/AAAA cronologicamente', () => {
+    expect(compareResultCellAsc('2024-01-10', '15/12/2023')).toBeGreaterThan(0);
+    expect(compareResultCellAsc('2023-12-15', '10/01/2024')).toBeLessThan(0);
   });
 
   it('ordena números e strings numéricas sem confundir com data', () => {

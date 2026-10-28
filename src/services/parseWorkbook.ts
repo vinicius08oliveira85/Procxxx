@@ -4,6 +4,9 @@
 import { isPlainTextUpload, validateUploadSize } from '../lib/uploadLimits';
 import type { ExcelData } from '../types/lookupTask';
 import type { ParseRequest, ParseResponse } from '../workers/parse.worker';
+import type { WorkbookParseInput } from '../lib/workbookParser';
+
+const PARSE_TIMEOUT_MS = 120_000;
 
 export class WorkbookParseError extends Error {
   constructor(message: string) {
@@ -12,9 +15,96 @@ export class WorkbookParseError extends Error {
   }
 }
 
+/** O ambiente não conseguiu criar/usar o Worker — ainda dá para tentar na thread principal. */
+class WorkerUnavailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'WorkerUnavailableError';
+  }
+}
+
 function unreadableMessage(fileName: string): string {
   const ext = (fileName.split('.').pop() ?? '').toUpperCase();
   return `Não foi possível ler o arquivo "${fileName}"${ext ? ` (${ext})` : ''}. Verifique se o formato é suportado e se o arquivo não está corrompido.`;
+}
+
+function emptyWorkbookMessage(): string {
+  return 'O arquivo não contém planilhas ou está vazio.';
+}
+
+function createParseWorker(): Worker {
+  try {
+    return new Worker(new URL('../workers/parse.worker.ts', import.meta.url), {
+      type: 'module',
+    });
+  } catch (error) {
+    throw new WorkerUnavailableError(error instanceof Error ? error.message : String(error));
+  }
+}
+
+function parseInWorker(input: WorkbookParseInput): Promise<ExcelData> {
+  const worker = createParseWorker();
+
+  return new Promise<ExcelData>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      worker.terminate();
+      reject(new WorkbookParseError(`O arquivo "${input.fileName}" demorou demais para ser lido.`));
+    }, PARSE_TIMEOUT_MS);
+
+    /** Fecha o worker e limpa o timeout uma única vez por desfecho. */
+    const finish = (action: () => void) => {
+      clearTimeout(timer);
+      action();
+      worker.terminate();
+    };
+
+    worker.onmessage = (event: MessageEvent<ParseResponse>) => {
+      const message = event.data;
+      if ('data' in message) {
+        finish(() => resolve(message.data));
+        return;
+      }
+      finish(() =>
+        reject(
+          new WorkbookParseError(
+            message.errorCode === 'EMPTY_WORKBOOK' ? emptyWorkbookMessage() : unreadableMessage(input.fileName)
+          )
+        )
+      );
+    };
+
+    worker.onerror = () => {
+      finish(() => reject(new WorkbookParseError(unreadableMessage(input.fileName))));
+    };
+
+    try {
+      const transfer: Transferable[] = input.buffer ? [input.buffer] : [];
+      worker.postMessage({ id: 1, input } satisfies ParseRequest, transfer);
+    } catch (error) {
+      finish(() =>
+        reject(new WorkerUnavailableError(error instanceof Error ? error.message : String(error)))
+      );
+    }
+  });
+}
+
+/**
+ * Fallback sem Worker (CSP restritiva, browser antigo). O import é dinâmico para
+ * o `xlsx` não entrar no bundle inicial.
+ */
+async function parseOnMainThread(input: WorkbookParseInput): Promise<ExcelData> {
+  if (input.buffer && input.buffer.byteLength === 0) {
+    // O buffer foi transferido para um worker que falhou: já não está acessível.
+    throw new WorkbookParseError(unreadableMessage(input.fileName));
+  }
+
+  const { parseWorkbook, EmptyWorkbookError } = await import('../lib/workbookParser');
+  try {
+    return parseWorkbook(input);
+  } catch (error) {
+    if (error instanceof EmptyWorkbookError) throw new WorkbookParseError(emptyWorkbookMessage());
+    throw new WorkbookParseError(unreadableMessage(input.fileName));
+  }
 }
 
 /**
@@ -26,53 +116,18 @@ export async function parseWorkbookFile(file: File): Promise<ExcelData> {
   if (sizeError) throw new WorkbookParseError(sizeError);
 
   const isText = isPlainTextUpload(file.name);
-  const text = isText ? await file.text() : null;
-  const buffer = isText ? null : await file.arrayBuffer();
-
-  const worker = new Worker(new URL('../workers/parse.worker.ts', import.meta.url), {
-    type: 'module',
-  });
-
-  // Timeout de segurança: se o worker não responder em 2 minutos, desiste.
-  const PARSE_TIMEOUT_MS = 120_000;
-  const timeoutId = setTimeout(() => {
-    worker.terminate();
-    rejectTimeout(new WorkbookParseError(`O arquivo "${file.name}" demorou demais para ser lido.`));
-  }, PARSE_TIMEOUT_MS);
-
-  let rejectTimeout = (_err: Error) => {
-    /* definido acima */
+  const input: WorkbookParseInput = {
+    fileName: file.name,
+    text: isText ? await file.text() : null,
+    buffer: isText ? null : await file.arrayBuffer(),
   };
 
   try {
-    return await new Promise<ExcelData>((resolve, reject) => {
-      rejectTimeout = reject;
-      worker.onmessage = (event: MessageEvent<ParseResponse>) => {
-        clearTimeout(timeoutId);
-        const message = event.data;
-        if ('data' in message) {
-          resolve(message.data);
-          return;
-        }
-        reject(
-          new WorkbookParseError(
-            message.errorCode === 'EMPTY_WORKBOOK'
-              ? 'O arquivo não contém planilhas ou está vazio.'
-              : unreadableMessage(file.name)
-          )
-        );
-      };
-      worker.onerror = () => {
-        clearTimeout(timeoutId);
-        reject(new WorkbookParseError(unreadableMessage(file.name)));
-      };
-
-      const request: ParseRequest = { id: 1, input: { fileName: file.name, text, buffer } };
-      // Transfere o buffer para o worker (evita uma cópia de até 50 MB).
-      worker.postMessage(request, buffer ? [buffer] : []);
-    });
-  } finally {
-    clearTimeout(timeoutId);
-    worker.terminate();
+    return await parseInWorker(input);
+  } catch (error) {
+    // Só falhas de ambiente caem para a thread principal; erros de leitura do
+    // ficheiro (corrompido/vazio) mantêm a mensagem específica.
+    if (!(error instanceof WorkerUnavailableError)) throw error;
+    return parseOnMainThread(input);
   }
 }

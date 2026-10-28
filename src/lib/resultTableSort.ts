@@ -7,9 +7,38 @@ export interface SortConfig {
   direction: 'asc' | 'desc';
 }
 
-/** DD/MM/YYYY ou DD/MM/YYYY HH:mm (ou HH:mm:ss). */
-const RESULT_DATE_CELL_RE =
-  /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/;
+/** DD/MM/AAAA (ou AA) e AAAA-MM-DD, com hora opcional (HH:mm[:ss]). */
+const DMY_DATE_CELL_RE =
+  /^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})(?:[\sT]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/;
+const ISO_DATE_CELL_RE =
+  /^(\d{4})-(\d{2})-(\d{2})(?:[\sT]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/;
+
+/** Anos de 2 dígitos: 00–68 → 2000s, 69–99 → 1900s (pivô convencional). */
+function expandTwoDigitYear(year: number): number {
+  if (year >= 100) return year;
+  return year <= 68 ? 2000 + year : 1900 + year;
+}
+
+function buildTimestamp(
+  year: number,
+  month: number,
+  day: number,
+  hours?: string,
+  minutes?: string,
+  seconds?: string
+): number | null {
+  const hh = hours !== undefined ? parseInt(hours, 10) : 0;
+  const mm = minutes !== undefined ? parseInt(minutes, 10) : 0;
+  const ss = seconds !== undefined ? parseInt(seconds, 10) : 0;
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  if (hh > 23 || mm > 59 || ss > 59) return null;
+  const date = new Date(year, month - 1, day, hh, mm, ss);
+  // Rejeita datas que o `Date` "corrige" (31/02 → 02/03).
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    return null;
+  }
+  return date.getTime();
+}
 
 function isEmptyResultCell(v: unknown): boolean {
   return v === undefined || v === null || v === '';
@@ -17,19 +46,33 @@ function isEmptyResultCell(v: unknown): boolean {
 
 export function parseResultDateString(raw: string): number | null {
   const s = raw.trim();
-  const m = s.match(RESULT_DATE_CELL_RE);
-  if (!m) return null;
-  const day = parseInt(m[1], 10);
-  const month = parseInt(m[2], 10) - 1;
-  const year = parseInt(m[3], 10);
-  const hh = m[4] !== undefined ? parseInt(m[4], 10) : 0;
-  const min = m[5] !== undefined ? parseInt(m[5], 10) : 0;
-  const ss = m[6] !== undefined ? parseInt(m[6], 10) : 0;
-  const d = new Date(year, month, day, hh, min, ss);
-  if (d.getFullYear() !== year || d.getMonth() !== month || d.getDate() !== day) {
-    return null;
+  if (!s) return null;
+
+  const iso = s.match(ISO_DATE_CELL_RE);
+  if (iso) {
+    return buildTimestamp(
+      parseInt(iso[1], 10),
+      parseInt(iso[2], 10),
+      parseInt(iso[3], 10),
+      iso[4],
+      iso[5],
+      iso[6]
+    );
   }
-  return d.getTime();
+
+  const dmy = s.match(DMY_DATE_CELL_RE);
+  if (dmy) {
+    return buildTimestamp(
+      expandTwoDigitYear(parseInt(dmy[3], 10)),
+      parseInt(dmy[2], 10),
+      parseInt(dmy[1], 10),
+      dmy[4],
+      dmy[5],
+      dmy[6]
+    );
+  }
+
+  return null;
 }
 
 /**

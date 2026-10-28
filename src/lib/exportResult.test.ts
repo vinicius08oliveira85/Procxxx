@@ -4,6 +4,7 @@ import {
   buildResultExportRowsForJson,
   getResultExportVisibleColumnIds,
   resultExportBaseFileName,
+  revokeObjectUrlLater,
 } from './exportResult';
 import type { ColumnSetting, LookupTask } from '../types/lookupTask';
 
@@ -55,6 +56,25 @@ describe('buildResultExportRowsForJson', () => {
     const settings = cols([{ id: 'LookupC_Code', visible: true }]);
     const rows = [{ LookupC_Code: 'X' }];
     expect(buildResultExportRowsForJson(settings, rows)).toEqual([{ Code: 'X' }]);
+  });
+});
+
+describe('revokeObjectUrlLater', () => {
+  it('só revoga o object URL fora do tick do clique', () => {
+    const revoked: string[] = [];
+    const queue: Array<() => void> = [];
+
+    revokeObjectUrlLater(
+      'blob:test',
+      (url) => revoked.push(url),
+      (callback) => queue.push(callback)
+    );
+
+    expect(revoked).toEqual([]);
+    expect(queue).toHaveLength(1);
+
+    queue[0]!();
+    expect(revoked).toEqual(['blob:test']);
   });
 });
 
